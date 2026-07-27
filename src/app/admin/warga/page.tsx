@@ -34,8 +34,8 @@ import {
   UploadCloud,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import type { Profile, UserRole, Rumah, StatusHunian } from '@/types';
-import { syncProfilesToCloud, fetchProfilesFromCloud } from '@/lib/db-sync';
+import type { Profile, UserRole, Rumah, StatusHunian, IuranMatrixRow, StatusIuran } from '@/types';
+import { syncProfilesToCloud, fetchProfilesFromCloud, syncIuranMatrixToCloud } from '@/lib/db-sync';
 import { ROLE_LABELS } from '@/types';
 
 const STORAGE_KEY_RUMAH = 'martinez_rumah_list_v3';
@@ -469,8 +469,40 @@ export default function AdminWargaPage() {
 
         saveStateToStorage(updatedRumahList, updatedProfilesList);
 
+        // Auto pre-populate Iuran Matrix for all uploaded houses with default 'belum_lunas'
+        try {
+          const savedIuran = localStorage.getItem('martinez_iuran_matrix_v2');
+          let currentMatrix: IuranMatrixRow[] = [];
+          if (savedIuran) {
+            currentMatrix = JSON.parse(savedIuran);
+          }
+
+          const newMatrix = [...currentMatrix];
+          const cleanNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+          updatedRumahList.forEach((r) => {
+            const targetClean = cleanNo(r.nomor_rumah);
+            const exists = newMatrix.some((m) => cleanNo(m.nomor_rumah) === targetClean);
+            if (!exists) {
+              const defaultBulan: Record<number, StatusIuran> = {};
+              for (let m = 1; m <= 12; m++) {
+                defaultBulan[m] = 'belum_lunas';
+              }
+              newMatrix.push({
+                rumah_id: r.id,
+                nomor_rumah: r.nomor_rumah,
+                rt: r.rt,
+                status_hunian: r.status_hunian,
+                bulan: defaultBulan,
+              });
+            }
+          });
+
+          syncIuranMatrixToCloud(newMatrix);
+        } catch (e) {}
+
         showToast(
-          `Update Berhasil! ${rows.length} baris diproses berdasarkan Nomor Rumah: ${updatedCount} data warga diperbarui, ${insertedCount} unit baru didaftarkan.`
+          `Update Berhasil! ${rows.length} data warga diproses & otomatis didaftarkan ke Matriks Iuran (Default: Belum Lunas 12 bulan).`
         );
 
         if (fileInputRef.current) fileInputRef.current.value = '';
