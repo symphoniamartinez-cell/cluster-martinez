@@ -480,10 +480,14 @@ export default function AdminWargaPage() {
           );
 
           if (existingProfileIdx >= 0) {
+            const currentCode = updatedProfilesList[existingProfileIdx].kode_aktivasi;
+            const validCode = (currentCode && currentCode.startsWith('MTZ-')) ? currentCode : generateKode();
+
             updatedProfilesList[existingProfileIdx] = {
               ...updatedProfilesList[existingProfileIdx],
               nama: nama !== 'Belum ada nama' ? nama : updatedProfilesList[existingProfileIdx].nama,
               phone: phone !== '-' ? phone : updatedProfilesList[existingProfileIdx].phone,
+              kode_aktivasi: validCode,
               tanggal_masuk: tanggalMasuk || updatedProfilesList[existingProfileIdx].tanggal_masuk,
               rumah: updatedRumahList.find((r) => r.id === targetRumahId),
             };
