@@ -131,7 +131,12 @@ export default function AdminLayout({
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => {
+            if (userRole === 'bendahara' && item.href === '/admin/users') {
+              return false;
+            }
+            return true;
+          }).map((item) => {
             const isActive =
               item.href === '/admin'
                 ? pathname === '/admin'

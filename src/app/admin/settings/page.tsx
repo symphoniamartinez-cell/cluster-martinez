@@ -45,7 +45,7 @@ export default function SettingsPage() {
   const [countdown, setCountdown] = useState(5);
   const [isResetting, setIsResetting] = useState(false);
 
-  const canEdit = userRole === 'superadmin' || userRole === 'pengurus';
+  const canEdit = userRole === 'superadmin' || userRole === 'pengurus' || userRole === 'bendahara';
   const isSuperAdmin = userRole === 'superadmin';
 
   useEffect(() => {
