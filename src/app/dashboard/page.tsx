@@ -46,6 +46,7 @@ export default function WargaDashboardPage() {
   const [namaWarga, setNamaWarga] = useState('Warga');
   const [rt, setRt] = useState('03');
   const [statusHunian, setStatusHunian] = useState('pemilik');
+  const [tanggalMasuk, setTanggalMasuk] = useState('');
   const [iuranData, setIuranData] = useState<Record<number, StatusIuran>>({});
   const [kupons, setKupons] = useState<KuponAcara[]>([]);
   const [selectedKupon, setSelectedKupon] = useState<KuponAcara | null>(null);
@@ -85,32 +86,60 @@ export default function WargaDashboardPage() {
     }
 
     const currentConfig = getIuranConfigFromStorage();
-    fetchIuranMatrixFromCloud();
+    if (currentConfig) setConfig(currentConfig);
+
+    // 1. Fetch Cloud Iuran Matrix for Real-time Status Sync
+    fetchIuranMatrixFromCloud().then((cloudMatrix) => {
+      if (cloudMatrix && cloudMatrix.length > 0) {
+        const targetClean = cleanHouseNo(houseNo);
+        const matches = cloudMatrix.filter(
+          (m) => cleanHouseNo(m.nomor_rumah) === targetClean
+        );
+        if (matches.length > 0) {
+          const targetBulan: Record<number, StatusIuran> = {};
+          for (let m = 1; m <= 12; m++) {
+            targetBulan[m] = 'belum_lunas';
+          }
+          matches.forEach((mRow) => {
+            if (mRow.rt) setRt(mRow.rt);
+            if (mRow.status_hunian) setStatusHunian(mRow.status_hunian);
+            for (let m = 1; m <= 12; m++) {
+              const val =
+                mRow.bulan[m] ||
+                (mRow.bulan as any)[m.toString()] ||
+                (mRow.bulan as any)[BULAN_FULL[m]];
+              if (val === 'lunas') {
+                targetBulan[m] = 'lunas';
+              }
+            }
+          });
+          setIuranData(targetBulan);
+        }
+      }
+    });
+
+    // 2. Fetch Cloud Profiles & Tanggal Masuk
     fetchProfilesFromCloud().then((cloudRes) => {
       if (cloudRes && cloudRes.profiles) {
         const targetClean = cleanHouseNo(houseNo);
         const targetRumah = cloudRes.rumahList.find(
           (r) => cleanHouseNo(r.nomor_rumah) === targetClean
         );
-        let resolvedName = '';
-        if (targetRumah) {
-          const prof = cloudRes.profiles.find((p) => p.rumah_id === targetRumah.id);
-          if (prof && prof.nama && prof.nama !== 'Belum ada nama') {
-            resolvedName = prof.nama;
-          }
-        }
-        if (!resolvedName) {
-          const prof = cloudRes.profiles.find(
+        let prof = cloudRes.profiles.find((p) => p.rumah_id === targetRumah?.id);
+        if (!prof) {
+          prof = cloudRes.profiles.find(
             (p) =>
               cleanHouseNo((p as any).nomor_rumah || '') === targetClean ||
               (p.rumah && cleanHouseNo(p.rumah.nomor_rumah || '') === targetClean)
           );
-          if (prof && prof.nama && prof.nama !== 'Belum ada nama') {
-            resolvedName = prof.nama;
-          }
         }
-        if (resolvedName) {
-          setNamaWarga(resolvedName);
+        if (prof) {
+          if (prof.nama && prof.nama !== 'Belum ada nama') {
+            setNamaWarga(prof.nama);
+          }
+          if (prof.tanggal_masuk) {
+            setTanggalMasuk(prof.tanggal_masuk);
+          }
         }
       }
     });
@@ -161,8 +190,9 @@ export default function WargaDashboardPage() {
       setRt(targetRt);
       setStatusHunian(targetHunian);
 
-      // Resolve Real Resident Name from Profiles & Rumah list
+      // Resolve Real Resident Name & Tanggal Masuk from Profiles & Rumah list
       let realName = '';
+      let realTglMasuk = '';
 
       try {
         const savedRumah = localStorage.getItem('martinez_rumah_list_v3');
@@ -178,8 +208,9 @@ export default function WargaDashboardPage() {
 
           if (targetRumah) {
             const prof = profilesList.find((p) => p.rumah_id === targetRumah.id);
-            if (prof && prof.nama && prof.nama !== 'Belum ada nama') {
-              realName = prof.nama;
+            if (prof) {
+              if (prof.nama && prof.nama !== 'Belum ada nama') realName = prof.nama;
+              if (prof.tanggal_masuk) realTglMasuk = prof.tanggal_masuk;
             }
           }
 
@@ -189,8 +220,9 @@ export default function WargaDashboardPage() {
                 cleanHouseNo(p.nomor_rumah || '') === targetClean ||
                 (p.rumah && cleanHouseNo(p.rumah.nomor_rumah || '') === targetClean)
             );
-            if (prof && prof.nama && prof.nama !== 'Belum ada nama') {
-              realName = prof.nama;
+            if (prof) {
+              if (prof.nama && prof.nama !== 'Belum ada nama') realName = prof.nama;
+              if (prof.tanggal_masuk) realTglMasuk = prof.tanggal_masuk;
             }
           }
         }
@@ -201,6 +233,7 @@ export default function WargaDashboardPage() {
       }
 
       setNamaWarga(realName || `Penghuni ${houseNo}`);
+      if (realTglMasuk) setTanggalMasuk(realTglMasuk);
 
       // Read real coupons for this house immediately
       const realKupons = getKuponsForWarga(houseNo);
@@ -267,6 +300,21 @@ export default function WargaDashboardPage() {
     }
     return namaWarga;
   }, [namaWarga, nomorRumah]);
+
+  const formattedTanggalMasuk = useMemo(() => {
+    if (!tanggalMasuk) return '';
+    try {
+      const d = new Date(tanggalMasuk);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        });
+      }
+    } catch (e) {}
+    return tanggalMasuk;
+  }, [tanggalMasuk]);
 
   const nominalTerbayarTotal = totalLunasCount * config.nominal_per_bulan;
   const nominalTunggakanTotal = totalBelumCount * config.nominal_per_bulan;
@@ -359,6 +407,9 @@ export default function WargaDashboardPage() {
                   </div>
                   <p className="text-xs text-white/80 mt-0.5 font-mono">
                     No. Rumah: <span className="font-bold">{nomorRumah}</span> • Status: <span className="capitalize font-bold">{statusHunian}</span>
+                    {formattedTanggalMasuk && (
+                      <span> • Sejak: <span className="font-bold">{formattedTanggalMasuk}</span></span>
+                    )}
                   </p>
                 </div>
               </div>
