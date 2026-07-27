@@ -193,9 +193,9 @@ export default function AdminWargaPage() {
     return Array.from(set).sort();
   }, [rumahList]);
 
-  // Filtered dataset across search and RT filter
+  // Filtered dataset across search and RT filter (Sorted by RT then House No)
   const filtered = useMemo(() => {
-    return profiles.filter((p) => {
+    const list = profiles.filter((p) => {
       const rtMatch =
         selectedRtFilter === 'all' || p.rumah?.rt === selectedRtFilter;
 
@@ -209,6 +209,18 @@ export default function AdminWargaPage() {
         p.phone?.toLowerCase().includes(q);
 
       return rtMatch && textMatch;
+    });
+
+    // Natural Alphanumeric Sorting: RT 01 -> RT 02 -> RT 03 -> RT 04 -> RT 05, then House No
+    return list.sort((a, b) => {
+      const rtA = (a.rumah?.rt || '01').padStart(2, '0');
+      const rtB = (b.rumah?.rt || '01').padStart(2, '0');
+      if (rtA !== rtB) {
+        return rtA.localeCompare(rtB, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      const houseA = a.rumah?.nomor_rumah || '';
+      const houseB = b.rumah?.nomor_rumah || '';
+      return houseA.localeCompare(houseB, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [profiles, search, selectedRtFilter]);
 

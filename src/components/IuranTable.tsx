@@ -129,9 +129,9 @@ export default function IuranTable({
     return Array.from(set).sort();
   }, [data]);
 
-  // Filtered dataset by Block, RT, and Search
+  // Filtered dataset by Block, RT, and Search (Sorted by RT then House No)
   const filteredData = useMemo(() => {
-    return data.filter((row) => {
+    const list = data.filter((row) => {
       const houseNo = row.nomor_rumah.toUpperCase();
 
       const matchBlock =
@@ -145,6 +145,16 @@ export default function IuranTable({
         (row.rt && row.rt.includes(search));
 
       return matchBlock && matchRt && matchSearch;
+    });
+
+    // Natural Alphanumeric Sorting: RT 01 -> RT 02 -> RT 03 -> RT 04 -> RT 05, then House No
+    return list.sort((a, b) => {
+      const rtA = (a.rt || '01').padStart(2, '0');
+      const rtB = (b.rt || '01').padStart(2, '0');
+      if (rtA !== rtB) {
+        return rtA.localeCompare(rtB, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      return a.nomor_rumah.localeCompare(b.nomor_rumah, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [data, selectedBlock, selectedRt, search]);
 
