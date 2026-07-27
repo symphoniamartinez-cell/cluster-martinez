@@ -623,16 +623,6 @@ export default function AdminWargaPage() {
               Template Excel
             </button>
 
-            {/* Format Kode MTZ-XXXXX Button */}
-            <button
-              onClick={handleBulkFormatKode}
-              className="flex items-center gap-2 px-3.5 py-2.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 hover:bg-primary-500/20 rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
-              title="Format ulang seluruh kode aktivasi ke MTZ-XXXXX"
-            >
-              <Key className="w-4 h-4" />
-              Format Kode MTZ-XXXXX
-            </button>
-
             {/* Excel Upload Button */}
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -777,8 +767,8 @@ export default function AdminWargaPage() {
                     </th>
                     <th className="px-4 py-3.5 text-left font-semibold text-surface-700 dark:text-surface-200/70">
                       <div className="flex items-center gap-2">
-                        <Key className="w-3.5 h-3.5" />
-                        Kode Aktivasi
+                        <Key className="w-3.5 h-3.5 text-primary-500" />
+                        Password Warga
                       </div>
                     </th>
                     {canEdit && (

@@ -186,7 +186,7 @@ export default function LoginPage() {
               <div className="flex items-center gap-2 mb-2">
                 <ShieldCheck className="w-4 h-4 text-primary-400" />
                 <h2 className="text-sm font-semibold text-white">
-                  Masuk Warga (Nomor Rumah & Kode Aktivasi)
+                  Masuk Portal Warga (Nomor Rumah & Password)
                 </h2>
               </div>
 
@@ -212,13 +212,13 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Kode Aktivasi */}
+              {/* Password Warga */}
               <div>
                 <label
                   htmlFor="kode-aktivasi"
                   className="block text-xs font-medium text-surface-200/80 mb-1.5"
                 >
-                  Kode Aktivasi Warga
+                  Password Warga
                 </label>
                 <div className="relative">
                   <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-200/40" />
@@ -227,13 +227,13 @@ export default function LoginPage() {
                     type="text"
                     value={kodeAktivasi}
                     onChange={(e) => setKodeAktivasi(e.target.value)}
-                    placeholder="Masukkan kode aktivasi (contoh: ACT001)"
+                    placeholder="Masukkan Password (contoh: MTZ-7K9P2)"
                     required
                     className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-200/30 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold tracking-wider"
                   />
                 </div>
                 <p className="text-[11px] text-surface-200/40 mt-1">
-                  Kode aktivasi didapatkan dari Pengurus / Pengurus RT Anda.
+                  Password Warga didapatkan dari Pengurus / Pengurus RT Anda.
                 </p>
               </div>
 

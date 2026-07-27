@@ -123,13 +123,49 @@ export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[
           tanggal_masuk: p.tanggal_masuk || new Date().toISOString().split('T')[0],
         };
       });
-      const { error: pErr } = await client.from('profiles').upsert(profileRecords, { onConflict: 'id' });
+      let { error: pErr } = await client.from('profiles').upsert(profileRecords, { onConflict: 'id' });
+      if (pErr && pErr.message?.includes('tanggal_masuk')) {
+        // Fallback without tanggal_masuk column if column is missing in Supabase schema
+        const legacyRecords = profileRecords.map(({ tanggal_masuk, ...rest }) => rest);
+        const retry = await client.from('profiles').upsert(legacyRecords, { onConflict: 'id' });
+        pErr = retry.error;
+      }
       if (pErr) return { success: false, error: pErr.message };
     }
     return { success: true };
   } catch (e: any) {
     console.error('Supabase Profiles Error:', e);
     return { success: false, error: e?.message || 'Gagal terhubung ke Supabase' };
+  }
+}
+
+// ── 3. FACTORY RESET ALL CLOUD & LOCAL DATA ─────────────────
+export async function clearAllCloudData(): Promise<{ success: boolean; error?: string }> {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(STORAGE_KEY_IURAN);
+      localStorage.removeItem(STORAGE_KEY_RUMAH);
+      localStorage.removeItem(STORAGE_KEY_PROFILES);
+      localStorage.removeItem('martinez_events_v1');
+      localStorage.removeItem('martinez_kupons_v1');
+      localStorage.removeItem('martinez_booths_v1');
+    } catch (e) {}
+  }
+
+  const client = createClient();
+  if (!client) return { success: true };
+
+  try {
+    await client.from('kupons').delete().gte('created_at', '1970-01-01');
+    await client.from('tenant_booths').delete().gte('created_at', '1970-01-01');
+    await client.from('events').delete().gte('created_at', '1970-01-01');
+    await client.from('iuran_matrix').delete().gte('updated_at', '1970-01-01');
+    await client.from('profiles').delete().gte('created_at', '1970-01-01');
+    await client.from('rumah').delete().gte('created_at', '1970-01-01');
+    return { success: true };
+  } catch (e: any) {
+    console.error('Supabase Reset Error:', e);
+    return { success: false, error: e?.message || 'Gagal reset data di Cloud Supabase' };
   }
 }
 
