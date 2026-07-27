@@ -15,7 +15,7 @@ const STORAGE_KEY_PROFILES = 'martinez_profiles_list_v3';
 const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 // ── 1. IURAN MATRIX CLOUD SYNC ──────────────────────────────
-export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<boolean> {
+export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<{ success: boolean; error?: string }> {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(matrix));
@@ -23,7 +23,7 @@ export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<
   }
 
   const client = createClient();
-  if (!client) return false;
+  if (!client) return { success: false, error: 'Supabase client belum terkonfigurasi di Vercel env' };
 
   try {
     const recordsToUpsert = matrix.map((row) => {
@@ -45,13 +45,13 @@ export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<
       .upsert(recordsToUpsert, { onConflict: 'nomor_rumah,tahun' });
 
     if (error) {
-      console.warn('Supabase Iuran Sync Note:', error.message);
-      return false;
+      console.warn('Supabase Iuran Sync Error:', error.message);
+      return { success: false, error: error.message };
     }
-    return true;
-  } catch (e) {
-    console.error('Supabase Iuran Error:', e);
-    return false;
+    return { success: true };
+  } catch (e: any) {
+    console.error('Supabase Iuran Exception:', e);
+    return { success: false, error: e?.message || 'Gagal terhubung ke Supabase' };
   }
 }
 
@@ -87,7 +87,7 @@ export async function fetchIuranMatrixFromCloud(): Promise<IuranMatrixRow[] | nu
 }
 
 // ── 2. DATA WARGA & PROFILES CLOUD SYNC ─────────────────────
-export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[]): Promise<boolean> {
+export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[]): Promise<{ success: boolean; error?: string }> {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(profiles));
@@ -96,7 +96,7 @@ export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[
   }
 
   const client = createClient();
-  if (!client) return false;
+  if (!client) return { success: false, error: 'Supabase client belum terkonfigurasi di Vercel env' };
 
   try {
     if (rumahList.length > 0) {
@@ -106,7 +106,8 @@ export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[
         rt: r.rt || '01',
         status_hunian: r.status_hunian || 'pemilik',
       }));
-      await client.from('rumah').upsert(rumahRecords, { onConflict: 'nomor_rumah' });
+      const { error: rErr } = await client.from('rumah').upsert(rumahRecords, { onConflict: 'nomor_rumah' });
+      if (rErr) console.warn('Supabase Rumah Sync Note:', rErr.message);
     }
 
     if (profiles.length > 0) {
@@ -120,12 +121,13 @@ export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[
         phone: p.phone || '-',
         tanggal_masuk: p.tanggal_masuk || new Date().toISOString().split('T')[0],
       }));
-      await client.from('profiles').upsert(profileRecords, { onConflict: 'id' });
+      const { error: pErr } = await client.from('profiles').upsert(profileRecords, { onConflict: 'id' });
+      if (pErr) return { success: false, error: pErr.message };
     }
-    return true;
-  } catch (e) {
+    return { success: true };
+  } catch (e: any) {
     console.error('Supabase Profiles Error:', e);
-    return false;
+    return { success: false, error: e?.message || 'Gagal terhubung ke Supabase' };
   }
 }
 

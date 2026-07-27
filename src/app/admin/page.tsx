@@ -286,11 +286,17 @@ export default function AdminDashboardPage() {
         });
 
         setData(updatedMatrix);
-        syncIuranMatrixToCloud(updatedMatrix);
-
-        showToast(
-          `Impor Excel Iuran Berhasil! ${rows.length} baris diproses berdasarkan Nomor Rumah: ${updatedCount} data iuran diperbarui, ${insertedCount} unit baru didaftarkan.`
-        );
+        syncIuranMatrixToCloud(updatedMatrix).then((res) => {
+          if (res.success) {
+            showToast(
+              `☁️ Sukses! ${rows.length} baris data iuran berhasil diunggah & tersimpan di Cloud Database Supabase (Tersedia Lintas Perangkat/Browser)!`
+            );
+          } else {
+            showToast(
+              `⚠️ Data iuran tersimpan lokal. (Catatan Supabase: ${res.error || 'Pastikan skrip SQL di SQL Editor Supabase sudah dijalankan'})`
+            );
+          }
+        });
 
         if (fileInputRef.current) fileInputRef.current.value = '';
       } catch (err) {
