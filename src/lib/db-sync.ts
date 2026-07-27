@@ -100,7 +100,7 @@ export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[
   try {
     if (rumahList.length > 0) {
       const rumahRecords = rumahList.map((r) => ({
-        id: r.id,
+        id: r.id || `r-${cleanHouseNo(r.nomor_rumah)}`,
         nomor_rumah: r.nomor_rumah,
         rt: r.rt || '01',
         status_hunian: r.status_hunian || 'pemilik',
@@ -110,16 +110,19 @@ export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[
     }
 
     if (profiles.length > 0) {
-      const profileRecords = profiles.map((p) => ({
-        id: p.id,
-        nama: p.nama,
-        rumah_id: p.rumah_id,
-        nomor_rumah: p.rumah?.nomor_rumah || (p as any).nomor_rumah || '',
-        role: p.role || 'warga',
-        kode_aktivasi: p.kode_aktivasi || 'ACT001',
-        phone: p.phone || '-',
-        tanggal_masuk: p.tanggal_masuk || new Date().toISOString().split('T')[0],
-      }));
+      const profileRecords = profiles.map((p) => {
+        const noRumah = p.rumah?.nomor_rumah || (p as any).nomor_rumah || '';
+        return {
+          id: p.id || `p-${cleanHouseNo(noRumah)}`,
+          nama: p.nama || 'Belum ada nama',
+          rumah_id: p.rumah_id,
+          nomor_rumah: noRumah,
+          role: p.role || 'warga',
+          kode_aktivasi: p.kode_aktivasi || 'ACT001',
+          phone: p.phone || '-',
+          tanggal_masuk: p.tanggal_masuk || new Date().toISOString().split('T')[0],
+        };
+      });
       const { error: pErr } = await client.from('profiles').upsert(profileRecords, { onConflict: 'id' });
       if (pErr) return { success: false, error: pErr.message };
     }
@@ -138,21 +141,27 @@ export async function fetchProfilesFromCloud(): Promise<{ profiles: Profile[]; r
     const { data: rumahData } = await client.from('rumah').select('*');
     const { data: profileData } = await client.from('profiles').select('*');
 
-    if (!profileData || profileData.length === 0) return null;
+    if ((!rumahData || rumahData.length === 0) && (!profileData || profileData.length === 0)) {
+      return null;
+    }
 
     const rumahList: Rumah[] = (rumahData || []).map((r) => ({
-      id: r.id,
+      id: r.id || `r-${cleanHouseNo(r.nomor_rumah)}`,
       nomor_rumah: r.nomor_rumah,
       rt: r.rt || '01',
       status_hunian: r.status_hunian || 'pemilik',
       created_at: r.created_at || new Date().toISOString(),
     }));
 
-    const profiles: Profile[] = profileData.map((p) => {
-      const rMatch = rumahList.find((r) => r.id === p.rumah_id || cleanHouseNo(r.nomor_rumah) === cleanHouseNo(p.nomor_rumah));
-      return {
-        id: p.id,
-        nama: p.nama,
+    const profilesMap = new Map<string, Profile>();
+
+    // 1. Process profiles table
+    (profileData || []).forEach((p) => {
+      const targetClean = cleanHouseNo(p.nomor_rumah || '');
+      const rMatch = rumahList.find((r) => r.id === p.rumah_id || cleanHouseNo(r.nomor_rumah) === targetClean);
+      const prof: Profile = {
+        id: p.id || `p-${targetClean}`,
+        nama: p.nama || 'Belum ada nama',
         rumah_id: p.rumah_id || (rMatch ? rMatch.id : null),
         role: p.role || 'warga',
         kode_aktivasi: p.kode_aktivasi || 'ACT001',
@@ -161,7 +170,28 @@ export async function fetchProfilesFromCloud(): Promise<{ profiles: Profile[]; r
         created_at: p.created_at || new Date().toISOString(),
         rumah: rMatch,
       };
+      const key = targetClean || p.id;
+      profilesMap.set(key, prof);
     });
+
+    // 2. Fallback: ensure every house in rumahList has a profile record
+    rumahList.forEach((r) => {
+      const targetClean = cleanHouseNo(r.nomor_rumah);
+      if (!profilesMap.has(targetClean)) {
+        profilesMap.set(targetClean, {
+          id: `p-${targetClean}`,
+          nama: 'Belum ada nama',
+          rumah_id: r.id,
+          role: 'warga',
+          kode_aktivasi: 'ACT001',
+          phone: '-',
+          created_at: new Date().toISOString(),
+          rumah: r,
+        });
+      }
+    });
+
+    const profiles = Array.from(profilesMap.values());
 
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(profiles));
@@ -169,6 +199,7 @@ export async function fetchProfilesFromCloud(): Promise<{ profiles: Profile[]; r
     }
     return { profiles, rumahList };
   } catch (e) {
+    console.error('fetchProfilesFromCloud error:', e);
     return null;
   }
 }

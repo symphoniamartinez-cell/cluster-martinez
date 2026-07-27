@@ -501,9 +501,17 @@ export default function AdminWargaPage() {
           syncIuranMatrixToCloud(newMatrix);
         } catch (e) {}
 
-        showToast(
-          `Update Berhasil! ${rows.length} data warga diproses & otomatis didaftarkan ke Matriks Iuran (Default: Belum Lunas 12 bulan).`
-        );
+        syncProfilesToCloud(updatedProfilesList, updatedRumahList).then((res) => {
+          if (res.success) {
+            showToast(
+              `☁️ Sukses! ${rows.length} data warga & rumah berhasil diunggah ke Cloud Database Supabase (Lintas Perangkat/Browser Active)!`
+            );
+          } else {
+            showToast(
+              `⚠️ Data warga tersimpan lokal. (Catatan Supabase: ${res.error})`
+            );
+          }
+        });
 
         if (fileInputRef.current) fileInputRef.current.value = '';
       } catch (err) {
