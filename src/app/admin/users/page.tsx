@@ -620,12 +620,9 @@ export default function UserManagementPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  placeholder="Default: Martinez.2021"
+                  placeholder="Masukkan password admin"
                   className="w-full px-4 py-2.5 border border-surface-200 dark:border-surface-700 rounded-xl text-sm bg-white dark:bg-surface-800 font-mono font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all"
                 />
-                <p className="text-[11px] text-surface-400 mt-1">
-                  Password default: <code className="font-mono text-amber-500">Martinez.2021</code>
-                </p>
               </div>
             </div>
 

@@ -82,7 +82,7 @@ export function authenticateAdmin(
     } else {
       return {
         success: false,
-        error: 'Password admin salah. (Password default: Martinez.2021)',
+        error: 'Password admin salah.',
       };
     }
   }
@@ -116,7 +116,7 @@ export function authenticateAdmin(
     if (foundBooth.password !== inputPassword) {
       return {
         success: false,
-        error: `Password booth "${foundBooth.nama_booth}" (Username: ${foundBooth.username}) salah. (Password default: event123)`,
+        error: `Password booth "${foundBooth.nama_booth}" (Username: ${foundBooth.username}) salah.`,
       };
     }
 

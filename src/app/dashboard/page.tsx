@@ -123,9 +123,9 @@ export default function WargaDashboardPage() {
           targetBulan[m] = val === 'lunas' ? 'lunas' : 'belum_lunas';
         }
       } else {
-        // If house isn't in matrix yet, default to lunas for all months
+        // If house isn't in matrix yet, default to belum_lunas for all months
         for (let m = 1; m <= 12; m++) {
-          targetBulan[m] = 'lunas';
+          targetBulan[m] = 'belum_lunas';
         }
       }
 
