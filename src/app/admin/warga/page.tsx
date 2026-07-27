@@ -346,23 +346,26 @@ export default function AdminWargaPage() {
       {
         'Nomor Rumah': 'MTNU1/1',
         RT: '01',
-        Status: 'pemilik',
-        'Nama Warga': 'Belum ada nama',
-        'No Telepon': '-',
+        'Status Hunian': 'Pemilik',
+        'Nama Warga': 'Ryan Fibrian',
+        'No Telepon': '081234567890',
+        'Tanggal Masuk': '2026-01-01',
       },
       {
         'Nomor Rumah': 'MTNU2/5',
         RT: '02',
-        Status: 'pemilik',
-        'Nama Warga': 'Belum ada nama',
-        'No Telepon': '-',
+        'Status Hunian': 'Pemilik',
+        'Nama Warga': 'Budi Santoso',
+        'No Telepon': '081987654321',
+        'Tanggal Masuk': '2026-03-15',
       },
       {
-        'Nomor Rumah': 'MTNU3/2',
+        'Nomor Rumah': 'MTNR/11',
         RT: '03',
-        Status: 'penyewa',
+        'Status Hunian': 'Penyewa',
         'Nama Warga': 'Ahmad Fauzan',
-        'No Telepon': '08123456789',
+        'No Telepon': '081311223344',
+        'Tanggal Masuk': '2026-05-10',
       },
     ];
 
@@ -394,6 +397,7 @@ export default function AdminWargaPage() {
         let insertedCount = 0;
         let updatedCount = 0;
 
+        const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         const updatedRumahList = [...rumahList];
         const updatedProfilesList = [...profiles];
 
@@ -405,14 +409,30 @@ export default function AdminWargaPage() {
           const nomorRumah = nomorRumahRaw.toString().trim();
           if (!nomorRumah) return;
 
-          const rtVal = (row['RT'] || row['rt'] || '01')
-            .toString()
-            .replace(/^rt\s*/i, '')
-            .padStart(2, '0');
+          // Flexible RT Header Resolution (matches RT, Wilayah RT, No RT, RT/RW, RT 01, etc.)
+          let rtVal = '01';
+          for (const key of Object.keys(row)) {
+            const kClean = key.trim().toLowerCase();
+            if (
+              kClean === 'rt' ||
+              kClean === 'wilayah rt' ||
+              kClean === 'no rt' ||
+              kClean === 'nomor rt' ||
+              kClean === 'rt/rw' ||
+              kClean.startsWith('rt')
+            ) {
+              const rawVal = row[key]?.toString() || '';
+              const numOnly = rawVal.replace(/[^0-9]/g, '');
+              if (numOnly) {
+                rtVal = numOnly.padStart(2, '0');
+                break;
+              }
+            }
+          }
 
           const rawStatus = (
-            row['Status'] ||
             row['Status Hunian'] ||
+            row['Status'] ||
             'pemilik'
           )
             .toString()
@@ -425,10 +445,12 @@ export default function AdminWargaPage() {
 
           const nama = row['Nama Warga'] || row['Nama'] || 'Belum ada nama';
           const phone = row['No Telepon'] || row['Telepon'] || row['HP'] || '-';
+          const tglMasukRaw = row['Tanggal Masuk'] || row['Tgl Masuk'] || row['Tanggal'] || row['Tgl'];
+          const tanggalMasuk = tglMasukRaw ? tglMasukRaw.toString().trim() : '';
 
           // Search for existing Rumah by nomor_rumah
           let existingRumahIdx = updatedRumahList.findIndex(
-            (r) => r.nomor_rumah.toLowerCase() === nomorRumah.toLowerCase()
+            (r) => cleanHouseNo(r.nomor_rumah) === cleanHouseNo(nomorRumah)
           );
 
           let targetRumahId: string;
@@ -441,7 +463,7 @@ export default function AdminWargaPage() {
             };
             targetRumahId = updatedRumahList[existingRumahIdx].id;
           } else {
-            targetRumahId = `r-imp-${Date.now()}-${idx}`;
+            targetRumahId = `r-${cleanHouseNo(nomorRumah)}`;
             const newRumah: Rumah = {
               id: targetRumahId,
               nomor_rumah: nomorRumah,
@@ -452,9 +474,9 @@ export default function AdminWargaPage() {
             updatedRumahList.push(newRumah);
           }
 
-          // Search for existing Profile by rumah_id
+          // Search for existing Profile by rumah_id or nomor_rumah
           const existingProfileIdx = updatedProfilesList.findIndex(
-            (p) => p.rumah_id === targetRumahId
+            (p) => p.rumah_id === targetRumahId || cleanHouseNo((p as any).nomor_rumah || '') === cleanHouseNo(nomorRumah)
           );
 
           if (existingProfileIdx >= 0) {
@@ -462,17 +484,19 @@ export default function AdminWargaPage() {
               ...updatedProfilesList[existingProfileIdx],
               nama: nama !== 'Belum ada nama' ? nama : updatedProfilesList[existingProfileIdx].nama,
               phone: phone !== '-' ? phone : updatedProfilesList[existingProfileIdx].phone,
+              tanggal_masuk: tanggalMasuk || updatedProfilesList[existingProfileIdx].tanggal_masuk,
               rumah: updatedRumahList.find((r) => r.id === targetRumahId),
             };
             updatedCount++;
           } else {
             const newProfile: Profile = {
-              id: `wg-imp-${Date.now()}-${idx}`,
+              id: `p-${cleanHouseNo(nomorRumah)}`,
               nama,
               rumah_id: targetRumahId,
               role: 'warga',
               kode_aktivasi: generateKode(),
               phone,
+              tanggal_masuk: tanggalMasuk || new Date().toISOString().split('T')[0],
               created_at: new Date().toISOString(),
               rumah: updatedRumahList.find((r) => r.id === targetRumahId),
             };
