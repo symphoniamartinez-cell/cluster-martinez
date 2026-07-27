@@ -384,7 +384,7 @@ export default function AdminWargaPage() {
     reader.onload = (evt) => {
       try {
         const bstr = evt.target?.result;
-        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const workbook = XLSX.read(bstr, { type: 'binary', cellDates: true, dateNF: 'yyyy-mm-dd' });
         const wsname = workbook.SheetNames[0];
         const ws = workbook.Sheets[wsname];
         const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
@@ -398,6 +398,48 @@ export default function AdminWargaPage() {
         let updatedCount = 0;
 
         const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+        // Helper to convert any Excel Date (Serial Number, JS Date, DD/MM/YYYY, YYYY-MM-DD) to YYYY-MM-DD
+        const parseExcelDate = (val: any): string => {
+          if (!val) return '';
+          if (val instanceof Date) {
+            if (!isNaN(val.getTime())) {
+              return val.toISOString().split('T')[0];
+            }
+          }
+          const str = String(val).trim();
+          if (!str) return '';
+          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            return str;
+          }
+          const num = Number(str);
+          if (!isNaN(num) && num > 20000 && num < 100000) {
+            try {
+              const dateObj = XLSX.SSF.parse_date_code(num);
+              if (dateObj) {
+                const yyyy = dateObj.y;
+                const mm = String(dateObj.m).padStart(2, '0');
+                const dd = String(dateObj.d).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+              }
+            } catch (e) {}
+          }
+          const dmyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+          if (dmyMatch) {
+            const day = dmyMatch[1].padStart(2, '0');
+            const month = dmyMatch[2].padStart(2, '0');
+            const year = dmyMatch[3];
+            return `${year}-${month}-${day}`;
+          }
+          try {
+            const parsed = new Date(str);
+            if (!isNaN(parsed.getTime())) {
+              return parsed.toISOString().split('T')[0];
+            }
+          } catch (e) {}
+          return '';
+        };
+
         const updatedRumahList = [...rumahList];
         const updatedProfilesList = [...profiles];
 
@@ -445,8 +487,9 @@ export default function AdminWargaPage() {
 
           const nama = row['Nama Warga'] || row['Nama'] || 'Belum ada nama';
           const phone = row['No Telepon'] || row['Telepon'] || row['HP'] || '-';
-          const tglMasukRaw = row['Tanggal Masuk'] || row['Tgl Masuk'] || row['Tanggal'] || row['Tgl'];
-          const tanggalMasuk = tglMasukRaw ? tglMasukRaw.toString().trim() : '';
+          const tglMasukRaw = row['Tanggal Masuk'] || row['Tgl Masuk'] || row['Tanggal'] || row['Tgl'] || row['Tanggal Masuk Penghuni'];
+          const parsedDate = parseExcelDate(tglMasukRaw);
+          const tanggalMasuk = parsedDate || new Date().toISOString().split('T')[0];
 
           // Search for existing Rumah by nomor_rumah
           let existingRumahIdx = updatedRumahList.findIndex(
