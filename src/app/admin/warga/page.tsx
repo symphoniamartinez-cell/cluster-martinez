@@ -676,6 +676,9 @@ export default function AdminWargaPage() {
                       </div>
                     </th>
                     <th className="px-4 py-3.5 text-left font-semibold text-surface-700 dark:text-surface-200/70">
+                      Tgl. Masuk
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-surface-700 dark:text-surface-200/70">
                       <div className="flex items-center gap-2">
                         <Key className="w-3.5 h-3.5" />
                         Kode Aktivasi
@@ -692,6 +695,7 @@ export default function AdminWargaPage() {
                   {paginatedProfiles.map((profile) => {
                     const statusHunian = profile.rumah?.status_hunian || 'pemilik';
                     const rt = profile.rumah?.rt || '01';
+                    const tglMasuk = profile.tanggal_masuk || profile.created_at?.split('T')[0] || '-';
 
                     return (
                       <tr
@@ -740,6 +744,11 @@ export default function AdminWargaPage() {
                         {/* Phone */}
                         <td className="px-4 py-3.5 text-surface-700/70 dark:text-surface-200/50 font-mono text-xs">
                           {profile.phone || '-'}
+                        </td>
+
+                        {/* Tanggal Masuk */}
+                        <td className="px-4 py-3.5 text-surface-700/70 dark:text-surface-200/50 font-mono text-xs">
+                          {tglMasuk}
                         </td>
 
                         {/* Kode Aktivasi with Copy & Regenerate */}

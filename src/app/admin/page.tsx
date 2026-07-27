@@ -249,14 +249,18 @@ export default function AdminDashboardPage() {
             parsedBulan[m] = isLunas ? 'lunas' : 'belum_lunas';
           }
 
-          // Search existing row by nomor_rumah
+          const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const targetClean = cleanHouseNo(nomorRumah);
+
+          // Search existing row by normalized nomor_rumah
           const existingIdx = updatedMatrix.findIndex(
-            (r) => r.nomor_rumah.toLowerCase() === nomorRumah.toLowerCase()
+            (r) => cleanHouseNo(r.nomor_rumah) === targetClean
           );
 
           if (existingIdx >= 0) {
             updatedMatrix[existingIdx] = {
               ...updatedMatrix[existingIdx],
+              nomor_rumah: nomorRumah,
               rt: rtVal,
               bulan: {
                 ...updatedMatrix[existingIdx].bulan,

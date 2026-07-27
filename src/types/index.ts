@@ -37,6 +37,7 @@ export interface Profile {
   role: UserRole;
   kode_aktivasi: string | null;
   phone: string | null;
+  tanggal_masuk?: string; // YYYY-MM-DD (Registration date)
   created_at: string;
   // Joined
   rumah?: Rumah;
