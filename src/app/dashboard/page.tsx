@@ -1,0 +1,645 @@
+'use client';
+
+// ============================================================
+// Portal Warga Dashboard — /dashboard
+// Personal Payment Metrics & Event Coupons for Logged-In Resident
+// 100% Real Database Sync by House Number (MTNR/11, MTNU3/2, etc.)
+// Super App Cluster Martinez
+// ============================================================
+
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Home,
+  CalendarDays,
+  Ticket,
+  ChevronDown,
+  Check,
+  X,
+  QrCode,
+  Sparkles,
+  LogOut,
+  Building2,
+  ShieldCheck,
+  Wallet,
+  Coins,
+  CreditCard,
+  Copy,
+  Info,
+} from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import type { StatusIuran, KuponAcara, IuranMatrixRow } from '@/types';
+import { BULAN_FULL } from '@/types';
+import { getMockIuranMatrix } from '@/lib/mock-data';
+import { getIuranConfigFromStorage, type IuranConfig } from '@/lib/config-store';
+import { getKuponsForWarga } from '@/lib/event-store';
+
+const STORAGE_KEY_IURAN = 'martinez_iuran_matrix_v2';
+
+// Helper to normalize house numbers for robust matching (e.g. "MTNR/11" === "mtnr / 11")
+const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[\s\-_]/g, '');
+
+export default function WargaDashboardPage() {
+  const [tahun, setTahun] = useState(new Date().getFullYear());
+  const [nomorRumah, setNomorRumah] = useState('MTNU3/2');
+  const [namaWarga, setNamaWarga] = useState('Warga');
+  const [rt, setRt] = useState('03');
+  const [statusHunian, setStatusHunian] = useState('pemilik');
+  const [iuranData, setIuranData] = useState<Record<number, StatusIuran>>({});
+  const [kupons, setKupons] = useState<KuponAcara[]>([]);
+  const [selectedKupon, setSelectedKupon] = useState<KuponAcara | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [copiedRekening, setCopiedRekening] = useState(false);
+  const [copiedBerita, setCopiedBerita] = useState(false);
+
+  const [config, setConfig] = useState<IuranConfig>({
+    nominal_per_bulan: 50000,
+    start_date: '2026-01-01',
+    nama_iuran: 'Iuran Bulanan Kluster Martinez',
+    nama_bank: '(BLU) BCA Digital',
+    no_rekening: '002238893889',
+    atas_nama: 'Devy Octaviana',
+    rw_info: 'RW 037',
+    rt_info: 'Seluruh Ketua RT 01-05 yang bertugas',
+    catatan: '',
+    updated_at: '',
+  });
+
+  const currentMonthNum = new Date().getMonth() + 1; // 1-12
+  const currentMonthName = BULAN_FULL[currentMonthNum] || 'Bulan Ini';
+
+  // Dynamic annual rate: Rp 50.000 * 12 = Rp 600.000 (Dynamic from settings)
+  const nominalTahunan = config.nominal_per_bulan * 12;
+
+  // Read Session User & Database Storage
+  useEffect(() => {
+    const stored = sessionStorage.getItem('demo_user');
+    let houseNo = 'MTNU3/2';
+    if (stored) {
+      const user = JSON.parse(stored);
+      houseNo = user.nomor || 'MTNU3/2';
+      setNomorRumah(houseNo);
+      setNamaWarga(user.label || 'Warga');
+    }
+
+    const currentConfig = getIuranConfigFromStorage();
+    setConfig(currentConfig);
+
+    try {
+      const savedIuran = localStorage.getItem(STORAGE_KEY_IURAN);
+      let matrix: IuranMatrixRow[] = [];
+
+      if (savedIuran) {
+        matrix = JSON.parse(savedIuran);
+      } else {
+        matrix = getMockIuranMatrix(tahun);
+        localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(matrix));
+      }
+
+      // Robust house number matching
+      const targetClean = cleanHouseNo(houseNo);
+      const match = matrix.find(
+        (m) =>
+          cleanHouseNo(m.nomor_rumah) === targetClean ||
+          m.nomor_rumah.toLowerCase() === houseNo.toLowerCase()
+      );
+
+      let targetBulan: Record<number, StatusIuran> = {};
+      let targetRt = '03';
+      let targetHunian = 'pemilik';
+      let targetId = `r-${targetClean}`;
+
+      if (match) {
+        targetRt = match.rt || '03';
+        targetHunian = match.status_hunian || 'pemilik';
+        targetId = match.rumah_id;
+
+        // Normalize bulan keys to numeric 1..12
+        for (let m = 1; m <= 12; m++) {
+          const val =
+            match.bulan[m] ||
+            (match.bulan as any)[m.toString()] ||
+            (match.bulan as any)[BULAN_FULL[m]] ||
+            'belum_lunas';
+          targetBulan[m] = val === 'lunas' ? 'lunas' : 'belum_lunas';
+        }
+      } else {
+        // If house isn't in matrix yet, default to lunas for all months
+        for (let m = 1; m <= 12; m++) {
+          targetBulan[m] = 'lunas';
+        }
+      }
+
+      setIuranData(targetBulan);
+      setRt(targetRt);
+      setStatusHunian(targetHunian);
+
+      // Read real coupons from Event Store (No dummy fallback)
+      const realKupons = getKuponsForWarga(houseNo);
+      setKupons(realKupons);
+    } catch (e) {
+      console.error('Failed to load database iuran for warga:', e);
+    }
+  }, [tahun, nomorRumah]);
+
+  // Metric Computations based on normalized iuranData
+  const totalLunasCount = useMemo(() => {
+    let count = 0;
+    for (let m = 1; m <= 12; m++) {
+      if (iuranData[m] === 'lunas') count++;
+    }
+    return count;
+  }, [iuranData]);
+
+  const totalBelumCount = useMemo(() => {
+    return 12 - totalLunasCount;
+  }, [totalLunasCount]);
+
+  const isCurrentMonthLunas = useMemo(
+    () => iuranData[currentMonthNum] === 'lunas',
+    [iuranData, currentMonthNum]
+  );
+
+  const nominalTerbayarTotal = totalLunasCount * config.nominal_per_bulan;
+  const nominalTunggakanTotal = totalBelumCount * config.nominal_per_bulan;
+
+  const years = useMemo(() => {
+    const current = new Date().getFullYear();
+    return Array.from({ length: 3 }, (_, i) => current - 1 + i);
+  }, []);
+
+  const formatRupiah = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('demo_user');
+    document.cookie = 'demo_user=; path=/; max-age=0';
+    window.location.href = '/login';
+  };
+
+  const handleCopyRekening = () => {
+    navigator.clipboard.writeText(config.no_rekening);
+    setCopiedRekening(true);
+    setTimeout(() => setCopiedRekening(false), 2000);
+  };
+
+  const handleCopyBerita = () => {
+    const beritaText = `Iuran Januari - Desember ${tahun} - Kluster Martinez ${nomorRumah}`;
+    navigator.clipboard.writeText(beritaText);
+    setCopiedBerita(true);
+    setTimeout(() => setCopiedBerita(false), 2000);
+  };
+
+  return (
+    <div className="min-h-screen bg-surface-50 dark:bg-surface-950 pb-12">
+      {/* ── Header ───────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl border-b border-surface-200 dark:border-surface-800">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 shadow-md">
+              <Building2 className="w-4.5 h-4.5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold tracking-tight text-surface-900 dark:text-white">
+                Cluster Martinez
+              </h1>
+              <p className="text-[11px] text-surface-700/50 dark:text-surface-200/40">
+                Portal Warga — {nomorRumah} (RT {rt})
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-surface-700 dark:text-surface-200 hidden sm:block">
+              {namaWarga} ({nomorRumah})
+            </span>
+            <button
+              onClick={handleLogout}
+              className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-colors cursor-pointer"
+              title="Keluar Portal Warga"
+            >
+              <LogOut className="w-4 h-4 text-surface-500" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        {/* ── SECTION 1: RESIDENT WELCOME BANNER ──────────────── */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-primary-700 to-accent-600 p-6 text-white shadow-xl shadow-primary-500/20 animate-fade-in">
+          <div className="absolute -top-12 -right-12 w-44 h-44 bg-white/5 rounded-full" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/5 rounded-full" />
+
+          <div className="relative">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md">
+                  <Home className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-bold font-mono tracking-tight">
+                      {nomorRumah}
+                    </p>
+                    <span className="px-2.5 py-0.5 bg-white/20 text-white rounded-full text-xs font-semibold uppercase">
+                      RT {rt}
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/80 mt-0.5">
+                    {namaWarga} • Status: <span className="capitalize font-bold">{statusHunian}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Lunas Bulan Ini Badge */}
+              <div
+                className={`px-3.5 py-1.5 rounded-2xl flex items-center gap-2 text-xs font-bold shadow-lg ${
+                  isCurrentMonthLunas
+                    ? 'bg-success-500 text-white'
+                    : 'bg-danger-500 text-white'
+                }`}
+              >
+                {isCurrentMonthLunas ? (
+                  <>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    Lunas {currentMonthName}
+                  </>
+                ) : (
+                  <>
+                    <X className="w-4 h-4 stroke-[3]" />
+                    Belum Lunas {currentMonthName}
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-white/90">
+              <span>Tarif Iuran: <strong>{formatRupiah(nominalTahunan)} / tahun</strong> ({formatRupiah(config.nominal_per_bulan)} / bulan)</span>
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                Tata Cara Pembayaran Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SECTION 2: METRIC CARDS DATA IURAN WARGA ────────── */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary-500" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-surface-900 dark:text-white">
+                Metrik Iuran Rumah Saya
+              </h2>
+            </div>
+
+            {/* Year Selector */}
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-surface-400" />
+              <div className="relative">
+                <select
+                  value={tahun}
+                  onChange={(e) => setTahun(Number(e.target.value))}
+                  className="appearance-none pl-3 pr-8 py-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-xs font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 cursor-pointer text-surface-900 dark:text-white"
+                >
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      Tahun {y}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Card 1: Total Terbayar */}
+            <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-surface-500">
+                  Total Terbayar ({tahun})
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-success-500/10 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-success-500" />
+                </div>
+              </div>
+              <p className="text-xl font-bold font-mono text-success-600 dark:text-success-400">
+                {formatRupiah(nominalTerbayarTotal)}
+              </p>
+              <p className="text-xs text-surface-500 mt-1 font-medium">
+                {totalLunasCount} dari 12 bulan lunas
+              </p>
+            </div>
+
+            {/* Card 2: Sisa Tunggakan */}
+            <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-surface-500">
+                  Sisa Tunggakan ({tahun})
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-danger-500/10 flex items-center justify-center">
+                  <Coins className="w-4 h-4 text-danger-500" />
+                </div>
+              </div>
+              <p className="text-xl font-bold font-mono text-danger-600 dark:text-danger-400">
+                {formatRupiah(nominalTunggakanTotal)}
+              </p>
+              <p className="text-xs text-surface-500 mt-1 font-medium">
+                {totalBelumCount} bulan belum terbayar
+              </p>
+            </div>
+
+            {/* Card 3: Kupon Acara Hak Warga */}
+            <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-surface-500">
+                  Kupon Acara Diperoleh
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-accent-500/10 flex items-center justify-center">
+                  <Ticket className="w-4 h-4 text-accent-500" />
+                </div>
+              </div>
+              <p className="text-xl font-bold font-mono text-accent-600 dark:text-accent-400">
+                {kupons.length} <span className="text-xs font-normal text-surface-400">Kupon</span>
+              </p>
+              <p className="text-xs text-surface-500 mt-1 font-medium">
+                1 bulan lunas = 1 kupon
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SECTION 3: TABEL MATRIKS HISTORI IURAN RUMAH SAYA ──── */}
+        <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden animate-fade-in">
+          <div className="px-5 py-4 border-b border-surface-200 dark:border-surface-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-primary-500" />
+              <h2 className="font-bold text-surface-900 dark:text-white text-sm">
+                Histori Pembayaran Iuran Bulan (12 Bulan)
+              </h2>
+            </div>
+            <span className="text-xs font-mono font-bold text-primary-600 dark:text-primary-400">
+              {totalLunasCount}/12 Bulan Lunas
+            </span>
+          </div>
+
+          <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 stagger-children">
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+              const status = iuranData[m];
+              const isLunas = status === 'lunas';
+
+              return (
+                <div
+                  key={m}
+                  className={`
+                    flex items-center gap-3 p-3.5 rounded-2xl border transition-all
+                    ${
+                      isLunas
+                        ? 'bg-success-500/5 border-success-500/20'
+                        : 'bg-danger-500/5 border-danger-500/10'
+                    }
+                  `}
+                >
+                  <div
+                    className={`
+                      flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0
+                      ${
+                        isLunas
+                          ? 'bg-success-500/15 text-success-600 dark:text-success-400'
+                          : 'bg-danger-500/10 text-danger-500'
+                      }
+                    `}
+                  >
+                    {isLunas ? (
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    ) : (
+                      <X className="w-4 h-4 stroke-[3]" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-surface-900 dark:text-white">
+                      {BULAN_FULL[m]}
+                    </p>
+                    <p
+                      className={`text-[10px] font-bold uppercase tracking-wider ${
+                        isLunas
+                          ? 'text-success-600 dark:text-success-400'
+                          : 'text-danger-500'
+                      }`}
+                    >
+                      {isLunas ? 'LUNAS' : 'BELUM LUNAS'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── SECTION 4: KUPON ACARA KUSTER ────────────────────── */}
+        <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden animate-fade-in">
+          <div className="px-5 py-4 border-b border-surface-200 dark:border-surface-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Ticket className="w-4 h-4 text-accent-500" />
+                <h2 className="font-bold text-surface-900 dark:text-white text-sm">
+                  Kupon Acara Warga
+                </h2>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-accent-500/10 rounded-full">
+                <Sparkles className="w-3 h-3 text-accent-500" />
+                <span className="text-xs font-bold text-accent-600 dark:text-accent-400">
+                  {kupons.length} Kupon
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-surface-500 mt-1">
+              Klik kupon untuk me-render QR Code penukaran saat acara doorprize kluster.
+            </p>
+          </div>
+
+          <div className="p-4">
+            {kupons.length === 0 ? (
+              <div className="text-center py-8 text-surface-500">
+                <Ticket className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm font-semibold">Belum Ada Kupon Acara</p>
+                <p className="text-xs mt-1">Lunasi iuran bulanan untuk klaim kupon acara kluster.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 stagger-children">
+                {kupons.map((kupon, idx) => (
+                  <button
+                    key={kupon.id}
+                    onClick={() => setSelectedKupon(kupon)}
+                    className={`
+                      relative p-4 rounded-2xl border text-center transition-all cursor-pointer
+                      hover:shadow-md hover:-translate-y-0.5
+                      ${
+                        kupon.is_used
+                          ? 'bg-surface-100/50 dark:bg-surface-800/50 border-surface-200 dark:border-surface-800 opacity-60'
+                          : 'bg-gradient-to-br from-accent-500/5 to-primary-500/5 border-accent-500/20 hover:border-accent-500/40'
+                      }
+                    `}
+                  >
+                    <QrCode
+                      className={`w-8 h-8 mx-auto mb-2 ${
+                        kupon.is_used ? 'text-surface-400' : 'text-accent-500'
+                      }`}
+                    />
+                    <p className="text-[10px] font-mono font-bold text-surface-700 dark:text-surface-200 truncate">
+                      KUPON #{idx + 1}
+                    </p>
+                    {kupon.is_used && (
+                      <span className="absolute top-2 right-2 px-1.5 py-0.5 bg-surface-200 dark:bg-surface-700 rounded text-[9px] font-bold uppercase text-surface-500">
+                        Terpakai
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* ── MODAL CARA BAYAR / TRANSFER REKENING ───────────────── */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowPaymentModal(false)}
+          />
+          <div className="relative w-full max-w-lg bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="h-1.5 bg-gradient-to-r from-primary-500 to-accent-500 flex-shrink-0" />
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-primary-500/10 text-primary-500">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-surface-900 dark:text-white">
+                    Tata Cara Pembayaran Iuran Resmi
+                  </h3>
+                  <p className="text-xs text-surface-500">
+                    Pengurus & Bendahara RW 037 / RT 01-05
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-xs text-surface-700 dark:text-surface-300 leading-relaxed space-y-3 bg-surface-50 dark:bg-surface-800/50 p-4 rounded-2xl border border-surface-200 dark:border-surface-700">
+                <p>
+                  Kami selaku Pengurus mengucapkan Terima Kasih bagi warga yang sudah ikut berpartisipasi iuran warga selama ini. Sampai berjumpa di Event Selanjutnya.
+                </p>
+                <p>
+                  Iuran warga th {tahun} masih sama dengan sebelumnya yaitu <strong>{formatRupiah(nominalTahunan)}/tahun</strong> ({formatRupiah(config.nominal_per_bulan)}/bulan) dan kami juga tetap membuka kesempatan bapak/ibu/Koko/Cici yang belum berpartisipasi dalam iuran warga martinez bisa transfer ke rekening berikut :
+                </p>
+              </div>
+
+              {/* Bank Box */}
+              <div className="p-4 bg-gradient-to-br from-primary-500/10 to-accent-500/10 rounded-2xl border border-primary-500/20 space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-surface-500">Bank Tujuan:</span>
+                  <span className="font-bold text-surface-900 dark:text-white">{config.nama_bank}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-surface-500">No. Rekening:</span>
+                  <div className="flex items-center gap-2 font-mono font-bold text-primary-600 dark:text-primary-400 text-sm">
+                    <span>{config.no_rekening}</span>
+                    <button
+                      onClick={handleCopyRekening}
+                      className="px-2 py-0.5 bg-primary-500/20 hover:bg-primary-500/30 rounded text-[10px] text-primary-600 dark:text-primary-300 transition-colors cursor-pointer"
+                    >
+                      {copiedRekening ? 'Tersalin!' : 'Salin'}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-surface-500">Atas Nama:</span>
+                  <span className="font-bold text-surface-900 dark:text-white">{config.atas_nama}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-surface-200 dark:border-surface-700">
+                  <span className="text-surface-500">Nominal Tahunan:</span>
+                  <span className="font-bold font-mono text-success-600 dark:text-success-400">{formatRupiah(nominalTahunan)}</span>
+                </div>
+                <div className="pt-2 border-t border-surface-200 dark:border-surface-700">
+                  <span className="text-surface-500 block mb-1">Berita Transfer:</span>
+                  <code className="font-mono font-bold text-surface-900 dark:text-white bg-white dark:bg-surface-900 px-2 py-1 rounded block text-center">
+                    Iuran Januari - Desember {tahun} - {nomorRumah}
+                  </code>
+                </div>
+              </div>
+
+              <div className="text-xs text-surface-500 italic">
+                Salam,<br />
+                <strong>Bendahara RW 037</strong><br />
+                Ketua RW 037 / {config.rt_info}
+              </div>
+
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="w-full py-2.5 bg-surface-900 dark:bg-surface-100 text-white dark:text-surface-900 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL QR CODE KUPON ───────────────────────────────── */}
+      {selectedKupon && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSelectedKupon(null)}
+          />
+          <div className="relative w-full max-w-sm bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden">
+            <div className="h-1.5 bg-gradient-to-r from-accent-500 via-primary-500 to-accent-500" />
+            <div className="p-6 text-center">
+              <h3 className="text-lg font-bold text-surface-900 dark:text-white mb-1">
+                Kupon Acara Doorprize
+              </h3>
+              <p className="text-xs text-surface-500 mb-6">
+                Tunjukkan QR code ini kepada Panitia Acara Kluster
+              </p>
+
+              <div className="inline-flex p-4 bg-white rounded-2xl shadow-inner mb-4">
+                <QRCodeSVG
+                  value={selectedKupon.kode_kupon}
+                  size={200}
+                  level="H"
+                  bgColor="#ffffff"
+                  fgColor="#0f172a"
+                  includeMargin={false}
+                />
+              </div>
+
+              <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-3 mb-4">
+                <p className="text-[10px] text-surface-500 uppercase tracking-wider mb-1">
+                  Kode QR Kupon
+                </p>
+                <p className="text-sm font-mono font-bold text-surface-900 dark:text-white">
+                  {selectedKupon.kode_kupon}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setSelectedKupon(null)}
+                className="w-full py-2.5 text-xs font-bold text-surface-700 dark:text-surface-200 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
