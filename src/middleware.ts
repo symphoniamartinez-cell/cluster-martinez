@@ -21,28 +21,7 @@ export async function middleware(request: NextRequest) {
     request,
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
+  const pathname = request.nextUrl.pathname;
 
   // ── Demo Mode Support (Fallback when Supabase URL is placeholder or demo_user cookie exists) ──
   const demoCookie = request.cookies.get('demo_user')?.value;
@@ -54,12 +33,15 @@ export async function middleware(request: NextRequest) {
     } catch {}
   }
 
-  // If Supabase URL is placeholder, use demo auth mode
-  const isDemoEnv =
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project');
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const pathname = request.nextUrl.pathname;
+  // Check if Supabase env vars are missing or placeholder
+  const isDemoEnv =
+    !supabaseUrl ||
+    !supabaseKey ||
+    supabaseUrl.includes('your-project') ||
+    !supabaseUrl.startsWith('http');
 
   if (isDemoEnv || demoRole) {
     const activeRole = demoRole || 'superadmin';
@@ -91,6 +73,27 @@ export async function middleware(request: NextRequest) {
 
     return supabaseResponse;
   }
+
+  // Safe Supabase client creation
+  try {
+    const supabase = createServerClient(supabaseUrl!, supabaseKey!, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    });
 
   // ── Standard Supabase Auth Flow ─────────────────────────────
   const {
@@ -141,10 +144,12 @@ export async function middleware(request: NextRequest) {
   const allowedRoutes = ROLE_ROUTES[role] || [];
   const hasAccess = allowedRoutes.some((route) => pathname.startsWith(route));
 
-  if (!hasAccess) {
-    // Redirect to their default route
-    const defaultRoute = role === 'warga' ? '/dashboard' : '/admin';
-    return NextResponse.redirect(new URL(defaultRoute, request.url));
+    if (!hasAccess) {
+      const defaultRoute = role === 'warga' ? '/dashboard' : '/admin';
+      return NextResponse.redirect(new URL(defaultRoute, request.url));
+    }
+  } catch (e) {
+    console.error('Middleware Auth Error:', e);
   }
 
   return supabaseResponse;
