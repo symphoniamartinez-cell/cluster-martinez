@@ -85,10 +85,35 @@ export default function WargaDashboardPage() {
     }
 
     const currentConfig = getIuranConfigFromStorage();
-    setConfig(currentConfig);
-
     fetchIuranMatrixFromCloud();
-    fetchProfilesFromCloud();
+    fetchProfilesFromCloud().then((cloudRes) => {
+      if (cloudRes && cloudRes.profiles) {
+        const targetClean = cleanHouseNo(houseNo);
+        const targetRumah = cloudRes.rumahList.find(
+          (r) => cleanHouseNo(r.nomor_rumah) === targetClean
+        );
+        let resolvedName = '';
+        if (targetRumah) {
+          const prof = cloudRes.profiles.find((p) => p.rumah_id === targetRumah.id);
+          if (prof && prof.nama && prof.nama !== 'Belum ada nama') {
+            resolvedName = prof.nama;
+          }
+        }
+        if (!resolvedName) {
+          const prof = cloudRes.profiles.find(
+            (p) =>
+              cleanHouseNo((p as any).nomor_rumah || '') === targetClean ||
+              (p.rumah && cleanHouseNo(p.rumah.nomor_rumah || '') === targetClean)
+          );
+          if (prof && prof.nama && prof.nama !== 'Belum ada nama') {
+            resolvedName = prof.nama;
+          }
+        }
+        if (resolvedName) {
+          setNamaWarga(resolvedName);
+        }
+      }
+    });
 
     try {
       const savedIuran = localStorage.getItem(STORAGE_KEY_IURAN);

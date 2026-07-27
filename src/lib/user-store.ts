@@ -158,6 +158,7 @@ export function authenticateWarga(
 
   // Load registered profiles from localStorage (Data Warga)
   let validCodeMatch = false;
+  let foundName = '';
   if (typeof window !== 'undefined') {
     try {
       const savedProfiles = localStorage.getItem('martinez_profiles_list_v3');
@@ -167,8 +168,11 @@ export function authenticateWarga(
         const parsedProfiles: any[] = JSON.parse(savedProfiles);
         const parsedRumah: any[] = JSON.parse(savedRumah);
 
+        const cleanNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const targetClean = cleanNo(cleanRumah);
+
         const targetRumah = parsedRumah.find(
-          (r) => r.nomor_rumah.trim().toUpperCase() === cleanRumah
+          (r) => cleanNo(r.nomor_rumah) === targetClean
         );
 
         if (targetRumah) {
@@ -179,6 +183,9 @@ export function authenticateWarga(
               cleanKode === 'ACT001'
             ) {
               validCodeMatch = true;
+              if (profile.nama && profile.nama !== 'Belum ada nama') {
+                foundName = profile.nama;
+              }
             }
           }
         }
@@ -188,7 +195,7 @@ export function authenticateWarga(
     }
   }
 
-  // Fallback for default demo houses (e.g. MTNU3/2 or any house with ACT001 / valid format)
+  // Fallback for default demo houses
   if (!validCodeMatch) {
     if (cleanKode === 'ACT001' || cleanKode.startsWith('MTZ-') || cleanKode.length >= 4) {
       validCodeMatch = true;
@@ -199,7 +206,7 @@ export function authenticateWarga(
     const wargaUser: UserAccount = {
       id: `u-wg-${cleanRumah}`,
       username: cleanRumah,
-      nama: `Warga (${cleanRumah})`,
+      nama: foundName || `Penghuni ${cleanRumah}`,
       role: 'warga',
       password: cleanKode,
       nomor_rumah: cleanRumah,
