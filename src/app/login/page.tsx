@@ -324,14 +324,6 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Default Password Hint */}
-              <div className="flex items-center gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300">
-                <Info className="w-4 h-4 flex-shrink-0 text-amber-400" />
-                <span>
-                  Password default admin: <strong className="font-mono text-white">Martinez.2021</strong>
-                </span>
-              </div>
-
               {/* Error Message */}
               {error && (
                 <div className="flex items-center gap-2 p-3 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-400 text-xs animate-fade-in">

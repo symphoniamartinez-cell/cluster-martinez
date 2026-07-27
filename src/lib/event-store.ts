@@ -12,11 +12,10 @@ const STORAGE_KEY_KUPONS = 'martinez_kupons_v1';
 const STORAGE_KEY_BOOTHS = 'martinez_booths_v1';
 const STORAGE_KEY_IURAN = 'martinez_iuran_matrix_v2';
 
-const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[\s\-_]/g, '');
+const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 export const DEFAULT_CATEGORIES: KuponCategory[] = [
-  { id: 'cat-mb', nama_kategori: 'Kupon Makanan Berat' },
-  { id: 'cat-mr', nama_kategori: 'Kupon Makanan Ringan' },
+  { id: 'cat-1', nama_kategori: 'Kupon Makanan Utama' },
 ];
 
 export const DEFAULT_TIERS: DynamicCouponRuleTier[] = [
@@ -24,25 +23,7 @@ export const DEFAULT_TIERS: DynamicCouponRuleTier[] = [
     id: 'tr-1',
     nama_tier: 'Tier Full Bayar (≥ 8 Bulan Lunas)',
     min_lunas_bulan: 8,
-    kupon_per_category: { 'cat-mb': 1, 'cat-mr': 2 },
-  },
-  {
-    id: 'tr-2',
-    nama_tier: 'Tier Lunas 5 - 7 Bulan',
-    min_lunas_bulan: 5,
-    kupon_per_category: { 'cat-mb': 0, 'cat-mr': 2 },
-  },
-  {
-    id: 'tr-3',
-    nama_tier: 'Tier Lunas 1 - 4 Bulan',
-    min_lunas_bulan: 1,
-    kupon_per_category: { 'cat-mb': 0, 'cat-mr': 1 },
-  },
-  {
-    id: 'tr-4',
-    nama_tier: 'Tier Tidak Bayar (0 Bulan)',
-    min_lunas_bulan: 0,
-    kupon_per_category: { 'cat-mb': 0, 'cat-mr': 0 },
+    kupon_per_category: { 'cat-1': 1 },
   },
 ];
 
@@ -50,11 +31,7 @@ export const DEFAULT_RULES: CouponRules = {
   categories: DEFAULT_CATEGORIES,
   tiers: DEFAULT_TIERS,
   tier1_min_bulan: 8,
-  tier1_kupon: 3,
-  tier2_min_bulan: 5,
-  tier2_kupon: 2,
-  tier3_min_bulan: 1,
-  tier3_kupon: 1,
+  tier1_kupon: 1,
   tidak_bayar_0: 0,
 };
 
@@ -72,39 +49,19 @@ export const DEFAULT_EVENTS: EventAcara[] = [
   },
 ];
 
-export const DEFAULT_BOOTHS: TenantBooth[] = [
-  {
-    id: 'bth-001',
-    event_id: 'evt-001',
-    nama_booth: 'Booth Bakso Pak No',
-    username: 'booth-bakso',
-    password: 'event123',
-    total_scanned: 0,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'bth-002',
-    event_id: 'evt-001',
-    nama_booth: 'Booth Es Cendol Segar',
-    username: 'booth-cendol',
-    password: 'event123',
-    total_scanned: 0,
-    created_at: new Date().toISOString(),
-  },
-];
+export const DEFAULT_BOOTHS: TenantBooth[] = [];
 
 export function getEventsFromStorage(): EventAcara[] {
-  if (typeof window === 'undefined') return DEFAULT_EVENTS;
+  if (typeof window === 'undefined') return [];
   try {
     const saved = localStorage.getItem(STORAGE_KEY_EVENTS);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    if (saved !== null) {
+      return JSON.parse(saved);
     }
   } catch (e) {
     console.error(e);
   }
-  return DEFAULT_EVENTS;
+  return [];
 }
 
 export function saveEventsToStorage(events: EventAcara[]) {
@@ -116,64 +73,21 @@ export function saveEventsToStorage(events: EventAcara[]) {
   }
 }
 
-function generateInitialDemoKupons(): KuponAcara[] {
-  const sampleHouses = [
-    'MTNR/11',
-    'MTNU3/2',
-    'MTNR/01',
-    'MTNR/02',
-    'MTNR/05',
-    'MTNU1/08',
-  ];
-  const res: KuponAcara[] = [];
-  const year = 2026;
-
-  const demoCategories = DEFAULT_CATEGORIES;
-
-  sampleHouses.forEach((houseNo, idx) => {
-    let seq = 1;
-    demoCategories.forEach((cat) => {
-      // Give 1 of each category for demo
-      const qty = cat.id === 'cat-mb' ? 1 : 2;
-      for (let k = 1; k <= qty; k++) {
-        const cleanNo = houseNo.replace(/[^a-zA-Z0-9]/g, '');
-        res.push({
-          id: `kpn-evt-001-${cleanNo}-${seq}`,
-          event_id: 'evt-001',
-          nama_event: 'Acara HUT RI Kluster Martinez',
-          nama_kupon: cat.nama_kategori,
-          kategori_id: cat.id,
-          kategori_nama: cat.nama_kategori,
-          warga_id: `rmh-${idx + 1}`,
-          nomor_rumah: houseNo,
-          tahun: year,
-          kode_kupon: `MTZ-${cleanNo}-${year}-${String(seq).padStart(2, '0')}`,
-          is_used: false,
-          used_at: null,
-          created_at: new Date().toISOString(),
-        });
-        seq++;
-      }
-    });
-  });
-
-  return res;
-}
-
 export function getKuponsFromStorage(): KuponAcara[] {
-  if (typeof window === 'undefined') return generateInitialDemoKupons();
+  if (typeof window === 'undefined') return [];
   try {
     const saved = localStorage.getItem(STORAGE_KEY_KUPONS);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    if (saved !== null) {
+      const parsed: KuponAcara[] = JSON.parse(saved);
+      const activeEvents = getEventsFromStorage();
+      if (activeEvents.length === 0) return [];
+      const validEventIds = new Set(activeEvents.map((e) => e.id));
+      return parsed.filter((k) => validEventIds.has(k.event_id));
     }
   } catch (e) {
     console.error(e);
   }
-  const initial = generateInitialDemoKupons();
-  saveKuponsToStorage(initial);
-  return initial;
+  return [];
 }
 
 export function saveKuponsToStorage(kupons: KuponAcara[]) {
@@ -186,17 +100,20 @@ export function saveKuponsToStorage(kupons: KuponAcara[]) {
 }
 
 export function getBoothsFromStorage(): TenantBooth[] {
-  if (typeof window === 'undefined') return DEFAULT_BOOTHS;
+  if (typeof window === 'undefined') return [];
   try {
     const saved = localStorage.getItem(STORAGE_KEY_BOOTHS);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    if (saved !== null) {
+      const parsed: TenantBooth[] = JSON.parse(saved);
+      const activeEvents = getEventsFromStorage();
+      if (activeEvents.length === 0) return [];
+      const validEventIds = new Set(activeEvents.map((e) => e.id));
+      return parsed.filter((b) => b.event_id && validEventIds.has(b.event_id));
     }
   } catch (e) {
     console.error(e);
   }
-  return DEFAULT_BOOTHS;
+  return [];
 }
 
 export function saveBoothsToStorage(booths: TenantBooth[]) {
@@ -447,8 +364,13 @@ export function scanAndUseKuponByBooth(
   saveKuponsToStorage(allKupons);
 
   // Update total_scanned counter for booth
-  if (boothId) {
-    const bIndex = allBooths.findIndex((b) => b.id === boothId);
+  if (boothId || boothNama) {
+    const bIndex = allBooths.findIndex(
+      (b) =>
+        (boothId && b.id === boothId) ||
+        (boothId && b.username === boothId) ||
+        (boothNama && b.nama_booth === boothNama)
+    );
     if (bIndex !== -1) {
       allBooths[bIndex].total_scanned = (allBooths[bIndex].total_scanned || 0) + 1;
       saveBoothsToStorage(allBooths);
@@ -494,4 +416,21 @@ export function getBoothReportForEvent(eventId: string) {
     totalUnusedKupons: totalEventKupons - totalUsedKupons,
     boothStats,
   };
+}
+
+// ── Delete Event & Cascading Kupons/Booths ─────────────────
+export function deleteEvent(eventId: string): void {
+  const events = getEventsFromStorage().filter((e) => e.id !== eventId);
+  const kupons = getKuponsFromStorage().filter((k) => k.event_id !== eventId);
+  const booths = getBoothsFromStorage().filter((b) => b.event_id !== eventId);
+
+  saveEventsToStorage(events);
+  saveKuponsToStorage(kupons);
+  saveBoothsToStorage(booths);
+}
+
+// ── Delete Single Kupon ─────────────────────────────────────
+export function deleteKupon(kuponId: string): void {
+  const kupons = getKuponsFromStorage().filter((k) => k.id !== kuponId);
+  saveKuponsToStorage(kupons);
 }

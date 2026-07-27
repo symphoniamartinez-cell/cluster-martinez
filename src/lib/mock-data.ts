@@ -60,19 +60,29 @@ function randomStatus(): StatusIuran {
 }
 
 export function getMockIuranMatrix(tahun: number): IuranMatrixRow[] {
-  const currentMonth = new Date().getMonth() + 1; // 1-12
-
-  return MOCK_RUMAH.map((rumah) => {
+  return MOCK_RUMAH.map((rumah, idx) => {
     const bulan: Record<number, StatusIuran> = {};
+    
+    // Deterministic distribution of lunas months:
+    // 35% houses: 12 months lunas
+    // 30% houses: 8-11 months lunas
+    // 20% houses: 3-7 months lunas
+    // 15% houses: 0-2 months lunas
+    let lunasTarget = 0;
+    const mod = idx % 10;
+    if (mod < 3.5) lunasTarget = 12;
+    else if (mod < 6.5) lunasTarget = 8 + (idx % 4); // 8, 9, 10, 11
+    else if (mod < 8.5) lunasTarget = 3 + (idx % 5); // 3, 4, 5, 6, 7
+    else lunasTarget = idx % 3; // 0, 1, 2
+
     for (let m = 1; m <= 12; m++) {
-      if (tahun === new Date().getFullYear() && m > currentMonth) {
-        bulan[m] = 'belum_lunas';
-      } else if (rumah.status_hunian === 'kosong') {
-        bulan[m] = 'belum_lunas';
+      if (m <= lunasTarget) {
+        bulan[m] = 'lunas';
       } else {
-        bulan[m] = randomStatus();
+        bulan[m] = 'belum_lunas';
       }
     }
+
     return {
       rumah_id: rumah.id,
       nomor_rumah: rumah.nomor_rumah,

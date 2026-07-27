@@ -30,6 +30,7 @@ import {
   BarChart3,
   PlusCircle,
   Key,
+  Trash2,
 } from 'lucide-react';
 import type { EventAcara, KuponAcara, UserRole, TenantBooth } from '@/types';
 import {
@@ -40,6 +41,8 @@ import {
   addManualKupon,
   getBoothReportForEvent,
   DEFAULT_RULES,
+  deleteEvent,
+  deleteKupon,
 } from '@/lib/event-store';
 
 export default function AdminEventsPage() {
@@ -99,6 +102,16 @@ export default function AdminEventsPage() {
       setUserName(u.label);
     }
     loadData();
+
+    window.addEventListener('focus', loadData);
+    window.addEventListener('storage', loadData);
+    const interval = setInterval(loadData, 1500);
+
+    return () => {
+      window.removeEventListener('focus', loadData);
+      window.removeEventListener('storage', loadData);
+      clearInterval(interval);
+    };
   }, []);
 
   // Real-Time Booth Report Calculation
@@ -121,6 +134,31 @@ export default function AdminEventsPage() {
     setManualHouse('');
     setManualCount(1);
     showToast(`${created.length} Kupon Manual berhasil dibuat untuk ${manualHouse}!`);
+  };
+
+  // Handle Delete Event
+  const handleDeleteEvent = (eventId: string, eventName: string) => {
+    if (
+      confirm(
+        `Apakah Anda yakin ingin menghapus Event "${eventName}"?\n\nSemua data kupon warga dan akun booth tenant yang terasosiasi dengan event ini akan ikut terhapus.`
+      )
+    ) {
+      deleteEvent(eventId);
+      if (selectedEventId === eventId) {
+        setSelectedEventId('');
+      }
+      loadData();
+      showToast(`Event "${eventName}" berhasil dihapus.`);
+    }
+  };
+
+  // Handle Delete Single Kupon
+  const handleDeleteKupon = (kuponId: string, kodeKupon: string) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus Kupon "${kodeKupon}"?`)) {
+      deleteKupon(kuponId);
+      loadData();
+      showToast(`Kupon "${kodeKupon}" berhasil dihapus.`);
+    }
   };
 
   // Handle Scan Kupon
@@ -187,7 +225,7 @@ export default function AdminEventsPage() {
             title="Tambah Kupon Manual untuk koreksi kesalahan data lapangan"
           >
             <PlusCircle className="w-4 h-4 text-accent-500" />
-            + Kupon Manual Lapangan
+            Kupon Manual Lapangan
           </button>
 
           {/* Full Page Create Event Button */}
@@ -266,137 +304,155 @@ export default function AdminEventsPage() {
           <Ticket className="w-4 h-4" />
           Semua Kupon Warga ({kupons.length})
         </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('scan')}
-          className={`
-            flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer
-            ${
-              activeTab === 'scan'
-                ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20'
-                : 'text-surface-600 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800'
-            }
-          `}
-        >
-          <QrCode className="w-4 h-4" />
-          Scan Verifikasi (Admin)
-        </button>
       </div>
 
-      {/* ── TAB 1: DAFTAR EVENT ACARA ─────────────────────────── */}
+      {/* ── TAB 1: DAFTAR EVENT ─────────────────────────────── */}
       {activeTab === 'events' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {events.map((evt) => {
-            const countKuponsForEvt = kupons.filter((k) => k.event_id === evt.id).length;
-            const usedKuponsForEvt = kupons.filter((k) => k.event_id === evt.id && k.is_used).length;
-            const boothCountForEvt = booths.filter((b) => b.event_id === evt.id).length;
-            const rules = evt.rules || DEFAULT_RULES;
-
-            return (
-              <div
-                key={evt.id}
-                className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-surface-100 dark:border-surface-800">
-                    <span className="px-2.5 py-0.5 bg-accent-500/10 text-accent-600 dark:text-accent-400 font-bold rounded-full text-[10px]">
-                      Event Aktif
-                    </span>
-                    <span className="text-xs font-mono text-surface-400">
-                      {evt.tanggal_event}
-                    </span>
-                  </div>
-
-                  <h3 className="font-bold text-surface-900 dark:text-white text-base mb-1">
-                    {evt.nama_event}
-                  </h3>
-
-                  <p className="text-xs text-surface-500 mb-4 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-accent-500" />
-                    {evt.lokasi_event}
-                  </p>
-
-                  {/* Leveling Rules Summary */}
-                  <div className="p-3 bg-surface-50 dark:bg-surface-800/60 rounded-2xl space-y-1 text-[11px] mb-4 border border-surface-200 dark:border-surface-700">
-                    <p className="font-bold text-surface-700 dark:text-surface-200 mb-1 flex items-center gap-1">
-                      <Layers className="w-3.5 h-3.5 text-primary-500" />
-                      Rule Kupon:
-                    </p>
-                    <div className="flex justify-between text-surface-600 dark:text-surface-300">
-                      <span>T1 (&ge;{rules.tier1_min_bulan ?? 8} Bln): <strong>{rules.tier1_kupon ?? rules.full_lunas_12 ?? 5} Kpn</strong></span>
-                      <span>T2 (&ge;{rules.tier2_min_bulan ?? 5} Bln): <strong>{rules.tier2_kupon ?? rules.rajin_8_11 ?? 3} Kpn</strong></span>
-                    </div>
-                    <div className="flex justify-between text-surface-600 dark:text-surface-300">
-                      <span>T3 (&ge;{rules.tier3_min_bulan ?? 1} Bln): <strong>{rules.tier3_kupon ?? rules.bolong_1_7 ?? 1} Kpn</strong></span>
-                      <span>Tidak Bayar: <strong>{rules.tidak_bayar_0 ?? 0} Kpn</strong></span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-accent-500/5 rounded-2xl space-y-1 text-xs mb-4 border border-accent-500/10">
-                    <div className="flex justify-between">
-                      <span className="text-surface-500">Total Kupon:</span>
-                      <span className="font-mono font-bold text-accent-600 dark:text-accent-400">{countKuponsForEvt} Kupon</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-surface-500">Kupon Ditukar:</span>
-                      <span className="font-mono font-bold text-danger-500">{usedKuponsForEvt} Kupon</span>
-                    </div>
-                    <div className="flex justify-between pt-1 border-t border-surface-200 dark:border-surface-700">
-                      <span className="text-surface-500">Tenant Booth Makanan:</span>
-                      <span className="font-semibold text-surface-900 dark:text-white">{boothCountForEvt} Booth</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-surface-100 dark:border-surface-800">
-                  <button
-                    onClick={() => {
-                      setSelectedEventId(evt.id);
-                      setActiveTab('reports');
-                    }}
-                    className="py-2 px-2.5 bg-gradient-to-r from-accent-500 to-primary-500 hover:from-accent-600 hover:to-primary-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
-                  >
-                    <BarChart3 className="w-3.5 h-3.5" />
-                    Laporan
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setSelectedEventId(evt.id);
-                      setActiveTab('booths');
-                    }}
-                    className="py-2 px-2.5 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-xs rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
-                  >
-                    <Store className="w-3.5 h-3.5 text-accent-500" />
-                    Booth ({boothCountForEvt})
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setSelectedEventId(evt.id);
-                      setActiveTab('kupons');
-                    }}
-                    className="py-2 px-2.5 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-xs rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
-                  >
-                    <Ticket className="w-3.5 h-3.5 text-primary-500" />
-                    Kupon ({countKuponsForEvt})
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setSelectedEventId(evt.id);
-                      setShowManualModal(true);
-                    }}
-                    className="py-2 px-2.5 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-xs rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-success-500" />
-                    + Manual
-                  </button>
-                </div>
+        <div className="space-y-6">
+          {events.length === 0 ? (
+            <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 p-12 text-center space-y-4 shadow-sm">
+              <div className="w-16 h-16 rounded-full bg-accent-500/10 text-accent-500 flex items-center justify-center mx-auto">
+                <Ticket className="w-8 h-8" />
               </div>
-            );
-          })}
+              <div className="max-w-md mx-auto">
+                <h3 className="font-bold text-surface-900 dark:text-white text-base">
+                  Belum Ada Event & Kupon
+                </h3>
+                <p className="text-xs text-surface-500 mt-1 leading-relaxed">
+                  Belum ada event acara yang diterbitkan. Silakan buat event baru untuk menerbitkan kupon warga dan akun tenant booth makanan.
+                </p>
+              </div>
+              <button
+                onClick={() => router.push('/admin/events/create')}
+                className="px-6 py-3 bg-gradient-to-r from-accent-500 to-primary-500 text-white font-bold text-xs rounded-xl shadow-lg hover:brightness-110 transition-all cursor-pointer inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Buat Event Baru
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {events.map((evt) => {
+                const countKuponsForEvt = kupons.filter((k) => k.event_id === evt.id).length;
+                const usedKuponsForEvt = kupons.filter((k) => k.event_id === evt.id && k.is_used).length;
+                const boothCountForEvt = booths.filter((b) => b.event_id === evt.id).length;
+                const rules = evt.rules || DEFAULT_RULES;
+
+                return (
+                  <div
+                    key={evt.id}
+                    className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3 pb-3 border-b border-surface-100 dark:border-surface-800">
+                        <span className="px-2.5 py-0.5 bg-accent-500/10 text-accent-600 dark:text-accent-400 font-bold rounded-full text-[10px]">
+                          Event Aktif
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-surface-400">
+                            {evt.tanggal_event}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteEvent(evt.id, evt.nama_event)}
+                            className="p-1 text-danger-500 hover:bg-danger-500/10 rounded-lg transition-colors cursor-pointer"
+                            title="Hapus Event"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <h3 className="font-bold text-surface-900 dark:text-white text-base mb-1">
+                        {evt.nama_event}
+                      </h3>
+
+                      <p className="text-xs text-surface-500 mb-4 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-accent-500" />
+                        {evt.lokasi_event}
+                      </p>
+
+                      {/* Leveling Rules Summary */}
+                      <div className="p-3 bg-surface-50 dark:bg-surface-800/60 rounded-2xl space-y-1 text-[11px] mb-4 border border-surface-200 dark:border-surface-700">
+                        <p className="font-bold text-surface-700 dark:text-surface-200 mb-1 flex items-center gap-1">
+                          <Layers className="w-3.5 h-3.5 text-primary-500" />
+                          Rule Kupon:
+                        </p>
+                        <div className="flex justify-between text-surface-600 dark:text-surface-300">
+                          <span>T1 (&ge;{rules.tier1_min_bulan ?? 8} Bln): <strong>{rules.tier1_kupon ?? rules.full_lunas_12 ?? 5} Kpn</strong></span>
+                          <span>T2 (&ge;{rules.tier2_min_bulan ?? 5} Bln): <strong>{rules.tier2_kupon ?? rules.rajin_8_11 ?? 3} Kpn</strong></span>
+                        </div>
+                        <div className="flex justify-between text-surface-600 dark:text-surface-300">
+                          <span>T3 (&ge;{rules.tier3_min_bulan ?? 1} Bln): <strong>{rules.tier3_kupon ?? rules.bolong_1_7 ?? 1} Kpn</strong></span>
+                          <span>Tidak Bayar: <strong>{rules.tidak_bayar_0 ?? 0} Kpn</strong></span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-accent-500/5 rounded-2xl space-y-1 text-xs mb-4 border border-accent-500/10">
+                        <div className="flex justify-between">
+                          <span className="text-surface-500">Total Kupon:</span>
+                          <span className="font-mono font-bold text-accent-600 dark:text-accent-400">{countKuponsForEvt} Kupon</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-surface-500">Kupon Ditukar:</span>
+                          <span className="font-mono font-bold text-danger-500">{usedKuponsForEvt} Kupon</span>
+                        </div>
+                        <div className="flex justify-between pt-1 border-t border-surface-200 dark:border-surface-700">
+                          <span className="text-surface-500">Tenant Booth Makanan:</span>
+                          <span className="font-semibold text-surface-900 dark:text-white">{boothCountForEvt} Booth</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1.5 pt-3 border-t border-surface-100 dark:border-surface-800">
+                      <button
+                        onClick={() => {
+                          setSelectedEventId(evt.id);
+                          setActiveTab('reports');
+                        }}
+                        className="py-2 px-2.5 bg-gradient-to-r from-accent-500 to-primary-500 hover:from-accent-600 hover:to-primary-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                      >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        Laporan
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedEventId(evt.id);
+                          setActiveTab('booths');
+                        }}
+                        className="py-2 px-2.5 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-xs rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                      >
+                        <Store className="w-3.5 h-3.5 text-accent-500" />
+                        Booth ({boothCountForEvt})
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedEventId(evt.id);
+                          setActiveTab('kupons');
+                        }}
+                        className="py-2 px-2.5 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-xs rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                      >
+                        <Ticket className="w-3.5 h-3.5 text-primary-500" />
+                        Kupon ({countKuponsForEvt})
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedEventId(evt.id);
+                          setShowManualModal(true);
+                        }}
+                        className="py-2 px-2.5 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-xs rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-success-500" />
+                        Manual
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -567,33 +623,44 @@ export default function AdminEventsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {booths
                 .filter((b) => !selectedEventId || b.event_id === selectedEventId)
-                .map((b) => (
-                  <div
-                    key={b.id}
-                    className="p-4 bg-surface-50 dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 space-y-2 text-xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-surface-900 dark:text-white flex items-center gap-2">
-                        <Store className="w-4 h-4 text-accent-500" />
-                        {b.nama_booth}
-                      </span>
-                      <span className="px-2 py-0.5 bg-success-500/10 text-success-600 dark:text-success-400 font-mono font-bold rounded text-[10px]">
-                        {b.total_scanned} Scanned
-                      </span>
-                    </div>
+                .map((b) => {
+                  const countScannedForBooth = kupons.filter(
+                    (k) =>
+                      k.event_id === b.event_id &&
+                      k.is_used &&
+                      (k.used_by_booth_id === b.id ||
+                        k.used_by_booth_nama === b.nama_booth ||
+                        k.used_by_admin === b.nama_booth)
+                  ).length;
 
-                    <div className="pt-2 border-t border-surface-200 dark:border-surface-700 space-y-1 font-mono">
-                      <div className="flex justify-between">
-                        <span className="text-surface-500">Username Login:</span>
-                        <strong className="text-primary-600 dark:text-primary-400">{b.username}</strong>
+                  return (
+                    <div
+                      key={b.id}
+                      className="p-4 bg-surface-50 dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 space-y-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-surface-900 dark:text-white flex items-center gap-2">
+                          <Store className="w-4 h-4 text-accent-500" />
+                          {b.nama_booth}
+                        </span>
+                        <span className="px-2 py-0.5 bg-success-500/10 text-success-600 dark:text-success-400 font-mono font-bold rounded text-[10px]">
+                          {countScannedForBooth || b.total_scanned || 0} Scanned
+                        </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-surface-500">Password:</span>
-                        <strong className="text-surface-900 dark:text-white">{b.password || 'event123'}</strong>
+
+                      <div className="pt-2 border-t border-surface-200 dark:border-surface-700 space-y-1 font-mono">
+                        <div className="flex justify-between">
+                          <span className="text-surface-500">Username Login:</span>
+                          <strong className="text-primary-600 dark:text-primary-400">{b.username}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-surface-500">Password:</span>
+                          <strong className="text-surface-900 dark:text-white">{b.password || 'event123'}</strong>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               {booths.filter((b) => !selectedEventId || b.event_id === selectedEventId).length === 0 && (
                 <p className="text-center py-6 text-xs text-surface-500 col-span-2">
                   Belum ada tenant booth makanan terdaftar untuk event ini.
@@ -676,6 +743,7 @@ export default function AdminEventsPage() {
                   <th className="px-4 py-3">Rumah</th>
                   <th className="px-4 py-3">Flag Status</th>
                   <th className="px-4 py-3">Penukar & Waktu</th>
+                  <th className="px-4 py-3 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
@@ -711,6 +779,15 @@ export default function AdminEventsPage() {
                       ) : (
                         '-'
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleDeleteKupon(k.id, k.kode_kupon)}
+                        className="p-1.5 text-danger-500 hover:bg-danger-500/10 rounded-lg transition-colors cursor-pointer"
+                        title="Hapus Kupon"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}

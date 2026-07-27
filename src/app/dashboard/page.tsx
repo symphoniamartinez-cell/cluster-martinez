@@ -25,6 +25,7 @@ import {
   CreditCard,
   Copy,
   Info,
+  XCircle,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import type { StatusIuran, KuponAcara, IuranMatrixRow } from '@/types';
@@ -74,11 +75,12 @@ export default function WargaDashboardPage() {
   useEffect(() => {
     const stored = sessionStorage.getItem('demo_user');
     let houseNo = 'MTNU3/2';
+    let userLabel = '';
     if (stored) {
       const user = JSON.parse(stored);
       houseNo = user.nomor || 'MTNU3/2';
+      userLabel = user.label || '';
       setNomorRumah(houseNo);
-      setNamaWarga(user.label || 'Warga');
     }
 
     const currentConfig = getIuranConfigFromStorage();
@@ -106,12 +108,10 @@ export default function WargaDashboardPage() {
       let targetBulan: Record<number, StatusIuran> = {};
       let targetRt = '03';
       let targetHunian = 'pemilik';
-      let targetId = `r-${targetClean}`;
 
       if (match) {
         targetRt = match.rt || '03';
         targetHunian = match.status_hunian || 'pemilik';
-        targetId = match.rumah_id;
 
         // Normalize bulan keys to numeric 1..12
         for (let m = 1; m <= 12; m++) {
@@ -133,13 +133,67 @@ export default function WargaDashboardPage() {
       setRt(targetRt);
       setStatusHunian(targetHunian);
 
-      // Read real coupons from Event Store (No dummy fallback)
+      // Resolve Real Resident Name
+      let realName = '';
+      if (userLabel && !userLabel.startsWith('Warga (')) {
+        realName = userLabel;
+      }
+      if (!realName && match) {
+        realName = (match as any).nama_penghuni || (match as any).nama;
+      }
+      if (!realName) {
+        try {
+          const savedProfiles = localStorage.getItem('martinez_profiles_list_v3');
+          if (savedProfiles) {
+            const profiles = JSON.parse(savedProfiles);
+            const prof = profiles.find((p: any) => cleanHouseNo(p.nomor_rumah) === targetClean);
+            if (prof && prof.nama) realName = prof.nama;
+          }
+        } catch (e) {}
+      }
+
+      setNamaWarga(realName || `Penghuni ${houseNo}`);
+
+      // Read real coupons for this house immediately
       const realKupons = getKuponsForWarga(houseNo);
       setKupons(realKupons);
     } catch (e) {
       console.error('Failed to load database iuran for warga:', e);
     }
   }, [tahun, nomorRumah]);
+
+  // Real-Time Kupon Synchronization Listener
+  useEffect(() => {
+    const syncKupons = () => {
+      let targetHouse = nomorRumah;
+      if (!targetHouse) {
+        try {
+          const stored = sessionStorage.getItem('demo_user');
+          if (stored) {
+            const user = JSON.parse(stored);
+            targetHouse = user.nomor || '';
+          }
+        } catch (e) {}
+      }
+
+      if (targetHouse) {
+        const freshKupons = getKuponsForWarga(targetHouse);
+        setKupons(freshKupons);
+      }
+    };
+
+    syncKupons();
+
+    window.addEventListener('focus', syncKupons);
+    window.addEventListener('storage', syncKupons);
+    const interval = setInterval(syncKupons, 1500);
+
+    return () => {
+      window.removeEventListener('focus', syncKupons);
+      window.removeEventListener('storage', syncKupons);
+      clearInterval(interval);
+    };
+  }, [nomorRumah]);
 
   // Metric Computations based on normalized iuranData
   const totalLunasCount = useMemo(() => {
@@ -158,6 +212,13 @@ export default function WargaDashboardPage() {
     () => iuranData[currentMonthNum] === 'lunas',
     [iuranData, currentMonthNum]
   );
+
+  const cleanNamaWarga = useMemo(() => {
+    if (!namaWarga || namaWarga === 'Warga' || namaWarga.startsWith('Warga (')) {
+      return `Penghuni ${nomorRumah}`;
+    }
+    return namaWarga;
+  }, [namaWarga, nomorRumah]);
 
   const nominalTerbayarTotal = totalLunasCount * config.nominal_per_bulan;
   const nominalTunggakanTotal = totalBelumCount * config.nominal_per_bulan;
@@ -208,13 +269,13 @@ export default function WargaDashboardPage() {
                 Cluster Martinez
               </h1>
               <p className="text-[11px] text-surface-700/50 dark:text-surface-200/40">
-                Portal Warga — {nomorRumah} (RT {rt})
+                Portal Warga — {cleanNamaWarga} ({nomorRumah})
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-surface-700 dark:text-surface-200 hidden sm:block">
-              {namaWarga} ({nomorRumah})
+              {cleanNamaWarga} ({nomorRumah})
             </span>
             <button
               onClick={handleLogout}
@@ -241,15 +302,15 @@ export default function WargaDashboardPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold font-mono tracking-tight">
-                      {nomorRumah}
+                    <p className="text-xl font-bold tracking-tight">
+                      {cleanNamaWarga}
                     </p>
                     <span className="px-2.5 py-0.5 bg-white/20 text-white rounded-full text-xs font-semibold uppercase">
                       RT {rt}
                     </span>
                   </div>
-                  <p className="text-xs text-white/80 mt-0.5">
-                    {namaWarga} • Status: <span className="capitalize font-bold">{statusHunian}</span>
+                  <p className="text-xs text-white/80 mt-0.5 font-mono">
+                    No. Rumah: <span className="font-bold">{nomorRumah}</span> • Status: <span className="capitalize font-bold">{statusHunian}</span>
                   </p>
                 </div>
               </div>
@@ -319,7 +380,7 @@ export default function WargaDashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Card 1: Total Terbayar */}
             <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
@@ -353,24 +414,6 @@ export default function WargaDashboardPage() {
               </p>
               <p className="text-xs text-surface-500 mt-1 font-medium">
                 {totalBelumCount} bulan belum terbayar
-              </p>
-            </div>
-
-            {/* Card 3: Kupon Acara Hak Warga */}
-            <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-surface-500">
-                  Kupon Acara Diperoleh
-                </span>
-                <div className="w-8 h-8 rounded-xl bg-accent-500/10 flex items-center justify-center">
-                  <Ticket className="w-4 h-4 text-accent-500" />
-                </div>
-              </div>
-              <p className="text-xl font-bold font-mono text-accent-600 dark:text-accent-400">
-                {kupons.length} <span className="text-xs font-normal text-surface-400">Kupon</span>
-              </p>
-              <p className="text-xs text-surface-500 mt-1 font-medium">
-                1 bulan lunas = 1 kupon
               </p>
             </div>
           </div>
@@ -479,11 +522,11 @@ export default function WargaDashboardPage() {
                     key={kupon.id}
                     onClick={() => setSelectedKupon(kupon)}
                     className={`
-                      relative p-4 rounded-2xl border text-center transition-all cursor-pointer
+                      relative p-4 rounded-2xl border text-center transition-all cursor-pointer overflow-hidden
                       hover:shadow-md hover:-translate-y-0.5
                       ${
                         kupon.is_used
-                          ? 'bg-surface-100/50 dark:bg-surface-800/50 border-surface-200 dark:border-surface-800 opacity-60'
+                          ? 'bg-surface-200/80 dark:bg-surface-800/80 border-surface-300 dark:border-surface-700 opacity-70 grayscale'
                           : 'bg-gradient-to-br from-accent-500/5 to-primary-500/5 border-accent-500/20 hover:border-accent-500/40'
                       }
                     `}
@@ -493,12 +536,19 @@ export default function WargaDashboardPage() {
                         kupon.is_used ? 'text-surface-400' : 'text-accent-500'
                       }`}
                     />
-                    <p className="text-[10px] font-mono font-bold text-surface-700 dark:text-surface-200 truncate">
-                      KUPON #{idx + 1}
+                    <p className="text-[11px] font-bold text-surface-900 dark:text-white truncate">
+                      {kupon.kategori_nama || kupon.nama_kupon || `KUPON #${idx + 1}`}
                     </p>
-                    {kupon.is_used && (
-                      <span className="absolute top-2 right-2 px-1.5 py-0.5 bg-surface-200 dark:bg-surface-700 rounded text-[9px] font-bold uppercase text-surface-500">
-                        Terpakai
+                    <p className="text-[9px] font-mono text-surface-500 truncate">
+                      {kupon.kode_kupon}
+                    </p>
+                    {kupon.is_used ? (
+                      <span className="mt-2 inline-block px-2 py-0.5 bg-surface-300/50 dark:bg-surface-700 text-surface-600 dark:text-surface-300 border border-surface-400/30 rounded-full text-[9px] font-bold uppercase">
+                        🔴 SUDAH DIGUNAKAN
+                      </span>
+                    ) : (
+                      <span className="mt-2 inline-block px-2 py-0.5 bg-success-500/10 text-success-600 dark:text-success-400 border border-success-500/20 rounded-full text-[9px] font-bold uppercase">
+                        🟢 SIAP DIGUNAKAN
                       </span>
                     )}
                   </button>
@@ -604,21 +654,39 @@ export default function WargaDashboardPage() {
             <div className="h-1.5 bg-gradient-to-r from-accent-500 via-primary-500 to-accent-500" />
             <div className="p-6 text-center">
               <h3 className="text-lg font-bold text-surface-900 dark:text-white mb-1">
-                Kupon Acara Doorprize
+                {selectedKupon.kategori_nama || selectedKupon.nama_kupon || 'Kupon Acara Doorprize'}
               </h3>
               <p className="text-xs text-surface-500 mb-6">
-                Tunjukkan QR code ini kepada Panitia Acara Kluster
+                {selectedKupon.is_used
+                  ? 'Kupon ini telah digunakan (diredeem)'
+                  : 'Tunjukkan QR code ini kepada Panitia / Booth Acara Kluster'}
               </p>
 
-              <div className="inline-flex p-4 bg-white rounded-2xl shadow-inner mb-4">
+              <div className="relative inline-flex p-4 bg-white rounded-2xl shadow-inner mb-4 overflow-hidden">
                 <QRCodeSVG
                   value={selectedKupon.kode_kupon}
                   size={200}
                   level="H"
                   bgColor="#ffffff"
-                  fgColor="#0f172a"
+                  fgColor={selectedKupon.is_used ? "#94a3b8" : "#0f172a"}
                   includeMargin={false}
                 />
+                {selectedKupon.is_used && (
+                  <div className="absolute inset-0 bg-surface-950/85 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center text-white p-4">
+                    <XCircle className="w-12 h-12 text-danger-500 mb-2 animate-bounce" />
+                    <span className="font-extrabold text-sm text-danger-400 uppercase tracking-wider">
+                      SUDAH DIGUNAKAN
+                    </span>
+                    <span className="text-[11px] font-bold text-surface-200 mt-1">
+                      Kupon Telah Diredeem
+                    </span>
+                    {selectedKupon.used_by_booth_nama && (
+                      <span className="text-[10px] text-surface-400 mt-1 font-mono">
+                        di {selectedKupon.used_by_booth_nama}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-3 mb-4">

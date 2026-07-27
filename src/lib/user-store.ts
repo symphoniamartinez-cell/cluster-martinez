@@ -89,35 +89,34 @@ export function authenticateAdmin(
 
   // Check if it's a Tenant Booth Account
   const booths = getBoothsFromStorage();
-  const foundBooth = booths.find(
-    (b) => b.username.trim().toUpperCase() === cleanUsername
-  );
+  const cleanInput = inputUsername.trim().toUpperCase();
+  const cleanAlphaNumeric = cleanInput.replace(/[^A-Z0-9]/g, '');
+
+  const foundBooth = booths.find((b) => {
+    const uUpper = (b.username || '').trim().toUpperCase();
+    const nUpper = (b.nama_booth || '').trim().toUpperCase();
+    const uClean = uUpper.replace(/[^A-Z0-9]/g, '');
+    const nClean = nUpper.replace(/[^A-Z0-9]/g, '');
+
+    return (
+      uUpper === cleanInput ||
+      nUpper === cleanInput ||
+      (cleanAlphaNumeric.length >= 2 && (
+        uClean === cleanAlphaNumeric ||
+        nClean === cleanAlphaNumeric ||
+        uClean.includes(cleanAlphaNumeric) ||
+        cleanAlphaNumeric.includes(uClean) ||
+        nClean.includes(cleanAlphaNumeric) ||
+        cleanAlphaNumeric.includes(nClean)
+      ))
+    );
+  });
 
   if (foundBooth) {
     if (foundBooth.password !== inputPassword) {
       return {
         success: false,
-        error: 'Password booth makanan salah. (Password default: event123)',
-      };
-    }
-
-    // Hari-H Event Date Validity Check
-    const events = getEventsFromStorage();
-    const event = events.find((e) => e.id === foundBooth.event_id);
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    if (event && event.tanggal_event && event.tanggal_event !== todayStr) {
-      const formattedDate = new Date(event.tanggal_event).toLocaleDateString(
-        'id-ID',
-        {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-        }
-      );
-      return {
-        success: false,
-        error: `Akun booth ini HANYA BERLAKU PADA HARI-H ACARA (${formattedDate}). Akun otomatis kadaluarsa di luar tanggal acara.`,
+        error: `Password booth "${foundBooth.nama_booth}" (Username: ${foundBooth.username}) salah. (Password default: event123)`,
       };
     }
 
@@ -132,9 +131,13 @@ export function authenticateAdmin(
     return { success: true, user: boothUser };
   }
 
+  const availableBoothList = booths.length > 0
+    ? `\nAkun booth terdaftar: ${booths.map((b) => `"${b.username}" (${b.nama_booth})`).join(', ')}`
+    : '\nBelum ada booth terdaftar di event.';
+
   return {
     success: false,
-    error: `Username "${inputUsername}" tidak ditemukan.`,
+    error: `Username/Booth "${inputUsername}" tidak ditemukan.${availableBoothList}`,
   };
 }
 

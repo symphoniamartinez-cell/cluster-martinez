@@ -39,18 +39,15 @@ export default function CreateEventPage() {
     new Date().toISOString().split('T')[0]
   );
   const [lokasiEvent, setLokasiEvent] = useState(
-    'Lapangan Serbaguna Kluster Martinez'
+    'Club House Martinez'
   );
 
-  // Multi-Category Coupon Manager State
+  // Multi-Category Coupon Manager State (Default 1 Category)
   const [categories, setCategories] = useState<
     { id: string; nama_kategori: string }[]
-  >([
-    { id: 'cat-mb', nama_kategori: 'Kupon Makanan Berat' },
-    { id: 'cat-mr', nama_kategori: 'Kupon Makanan Ringan' },
-  ]);
+  >([{ id: 'cat-1', nama_kategori: 'Kupon Makanan Utama' }]);
 
-  // Dynamic Tier Rules Manager State
+  // Dynamic Tier Rules Manager State (Default 1 Tier)
   const [tiers, setTiers] = useState<
     {
       id: string;
@@ -63,25 +60,7 @@ export default function CreateEventPage() {
       id: 'tr-1',
       nama_tier: 'Tier Full Bayar (≥ 8 Bulan Lunas)',
       min_lunas_bulan: 8,
-      kupon_per_category: { 'cat-mb': 1, 'cat-mr': 2 },
-    },
-    {
-      id: 'tr-2',
-      nama_tier: 'Tier Lunas 5 - 7 Bulan',
-      min_lunas_bulan: 5,
-      kupon_per_category: { 'cat-mb': 0, 'cat-mr': 2 },
-    },
-    {
-      id: 'tr-3',
-      nama_tier: 'Tier Lunas 1 - 4 Bulan',
-      min_lunas_bulan: 1,
-      kupon_per_category: { 'cat-mb': 0, 'cat-mr': 1 },
-    },
-    {
-      id: 'tr-4',
-      nama_tier: 'Tier Tidak Bayar (0 Bulan)',
-      min_lunas_bulan: 0,
-      kupon_per_category: { 'cat-mb': 0, 'cat-mr': 0 },
+      kupon_per_category: { 'cat-1': 1 },
     },
   ]);
 
@@ -181,20 +160,14 @@ export default function CreateEventPage() {
     );
   };
 
-  // Tenant Booth Accounts State (Dynamic list of booths)
+  // Tenant Booth Accounts State (Default 1 Booth)
   const [booths, setBooths] = useState<
     { id: string; nama_booth: string; username: string; password: string }[]
   >([
     {
       id: '1',
-      nama_booth: 'Booth Bakso Pak No',
-      username: 'booth-bakso',
-      password: 'event123',
-    },
-    {
-      id: '2',
-      nama_booth: 'Booth Es Cendol Segar',
-      username: 'booth-cendol',
+      nama_booth: 'Booth Makanan #1',
+      username: 'booth-1',
       password: 'event123',
     },
   ]);
@@ -238,16 +211,16 @@ export default function CreateEventPage() {
       });
 
       let grandTotalKupons = 0;
+      let unqualifiedHouses = 0;
 
       matrix.forEach((row) => {
         let lunasCount = 0;
         for (let m = 1; m <= 12; m++) {
-          if (row.bulan[m] === 'lunas') lunasCount++;
+          const val = row.bulan[m] || (row.bulan as any)[m.toString()];
+          if (val === 'lunas') lunasCount++;
         }
 
-        const matchedTier =
-          sortedTiers.find((t) => lunasCount >= t.min_lunas_bulan) ||
-          sortedTiers[sortedTiers.length - 1];
+        const matchedTier = sortedTiers.find((t) => lunasCount >= t.min_lunas_bulan);
 
         if (matchedTier) {
           tierHouseCounts[matchedTier.id] =
@@ -258,12 +231,15 @@ export default function CreateEventPage() {
             categoryTotals[cat.id] = (categoryTotals[cat.id] || 0) + qty;
             grandTotalKupons += qty;
           });
+        } else {
+          unqualifiedHouses++;
         }
       });
 
       return {
         totalHouses: matrix.length,
         tierHouseCounts,
+        unqualifiedHouses,
         categoryTotals,
         grandTotalKupons,
       };
@@ -301,7 +277,19 @@ export default function CreateEventPage() {
     val: string
   ) => {
     setBooths(
-      booths.map((b) => (b.id === id ? { ...b, [field]: val } : b))
+      booths.map((b) => {
+        if (b.id !== id) return b;
+        if (field === 'nama_booth') {
+          const cleanSlug = val.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+          const autoUsername = cleanSlug ? (cleanSlug.startsWith('booth') ? cleanSlug : `booth-${cleanSlug}`) : b.username;
+          return {
+            ...b,
+            nama_booth: val,
+            username: autoUsername,
+          };
+        }
+        return { ...b, [field]: val };
+      })
     );
   };
 
@@ -442,7 +430,7 @@ export default function CreateEventPage() {
                 className="flex items-center gap-1 px-3 py-1.5 bg-accent-500/10 text-accent-600 dark:text-accent-400 hover:bg-accent-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                + Tambah Jenis Kupon
+                Tambah Jenis Kupon
               </button>
             </div>
 
@@ -502,7 +490,7 @@ export default function CreateEventPage() {
               className="flex items-center gap-1.5 px-3.5 py-2 bg-primary-500/10 text-primary-600 dark:text-primary-400 hover:bg-primary-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              + Tambah Tier Rules
+              Tambah Tier Rules
             </button>
           </div>
 
@@ -724,6 +712,14 @@ export default function CreateEventPage() {
                   </span>
                 </div>
               ))}
+              {previewBreakdown.unqualifiedHouses > 0 && (
+                <div className="p-3 bg-danger-500/10 rounded-2xl border border-danger-500/20">
+                  <span className="text-danger-300 block text-[10px] truncate">Tidak Memenuhi Syarat:</span>
+                  <span className="font-mono font-bold text-danger-400 text-sm">
+                    {previewBreakdown.unqualifiedHouses} Rumah (0 Kupon)
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Per-Category Kupon Totals */}
