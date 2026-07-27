@@ -199,12 +199,24 @@ export async function fetchProfilesFromCloud(): Promise<{ profiles: Profile[]; r
       created_at: r.created_at || new Date().toISOString(),
     }));
 
+    let savedLocalProfiles: Profile[] = [];
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_PROFILES);
+        if (raw) savedLocalProfiles = JSON.parse(raw);
+      } catch (e) {}
+    }
+
     const profilesMap = new Map<string, Profile>();
 
     // 1. Process profiles table
     (profileData || []).forEach((p) => {
       const targetClean = cleanHouseNo(p.nomor_rumah || '');
       const rMatch = rumahList.find((r) => r.id === p.rumah_id || cleanHouseNo(r.nomor_rumah) === targetClean);
+      const localMatch = savedLocalProfiles.find((lp) => lp.id === p.id || cleanHouseNo((lp as any).nomor_rumah || '') === targetClean);
+
+      const resolvedTgl = p.tanggal_masuk || localMatch?.tanggal_masuk || p.created_at?.split('T')[0];
+
       const prof: Profile = {
         id: p.id || `p-${targetClean}`,
         nama: p.nama || 'Belum ada nama',
@@ -212,7 +224,7 @@ export async function fetchProfilesFromCloud(): Promise<{ profiles: Profile[]; r
         role: p.role || 'warga',
         kode_aktivasi: p.kode_aktivasi || 'ACT001',
         phone: p.phone || '-',
-        tanggal_masuk: p.tanggal_masuk || p.created_at?.split('T')[0],
+        tanggal_masuk: resolvedTgl,
         created_at: p.created_at || new Date().toISOString(),
         rumah: rMatch,
       };

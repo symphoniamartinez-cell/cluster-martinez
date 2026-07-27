@@ -53,6 +53,8 @@ export default function AdminWargaPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
   // ── Pagination State ───────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(25); // 25 rows per page default
@@ -103,9 +105,25 @@ export default function AdminWargaPage() {
 
       // Fetch from Supabase Cloud Database if connected
       fetchProfilesFromCloud().then((cloudRes) => {
-        if (cloudRes) {
+        if (cloudRes && cloudRes.profiles.length > 0) {
           setRumahList(cloudRes.rumahList);
-          setProfiles(cloudRes.profiles);
+          setProfiles((prev) => {
+            return cloudRes.profiles.map((cp) => {
+              const localMatch = prev.find(
+                (p) =>
+                  p.id === cp.id ||
+                  cleanHouseNo(p.rumah?.nomor_rumah || '') ===
+                    cleanHouseNo(cp.rumah?.nomor_rumah || '')
+              );
+              return {
+                ...cp,
+                tanggal_masuk:
+                  cp.tanggal_masuk ||
+                  localMatch?.tanggal_masuk ||
+                  new Date().toISOString().split('T')[0],
+              };
+            });
+          });
         }
       });
     } catch (e) {
