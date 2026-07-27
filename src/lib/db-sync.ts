@@ -28,7 +28,6 @@ export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<
   try {
     const recordsToUpsert = matrix.map((row) => {
       const rec: Record<string, any> = {
-        rumah_id: row.rumah_id,
         nomor_rumah: row.nomor_rumah,
         tahun: 2026,
         updated_at: new Date().toISOString(),
