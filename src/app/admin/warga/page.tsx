@@ -527,8 +527,15 @@ export default function AdminWargaPage() {
 
           updatedRumahList.forEach((r) => {
             const targetClean = cleanNo(r.nomor_rumah);
-            const exists = newMatrix.some((m) => cleanNo(m.nomor_rumah) === targetClean);
-            if (!exists) {
+            const existsIdx = newMatrix.findIndex((m) => cleanNo(m.nomor_rumah) === targetClean);
+            if (existsIdx >= 0) {
+              // ALWAYS UPDATE RT & STATUS_HUNIAN IN EXISTING MATRIX ROW
+              newMatrix[existsIdx] = {
+                ...newMatrix[existsIdx],
+                rt: r.rt,
+                status_hunian: r.status_hunian,
+              };
+            } else {
               const defaultBulan: Record<number, StatusIuran> = {};
               for (let m = 1; m <= 12; m++) {
                 defaultBulan[m] = 'belum_lunas';
@@ -543,6 +550,7 @@ export default function AdminWargaPage() {
             }
           });
 
+          localStorage.setItem('martinez_iuran_matrix_v2', JSON.stringify(newMatrix));
           syncIuranMatrixToCloud(newMatrix);
         } catch (e) {}
 
