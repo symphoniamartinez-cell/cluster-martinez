@@ -97,59 +97,78 @@ export default function WargaDashboardPage() {
         localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(matrix));
       }
 
-      // Robust house number matching
+      // Robust house number matching & matrix row merging
       const targetClean = cleanHouseNo(houseNo);
-      const match = matrix.find(
-        (m) =>
-          cleanHouseNo(m.nomor_rumah) === targetClean ||
-          m.nomor_rumah.toLowerCase() === houseNo.toLowerCase()
+      const matches = matrix.filter(
+        (m) => cleanHouseNo(m.nomor_rumah) === targetClean
       );
 
       let targetBulan: Record<number, StatusIuran> = {};
       let targetRt = '03';
       let targetHunian = 'pemilik';
 
-      if (match) {
-        targetRt = match.rt || '03';
-        targetHunian = match.status_hunian || 'pemilik';
+      for (let m = 1; m <= 12; m++) {
+        targetBulan[m] = 'belum_lunas';
+      }
 
-        // Normalize bulan keys to numeric 1..12
-        for (let m = 1; m <= 12; m++) {
-          const val =
-            match.bulan[m] ||
-            (match.bulan as any)[m.toString()] ||
-            (match.bulan as any)[BULAN_FULL[m]] ||
-            'belum_lunas';
-          targetBulan[m] = val === 'lunas' ? 'lunas' : 'belum_lunas';
-        }
-      } else {
-        // If house isn't in matrix yet, default to belum_lunas for all months
-        for (let m = 1; m <= 12; m++) {
-          targetBulan[m] = 'belum_lunas';
-        }
+      if (matches.length > 0) {
+        matches.forEach((mRow) => {
+          if (mRow.rt) targetRt = mRow.rt;
+          if (mRow.status_hunian) targetHunian = mRow.status_hunian;
+
+          for (let m = 1; m <= 12; m++) {
+            const val =
+              mRow.bulan[m] ||
+              (mRow.bulan as any)[m.toString()] ||
+              (mRow.bulan as any)[BULAN_FULL[m]];
+            if (val === 'lunas') {
+              targetBulan[m] = 'lunas';
+            }
+          }
+        });
       }
 
       setIuranData(targetBulan);
       setRt(targetRt);
       setStatusHunian(targetHunian);
 
-      // Resolve Real Resident Name
+      // Resolve Real Resident Name from Profiles & Rumah list
       let realName = '';
-      if (userLabel && !userLabel.startsWith('Warga (')) {
-        realName = userLabel;
-      }
-      if (!realName && match) {
-        realName = (match as any).nama_penghuni || (match as any).nama;
-      }
-      if (!realName) {
-        try {
-          const savedProfiles = localStorage.getItem('martinez_profiles_list_v3');
-          if (savedProfiles) {
-            const profiles = JSON.parse(savedProfiles);
-            const prof = profiles.find((p: any) => cleanHouseNo(p.nomor_rumah) === targetClean);
-            if (prof && prof.nama) realName = prof.nama;
+
+      try {
+        const savedRumah = localStorage.getItem('martinez_rumah_list_v3');
+        const savedProfiles = localStorage.getItem('martinez_profiles_list_v3');
+
+        if (savedRumah && savedProfiles) {
+          const rumahList: any[] = JSON.parse(savedRumah);
+          const profilesList: any[] = JSON.parse(savedProfiles);
+
+          const targetRumah = rumahList.find(
+            (r) => cleanHouseNo(r.nomor_rumah) === targetClean
+          );
+
+          if (targetRumah) {
+            const prof = profilesList.find((p) => p.rumah_id === targetRumah.id);
+            if (prof && prof.nama && prof.nama !== 'Belum ada nama') {
+              realName = prof.nama;
+            }
           }
-        } catch (e) {}
+
+          if (!realName) {
+            const prof = profilesList.find(
+              (p) =>
+                cleanHouseNo(p.nomor_rumah || '') === targetClean ||
+                (p.rumah && cleanHouseNo(p.rumah.nomor_rumah || '') === targetClean)
+            );
+            if (prof && prof.nama && prof.nama !== 'Belum ada nama') {
+              realName = prof.nama;
+            }
+          }
+        }
+      } catch (e) {}
+
+      if (!realName && userLabel && !userLabel.startsWith('Warga (') && !userLabel.startsWith('Penghuni ')) {
+        realName = userLabel;
       }
 
       setNamaWarga(realName || `Penghuni ${houseNo}`);
