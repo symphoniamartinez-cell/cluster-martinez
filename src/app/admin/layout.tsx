@@ -31,14 +31,14 @@ const NAV_ITEMS = [
     icon: LayoutDashboard,
   },
   {
-    label: 'Data Iuran',
-    href: '/admin',
-    icon: TableProperties,
-  },
-  {
     label: 'Data Warga',
     href: '/admin/warga',
     icon: Users,
+  },
+  {
+    label: 'Data Iuran',
+    href: '/admin',
+    icon: TableProperties,
   },
   {
     label: 'Manajemen User',
