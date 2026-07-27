@@ -46,6 +46,7 @@ export default function SettingsPage() {
   const [isResetting, setIsResetting] = useState(false);
 
   const canEdit = userRole === 'superadmin' || userRole === 'pengurus';
+  const isSuperAdmin = userRole === 'superadmin';
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -58,7 +59,7 @@ export default function SettingsPage() {
   }, [showResetModal, countdown]);
 
   const handleOpenResetModal = () => {
-    if (!canEdit) return;
+    if (!isSuperAdmin) return;
     setCountdown(5);
     setShowResetModal(true);
   };
@@ -191,21 +192,23 @@ export default function SettingsPage() {
           Profil Kluster & Info Sistem
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('reset')}
-          className={`
-            flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer
-            ${
-              activeTab === 'reset'
-                ? 'bg-danger-500 text-white shadow-md shadow-danger-500/20'
-                : 'text-danger-500 hover:bg-danger-500/10'
-            }
-          `}
-        >
-          <Trash2 className="w-4 h-4" />
-          Reset All Data
-        </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('reset')}
+            className={`
+              flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer
+              ${
+                activeTab === 'reset'
+                  ? 'bg-danger-500 text-white shadow-md shadow-danger-500/20'
+                  : 'text-danger-500 hover:bg-danger-500/10'
+              }
+            `}
+          >
+            <Trash2 className="w-4 h-4" />
+            Reset All Data (Danger Zone)
+          </button>
+        )}
       </div>
 
       {/* ── TAB 1: PENGATURAN IURAN & REKENING BANK ──────────── */}
@@ -438,7 +441,7 @@ export default function SettingsPage() {
               Tindakan ini akan mengosongkan <strong>seluruh data master warga</strong>, <strong>matriks iuran bulanan</strong>, <strong>event acara kupon doorprize</strong>, dan <strong>akun tenant booth</strong> baik dari Penyimpanan Peramban Lokal maupun dari <strong>Database Cloud Supabase</strong>.
             </p>
 
-            {canEdit ? (
+            {isSuperAdmin ? (
               <div className="pt-2">
                 <button
                   type="button"
@@ -451,7 +454,7 @@ export default function SettingsPage() {
               </div>
             ) : (
               <p className="text-xs font-bold text-danger-500">
-                Akses Dibatasi: Hanya Superadmin atau Pengurus yang dapat melakukan Factory Reset.
+                Akses Dibatasi: Hanya akun Superadmin yang dapat melakukan Factory Reset.
               </p>
             )}
           </div>
