@@ -21,6 +21,7 @@ import {
 import * as XLSX from 'xlsx';
 import IuranTable from '@/components/IuranTable';
 import { getMockIuranMatrix } from '@/lib/mock-data';
+import { syncIuranMatrixToCloud, fetchIuranMatrixFromCloud } from '@/lib/db-sync';
 import type { IuranMatrixRow, UserRole, StatusIuran, Rumah } from '@/types';
 import { BULAN_LABELS, BULAN_FULL } from '@/types';
 
@@ -85,6 +86,13 @@ export default function AdminDashboardPage() {
           localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(defaultMatrix));
         }
       }
+
+      // Sync with Supabase Cloud Database if available
+      fetchIuranMatrixFromCloud().then((cloudMatrix) => {
+        if (cloudMatrix && cloudMatrix.length > 0) {
+          setData(cloudMatrix);
+        }
+      });
     } catch (e) {
       console.error('Failed to load Iuran data:', e);
       setData(getMockIuranMatrix(new Date().getFullYear()));
@@ -109,11 +117,7 @@ export default function AdminDashboardPage() {
             : row
         );
 
-        try {
-          localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(updated));
-        } catch (e) {
-          console.error(e);
-        }
+        syncIuranMatrixToCloud(updated);
         return updated;
       });
     },
@@ -282,11 +286,7 @@ export default function AdminDashboardPage() {
         });
 
         setData(updatedMatrix);
-        try {
-          localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(updatedMatrix));
-        } catch (e) {
-          console.error(e);
-        }
+        syncIuranMatrixToCloud(updatedMatrix);
 
         showToast(
           `Impor Excel Iuran Berhasil! ${rows.length} baris diproses berdasarkan Nomor Rumah: ${updatedCount} data iuran diperbarui, ${insertedCount} unit baru didaftarkan.`

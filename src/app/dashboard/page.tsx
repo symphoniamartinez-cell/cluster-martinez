@@ -31,6 +31,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import type { StatusIuran, KuponAcara, IuranMatrixRow } from '@/types';
 import { BULAN_FULL } from '@/types';
 import { getMockIuranMatrix } from '@/lib/mock-data';
+import { fetchIuranMatrixFromCloud, fetchProfilesFromCloud } from '@/lib/db-sync';
 import { getIuranConfigFromStorage, type IuranConfig } from '@/lib/config-store';
 import { getKuponsForWarga } from '@/lib/event-store';
 
@@ -85,6 +86,9 @@ export default function WargaDashboardPage() {
 
     const currentConfig = getIuranConfigFromStorage();
     setConfig(currentConfig);
+
+    fetchIuranMatrixFromCloud();
+    fetchProfilesFromCloud();
 
     try {
       const savedIuran = localStorage.getItem(STORAGE_KEY_IURAN);

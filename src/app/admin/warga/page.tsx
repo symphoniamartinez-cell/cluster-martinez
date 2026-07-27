@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import type { Profile, UserRole, Rumah, StatusHunian } from '@/types';
+import { syncProfilesToCloud, fetchProfilesFromCloud } from '@/lib/db-sync';
 import { ROLE_LABELS } from '@/types';
 
 const STORAGE_KEY_RUMAH = 'martinez_rumah_list_v3';
@@ -97,11 +98,15 @@ export default function AdminWargaPage() {
             rumah: parsedRumah.find((r) => r.id === p.rumah_id),
           }))
         );
-      } else {
-        // Master dataset starts empty until Excel template is uploaded
-        setRumahList([]);
-        setProfiles([]);
       }
+
+      // Fetch from Supabase Cloud Database if connected
+      fetchProfilesFromCloud().then((cloudRes) => {
+        if (cloudRes) {
+          setRumahList(cloudRes.rumahList);
+          setProfiles(cloudRes.profiles);
+        }
+      });
     } catch (e) {
       console.error(e);
       setRumahList([]);
@@ -116,6 +121,7 @@ export default function AdminWargaPage() {
       localStorage.setItem(STORAGE_KEY_RUMAH, JSON.stringify(updatedRumah));
       const cleanProfiles = updatedProfiles.map(({ rumah, ...rest }) => rest);
       localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(cleanProfiles));
+      syncProfilesToCloud(updatedProfiles, updatedRumah);
     } catch (err) {
       console.error('Failed to save to localStorage:', err);
     }
