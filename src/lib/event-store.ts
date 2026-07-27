@@ -188,8 +188,35 @@ export function createEventAndGenerateKupons(
       if (row.bulan[m] === 'lunas') lunasCount++;
     }
 
+    // Calculate required months based on Tanggal Masuk (Move-in date)
+    let requiredMonths = 12;
+    try {
+      if (typeof window !== 'undefined') {
+        const savedProfiles = localStorage.getItem('martinez_profiles_list_v3');
+        const savedRumah = localStorage.getItem('martinez_rumah_list_v3');
+        if (savedProfiles && savedRumah) {
+          const parsedProfiles: any[] = JSON.parse(savedProfiles);
+          const parsedRumah: any[] = JSON.parse(savedRumah);
+          const targetRumah = parsedRumah.find((r) => cleanHouseNo(r.nomor_rumah) === cleanHouseNo(row.nomor_rumah));
+          if (targetRumah) {
+            const prof = parsedProfiles.find((p) => p.rumah_id === targetRumah.id);
+            if (prof && prof.tanggal_masuk) {
+              const entryDate = new Date(prof.tanggal_masuk);
+              if (!isNaN(entryDate.getTime()) && entryDate.getFullYear() === tahun) {
+                const entryMonth = entryDate.getMonth() + 1; // 1..12
+                requiredMonths = Math.max(1, 12 - entryMonth + 1);
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    // Calculate Effective Paid Months normalized to 12-month scale
+    const effectiveMonths = Math.min(12, Math.round((lunasCount / requiredMonths) * 12));
+
     const sortedTiers = [...tiers].sort((a, b) => b.min_lunas_bulan - a.min_lunas_bulan);
-    const matchedTier = sortedTiers.find((t) => lunasCount >= t.min_lunas_bulan);
+    const matchedTier = sortedTiers.find((t) => effectiveMonths >= t.min_lunas_bulan);
 
     if (matchedTier && matchedTier.kupon_per_category) {
       let kuponSeq = 1;

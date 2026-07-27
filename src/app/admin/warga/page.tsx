@@ -71,6 +71,7 @@ export default function AdminWargaPage() {
     phone: '-',
     status_hunian: 'pemilik' as StatusHunian,
     role: 'warga' as UserRole,
+    tanggal_masuk: new Date().toISOString().split('T')[0],
   });
 
   const canEdit = userRole === 'superadmin' || userRole === 'pengurus';
@@ -232,10 +233,24 @@ export default function AdminWargaPage() {
   const generateKode = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = 'MTZ-';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 5; i++) {
       code += chars[Math.floor(Math.random() * chars.length)];
     }
     return code;
+  };
+
+  // Bulk format all existing activation codes to MTZ-XXXXX
+  const handleBulkFormatKode = () => {
+    if (!canEdit) return;
+    if (confirm('Format ulang seluruh kode aktivasi warga ke format resmi MTZ-XXXXX?')) {
+      const updatedProfiles = profiles.map((p) => ({
+        ...p,
+        kode_aktivasi: generateKode(),
+      }));
+      setProfiles(updatedProfiles);
+      saveStateToStorage(rumahList, updatedProfiles);
+      showToast('☁️ Seluruh kode aktivasi berhasil diformat ke MTZ-XXXXX & tersimpan di Cloud Supabase!');
+    }
   };
 
   // ── Open Regenerate Confirmation Modal ───────────────────
@@ -273,6 +288,7 @@ export default function AdminWargaPage() {
       phone: profile.phone || '-',
       status_hunian: profile.rumah?.status_hunian || 'pemilik',
       role: profile.role,
+      tanggal_masuk: profile.tanggal_masuk || profile.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
     });
     setShowForm(true);
   };
@@ -296,6 +312,7 @@ export default function AdminWargaPage() {
             rumah_id: formData.rumah_id,
             phone: formData.phone,
             role: formData.role,
+            tanggal_masuk: formData.tanggal_masuk,
             rumah: {
               id: formData.rumah_id,
               nomor_rumah:
@@ -314,7 +331,7 @@ export default function AdminWargaPage() {
 
     setShowForm(false);
     setEditingId(null);
-    showToast('Data warga berhasil disimpan!');
+    showToast('Data warga & Tanggal Masuk berhasil disimpan ke Cloud Supabase!');
   };
 
   const handleCopyCode = (code: string) => {
@@ -580,6 +597,16 @@ export default function AdminWargaPage() {
             >
               <Download className="w-4 h-4 text-surface-500" />
               Template Excel
+            </button>
+
+            {/* Format Kode MTZ-XXXXX Button */}
+            <button
+              onClick={handleBulkFormatKode}
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 hover:bg-primary-500/20 rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
+              title="Format ulang seluruh kode aktivasi ke MTZ-XXXXX"
+            >
+              <Key className="w-4 h-4" />
+              Format Kode MTZ-XXXXX
             </button>
 
             {/* Excel Upload Button */}
@@ -1129,6 +1156,23 @@ export default function AdminWargaPage() {
                   placeholder="08xxxxxxxxxx"
                   className="w-full px-4 py-2.5 border border-surface-200 dark:border-surface-700 rounded-xl text-sm bg-white dark:bg-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-surface-900 dark:text-white">
+                  Tanggal Masuk Penghuni
+                </label>
+                <input
+                  type="date"
+                  value={formData.tanggal_masuk}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tanggal_masuk: e.target.value })
+                  }
+                  className="w-full px-4 py-2.5 border border-surface-200 dark:border-surface-700 rounded-xl text-sm bg-white dark:bg-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all font-mono font-bold text-primary-600 dark:text-primary-400"
+                />
+                <p className="text-[11px] text-surface-700/50 dark:text-surface-200/40 mt-1">
+                  Tanggal masuk menentukan bulan awal kewajiban iuran & perhitungan persentase kelayakan kupon acara.
+                </p>
               </div>
             </div>
 
