@@ -110,7 +110,11 @@ export default function LoginPage() {
           JSON.stringify(sessionData)
         )}; path=/; max-age=86400`;
 
-        router.push('/admin/dashboard');
+        if (res.user.role === 'penjaga_ch') {
+          router.push('/toko');
+        } else {
+          router.push('/admin/dashboard');
+        }
       } else {
         setErrorAdmin(res.error || 'Username atau password admin salah.');
       }

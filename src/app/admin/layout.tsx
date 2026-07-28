@@ -69,6 +69,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   bendahara: 'bg-gradient-to-r from-success-500 to-success-600 text-white',
   warga: 'bg-gradient-to-r from-surface-700 to-surface-800 text-white',
   booth: 'bg-gradient-to-r from-accent-500 to-primary-500 text-white',
+  penjaga_ch: 'bg-gradient-to-r from-cyan-500 to-teal-500 text-white',
 };
 
 export default function AdminLayout({

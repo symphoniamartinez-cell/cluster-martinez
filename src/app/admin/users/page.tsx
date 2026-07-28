@@ -42,6 +42,7 @@ const ROLE_BADGE_COLORS: Record<UserRole, string> = {
   bendahara: 'bg-success-500/10 text-success-600 dark:text-success-400 border-success-500/20',
   warga: 'bg-surface-200/50 text-surface-700 dark:bg-surface-800 dark:text-surface-300 border-surface-300',
   booth: 'bg-accent-500/10 text-accent-600 dark:text-accent-400 border-accent-500/20',
+  penjaga_ch: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
 };
 
 export default function UserManagementPage() {
@@ -604,6 +605,7 @@ export default function UserManagementPage() {
                 >
                   <option value="pengurus">Pengurus (Kelola Data Warga)</option>
                   <option value="bendahara">Bendahara (Kelola Status Iuran)</option>
+                  <option value="penjaga_ch">Penjaga Clubhouse (Akses Kasir Toko)</option>
                   {currentUserRole === 'superadmin' && (
                     <option value="superadmin">Super Admin (Akses Penuh)</option>
                   )}

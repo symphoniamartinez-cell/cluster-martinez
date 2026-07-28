@@ -2,7 +2,7 @@
 // Super App Cluster Martinez — Type Definitions
 // ============================================================
 
-export type UserRole = 'superadmin' | 'pengurus' | 'bendahara' | 'warga' | 'booth';
+export type UserRole = 'superadmin' | 'pengurus' | 'bendahara' | 'warga' | 'booth' | 'penjaga_ch';
 
 export type StatusHunian = 'pemilik' | 'penyewa' | 'kosong' | 'dihuni' | 'disewakan';
 
@@ -233,4 +233,5 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   bendahara: 'Bendahara',
   warga: 'Warga',
   booth: 'Tenant / Booth Makanan',
+  penjaga_ch: 'Penjaga Clubhouse',
 };

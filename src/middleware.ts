@@ -14,6 +14,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   bendahara: ['/admin', '/booth'],
   warga: ['/dashboard'],
   booth: ['/booth'],
+  penjaga_ch: ['/toko'],
 };
 
 export async function middleware(request: NextRequest) {
