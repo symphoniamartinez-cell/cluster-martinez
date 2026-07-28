@@ -31,7 +31,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import type { StatusIuran, KuponAcara, IuranMatrixRow } from '@/types';
 import { BULAN_FULL } from '@/types';
 import { getMockIuranMatrix } from '@/lib/mock-data';
-import { fetchIuranMatrixFromCloud, fetchProfilesFromCloud } from '@/lib/db-sync';
+import { fetchIuranMatrixFromCloud, fetchProfilesFromCloud, fetchKuponsFromCloud } from '@/lib/db-sync';
 import { getIuranConfigFromStorage, type IuranConfig } from '@/lib/config-store';
 import { getKuponsForWarga } from '@/lib/event-store';
 
@@ -141,6 +141,13 @@ export default function WargaDashboardPage() {
             setTanggalMasuk(prof.tanggal_masuk);
           }
         }
+      }
+    });
+
+    // 3. Fetch Cloud Kupons for this house number
+    fetchKuponsFromCloud(houseNo).then((cloudKupons) => {
+      if (cloudKupons && cloudKupons.length > 0) {
+        setKupons(cloudKupons);
       }
     });
 
@@ -357,9 +364,11 @@ export default function WargaDashboardPage() {
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl border-b border-surface-200 dark:border-surface-800">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 shadow-md">
-              <Building2 className="w-4.5 h-4.5 text-white" />
-            </div>
+            <img
+              src="/logo.jpg"
+              alt="Martinez Logo"
+              className="w-9 h-9 rounded-xl object-contain bg-white p-1 shadow-md border border-surface-200 dark:border-surface-700"
+            />
             <div>
               <h1 className="text-sm font-bold tracking-tight text-surface-900 dark:text-white">
                 Cluster Martinez
@@ -642,13 +651,22 @@ export default function WargaDashboardPage() {
                       {kupon.kode_kupon}
                     </p>
                     {kupon.is_used ? (
-                      <span className="mt-2 inline-block px-2 py-0.5 bg-surface-300/50 dark:bg-surface-700 text-surface-600 dark:text-surface-300 border border-surface-400/30 rounded-full text-[9px] font-bold uppercase">
-                        🔴 SUDAH DIGUNAKAN
-                      </span>
+                      <div className="mt-2">
+                        <span className="inline-block px-2 py-0.5 bg-danger-500/10 text-danger-600 dark:text-danger-400 border border-danger-500/20 rounded-full text-[9px] font-bold uppercase">
+                          🔴 SUDAH DIGUNAKAN
+                        </span>
+                        {kupon.used_by_booth_nama && (
+                          <p className="text-[9px] text-surface-500 mt-0.5 font-medium truncate">
+                            {kupon.used_by_booth_nama}
+                          </p>
+                        )}
+                      </div>
                     ) : (
-                      <span className="mt-2 inline-block px-2 py-0.5 bg-success-500/10 text-success-600 dark:text-success-400 border border-success-500/20 rounded-full text-[9px] font-bold uppercase">
-                        🟢 SIAP DIGUNAKAN
-                      </span>
+                      <div className="mt-2">
+                        <span className="inline-block px-2 py-0.5 bg-success-500/10 text-success-600 dark:text-success-400 border border-success-500/20 rounded-full text-[9px] font-bold uppercase">
+                          🟢 BELUM DIGUNAKAN
+                        </span>
+                      </div>
                     )}
                   </button>
                 ))}

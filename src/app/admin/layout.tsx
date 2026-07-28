@@ -114,9 +114,11 @@ export default function AdminLayout({
       >
         {/* Brand */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-500/20">
-            <Building2 className="w-5 h-5 text-white" />
-          </div>
+          <img
+            src="/logo.jpg"
+            alt="Martinez Logo"
+            className="w-10 h-10 rounded-xl object-contain bg-white p-1 shadow-md border border-white/20"
+          />
           <div>
             <h2 className="text-sm font-bold tracking-tight">Cluster Martinez</h2>
             <p className="text-xs text-surface-200/50">Admin Panel</p>

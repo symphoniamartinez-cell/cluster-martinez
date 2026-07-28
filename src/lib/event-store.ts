@@ -6,6 +6,7 @@
 // ============================================================
 
 import type { EventAcara, KuponAcara, IuranMatrixRow, CouponRules, TenantBooth, KuponCategory, DynamicCouponRuleTier } from '@/types';
+import { syncEventsAndKuponsToCloud } from '@/lib/db-sync';
 
 const STORAGE_KEY_EVENTS = 'martinez_events_v1';
 const STORAGE_KEY_KUPONS = 'martinez_kupons_v1';
@@ -68,6 +69,7 @@ export function saveEventsToStorage(events: EventAcara[]) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
+    syncEventsAndKuponsToCloud(events, getKuponsFromStorage(), getBoothsFromStorage());
   } catch (e) {
     console.error(e);
   }
@@ -94,6 +96,7 @@ export function saveKuponsToStorage(kupons: KuponAcara[]) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_KUPONS, JSON.stringify(kupons));
+    syncEventsAndKuponsToCloud(getEventsFromStorage(), kupons, getBoothsFromStorage());
   } catch (e) {
     console.error(e);
   }
@@ -120,6 +123,7 @@ export function saveBoothsToStorage(booths: TenantBooth[]) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_BOOTHS, JSON.stringify(booths));
+    syncEventsAndKuponsToCloud(getEventsFromStorage(), getKuponsFromStorage(), booths);
   } catch (e) {
     console.error(e);
   }

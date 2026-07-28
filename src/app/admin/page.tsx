@@ -17,6 +17,7 @@ import {
   FileSpreadsheet,
   Download,
   Check,
+  Clock,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import IuranTable from '@/components/IuranTable';
@@ -34,6 +35,7 @@ export default function AdminDashboardPage() {
   const [userName, setUserName] = useState('Admin');
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [lastUpdatedStr, setLastUpdatedStr] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,6 +43,22 @@ export default function AdminDashboardPage() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
   };
+
+  const updateLastUpdatedTimestamp = useCallback(() => {
+    const newTimeStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }) + ', ' + new Date().toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }) + ' WIB';
+
+    setLastUpdatedStr(newTimeStr);
+    try {
+      localStorage.setItem('martinez_iuran_last_updated', newTimeStr);
+    } catch (e) {}
+  }, []);
 
   // Load user session & Iuran matrix from LocalStorage
   const loadIuranData = useCallback(() => {
@@ -53,6 +71,9 @@ export default function AdminDashboardPage() {
     }
 
     try {
+      const savedTime = localStorage.getItem('martinez_iuran_last_updated');
+      if (savedTime) setLastUpdatedStr(savedTime);
+
       const savedIuran = localStorage.getItem(STORAGE_KEY_IURAN);
       if (savedIuran) {
         const matrix: IuranMatrixRow[] = JSON.parse(savedIuran);
@@ -118,10 +139,11 @@ export default function AdminDashboardPage() {
         );
 
         syncIuranMatrixToCloud(updated);
+        updateLastUpdatedTimestamp();
         return updated;
       });
     },
-    []
+    [updateLastUpdatedTimestamp]
   );
 
   const handleRefresh = () => {
@@ -286,6 +308,7 @@ export default function AdminDashboardPage() {
         });
 
         setData(updatedMatrix);
+        updateLastUpdatedTimestamp();
         syncIuranMatrixToCloud(updatedMatrix).then((res) => {
           if (res.success) {
             showToast(
@@ -432,8 +455,9 @@ export default function AdminDashboardPage() {
                   </span>
                 )}
               </div>
-              <p className="text-sm text-surface-700/60 dark:text-surface-200/50">
-                Matriks pembayaran iuran bulanan warga — filter Blok (MTNU1/MTNU2/MTNU3/MTNR/MTNS1-6) & RT
+              <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 mt-1 flex items-center gap-1.5 font-mono">
+                <Clock className="w-3.5 h-3.5" />
+                Terakhir Diperbarui: {lastUpdatedStr || '28 Juli 2026, 09:30 WIB'}
               </p>
             </div>
           </div>

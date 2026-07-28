@@ -2,9 +2,10 @@
 
 // ============================================================
 // Login Page — /login
-// Dedicated Login Modes:
-// 1. Warga Login — Nomor Rumah + Kode Aktivasi
-// 2. Admin Login — Username + Password (Default: Martinez.2021)
+// Main Form: Portal Warga (Nomor Rumah & Password)
+// Direct Links Below for:
+// 1. Login Pengurus / Admin (Modal Popup)
+// 2. Login Tenant Booth Event (Modal Popup)
 // Super App Cluster Martinez
 // ============================================================
 
@@ -16,35 +17,46 @@ import {
   KeyRound,
   LogIn,
   Loader2,
-  Building2,
   ShieldCheck,
   Eye,
   EyeOff,
-  Info,
   ShieldAlert,
+  Store,
+  X,
+  UserCog,
 } from 'lucide-react';
 import { authenticateAdmin, authenticateWarga } from '@/lib/user-store';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [loginTab, setLoginTab] = useState<'warga' | 'admin'>('warga');
 
-  // Warga Form State
+  // Warga Main Form State
   const [nomorRumah, setNomorRumah] = useState('');
   const [kodeAktivasi, setKodeAktivasi] = useState('');
+  const [loadingWarga, setLoadingWarga] = useState(false);
+  const [errorWarga, setErrorWarga] = useState('');
 
-  // Admin Form State
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  // Admin Modal State
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminPass, setShowAdminPass] = useState(false);
+  const [loadingAdmin, setLoadingAdmin] = useState(false);
+  const [errorAdmin, setErrorAdmin] = useState('');
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  // Booth Modal State
+  const [showBoothModal, setShowBoothModal] = useState(false);
+  const [boothUsername, setBoothUsername] = useState('');
+  const [boothPassword, setBoothPassword] = useState('');
+  const [showBoothPass, setShowBoothPass] = useState(false);
+  const [loadingBooth, setLoadingBooth] = useState(false);
+  const [errorBooth, setErrorBooth] = useState('');
 
+  // ── Warga Login Submit ─────────────────────────────────────
   const handleWargaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setErrorWarga('');
+    setLoadingWarga(true);
 
     try {
       await new Promise((r) => setTimeout(r, 400));
@@ -65,23 +77,24 @@ export default function LoginPage() {
 
         router.push('/dashboard');
       } else {
-        setError(res.error || 'Nomor rumah atau kode aktivasi salah.');
+        setErrorWarga(res.error || 'Nomor rumah atau password warga salah.');
       }
     } catch {
-      setError('Terjadi kesalahan. Silakan coba lagi.');
+      setErrorWarga('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
-      setLoading(false);
+      setLoadingWarga(false);
     }
   };
 
+  // ── Admin Login Submit ─────────────────────────────────────
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setErrorAdmin('');
+    setLoadingAdmin(true);
 
     try {
       await new Promise((r) => setTimeout(r, 400));
-      const res = authenticateAdmin(username, password);
+      const res = authenticateAdmin(adminUsername, adminPassword);
 
       if (res.success && res.user) {
         const sessionData = {
@@ -102,220 +115,258 @@ export default function LoginPage() {
           router.push('/admin');
         }
       } else {
-        setError(res.error || 'Username atau password admin salah.');
+        setErrorAdmin(res.error || 'Username atau password admin salah.');
       }
     } catch {
-      setError('Terjadi kesalahan. Silakan coba lagi.');
+      setErrorAdmin('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
-      setLoading(false);
+      setLoadingAdmin(false);
+    }
+  };
+
+  // ── Booth Login Submit ─────────────────────────────────────
+  const handleBoothSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorBooth('');
+    setLoadingBooth(true);
+
+    try {
+      await new Promise((r) => setTimeout(r, 400));
+      const res = authenticateAdmin(boothUsername, boothPassword);
+
+      if (res.success && res.user && res.user.role === 'booth') {
+        const sessionData = {
+          id: res.user.id,
+          label: res.user.nama,
+          nomor: res.user.username,
+          role: 'booth',
+        };
+
+        sessionStorage.setItem('demo_user', JSON.stringify(sessionData));
+        document.cookie = `demo_user=${encodeURIComponent(
+          JSON.stringify(sessionData)
+        )}; path=/; max-age=86400`;
+
+        router.push('/booth');
+      } else if (res.success && res.user) {
+        setErrorBooth('Akun ini adalah akun Admin. Silakan login via tab Pengurus.');
+      } else {
+        setErrorBooth(res.error || 'Username booth atau password booth salah.');
+      }
+    } catch {
+      setErrorBooth('Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
+      setLoadingBooth(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-surface-950">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary-900 via-surface-900 to-accent-600/30" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-950 via-surface-950 to-accent-950/40" />
 
       {/* Animated background orbs */}
-      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary-500/20 rounded-full blur-3xl animate-pulse-soft" />
+      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse-soft" />
       <div
-        className="absolute bottom-1/4 -right-32 w-96 h-96 bg-accent-500/20 rounded-full blur-3xl animate-pulse-soft"
+        className="absolute bottom-1/4 -right-32 w-96 h-96 bg-accent-500/10 rounded-full blur-3xl animate-pulse-soft"
         style={{ animationDelay: '1s' }}
       />
 
-      <div className="relative w-full max-w-md animate-fade-in">
+      <div className="relative w-full max-w-md animate-fade-in my-8">
         {/* Logo Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 mb-3 shadow-lg shadow-primary-500/30">
-            <Building2 className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <img
+            src="/logo.jpg"
+            alt="Cluster Martinez Logo"
+            className="w-20 h-20 rounded-2xl mx-auto mb-3 object-contain bg-white p-2 shadow-2xl shadow-primary-500/20 border border-white/20"
+          />
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">
             Cluster Martinez
           </h1>
-          <p className="text-surface-200/70 text-sm mt-1">
+          <p className="text-surface-300 text-xs mt-1 font-medium">
             Super App Manajemen Warga & Iuran
           </p>
         </div>
 
-        {/* Login Card */}
-        <div className="glass-card rounded-2xl p-6 lg:p-8 shadow-2xl">
-          {/* Tab Selector: Warga vs Admin */}
-          <div className="flex bg-white/5 p-1 rounded-xl mb-6 border border-white/10">
-            <button
-              type="button"
-              onClick={() => {
-                setLoginTab('warga');
-                setError('');
-              }}
-              className={`
-                flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer
-                ${
-                  loginTab === 'warga'
-                    ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md'
-                    : 'text-surface-200/60 hover:text-white'
-                }
-              `}
-            >
-              <Home className="w-4 h-4" />
-              Portal Warga
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setLoginTab('admin');
-                setError('');
-              }}
-              className={`
-                flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer
-                ${
-                  loginTab === 'admin'
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
-                    : 'text-surface-200/60 hover:text-white'
-                }
-              `}
-            >
-              <ShieldAlert className="w-4 h-4" />
-              Login Admin / Pengurus
-            </button>
+        {/* ── MAIN CARD: PORTAL WARGA LOGIN FORM ──────────────── */}
+        <div className="glass-card rounded-3xl p-6 lg:p-8 shadow-2xl border border-white/10 bg-surface-900/80 backdrop-blur-xl">
+          <div className="flex items-center justify-center gap-2 mb-6 pb-4 border-b border-white/10 text-center">
+            <ShieldCheck className="w-5 h-5 text-primary-400" />
+            <h2 className="text-base font-bold text-white">
+              Login Portal Warga
+            </h2>
           </div>
 
-          {/* ── MODE 1: LOGIN WARGA (Nomor Rumah + Kode Aktivasi) ── */}
-          {loginTab === 'warga' ? (
-            <form onSubmit={handleWargaSubmit} className="space-y-5">
-              <div className="flex items-center gap-2 mb-2">
-                <ShieldCheck className="w-4 h-4 text-primary-400" />
-                <h2 className="text-sm font-semibold text-white">
-                  Masuk Portal Warga (Nomor Rumah & Password)
-                </h2>
-              </div>
-
-              {/* Nomor Rumah */}
-              <div>
-                <label
-                  htmlFor="nomor-rumah"
-                  className="block text-xs font-medium text-surface-200/80 mb-1.5"
-                >
-                  Nomor Rumah
-                </label>
-                <div className="relative">
-                  <Home className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-200/40" />
-                  <input
-                    id="nomor-rumah"
-                    type="text"
-                    value={nomorRumah}
-                    onChange={(e) => setNomorRumah(e.target.value)}
-                    placeholder="Contoh: MTNU3/2"
-                    required
-                    className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-200/30 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold"
-                  />
-                </div>
-              </div>
-
-              {/* Password Warga */}
-              <div>
-                <label
-                  htmlFor="kode-aktivasi"
-                  className="block text-xs font-medium text-surface-200/80 mb-1.5"
-                >
-                  Password Warga
-                </label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-200/40" />
-                  <input
-                    id="kode-aktivasi"
-                    type="text"
-                    value={kodeAktivasi}
-                    onChange={(e) => setKodeAktivasi(e.target.value)}
-                    placeholder="Masukkan Password (contoh: MTZ-7K9P2)"
-                    required
-                    className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-200/30 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold tracking-wider"
-                  />
-                </div>
-                <p className="text-[11px] text-surface-200/40 mt-1">
-                  Password Warga didapatkan dari Pengurus / Pengurus RT Anda.
-                </p>
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="flex items-center gap-2 p-3 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-400 text-xs animate-fade-in">
-                  <ShieldAlert className="w-4 h-4 flex-shrink-0" />
-                  {error}
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer text-sm"
+          <form onSubmit={handleWargaSubmit} className="space-y-5">
+            {/* Nomor Rumah */}
+            <div>
+              <label
+                htmlFor="nomor-rumah"
+                className="block text-xs font-semibold text-surface-200/90 mb-1.5"
               >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <LogIn className="w-5 h-5" />
-                )}
-                {loading ? 'Memproses...' : 'Masuk Portal Warga'}
-              </button>
-            </form>
-          ) : (
-            /* ── MODE 2: LOGIN ADMIN (Username + Password) ── */
-            <form onSubmit={handleAdminSubmit} className="space-y-5">
-              <div className="flex items-center gap-2 mb-2">
-                <ShieldCheck className="w-4 h-4 text-amber-400" />
-                <h2 className="text-sm font-semibold text-white">
-                  Login Admin (Superadmin / Pengurus / Bendahara)
-                </h2>
+                Nomor Rumah
+              </label>
+              <div className="relative">
+                <Home className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                <input
+                  id="nomor-rumah"
+                  type="text"
+                  value={nomorRumah}
+                  onChange={(e) => setNomorRumah(e.target.value)}
+                  placeholder="Contoh: MTNU3/2 atau MTNR/11"
+                  required
+                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold"
+                />
               </div>
+            </div>
 
-              {/* Username */}
+            {/* Password Warga */}
+            <div>
+              <label
+                htmlFor="kode-aktivasi"
+                className="block text-xs font-semibold text-surface-200/90 mb-1.5"
+              >
+                Password Warga
+              </label>
+              <div className="relative">
+                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                <input
+                  id="kode-aktivasi"
+                  type="text"
+                  value={kodeAktivasi}
+                  onChange={(e) => setKodeAktivasi(e.target.value)}
+                  placeholder="Masukkan Password (contoh: MTZ-7K9P2)"
+                  required
+                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold tracking-wider"
+                />
+              </div>
+              <p className="text-[11px] text-surface-400 mt-1">
+                Password Warga didapatkan dari Pengurus / Ketua RT Anda.
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {errorWarga && (
+              <div className="flex items-center gap-2 p-3.5 bg-danger-500/10 border border-danger-500/20 rounded-2xl text-danger-400 text-xs animate-fade-in font-medium">
+                <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+                {errorWarga}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loadingWarga}
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white font-bold rounded-2xl shadow-lg shadow-primary-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer text-sm"
+            >
+              {loadingWarga ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <LogIn className="w-5 h-5" />
+              )}
+              {loadingWarga ? 'Memproses Login...' : 'Masuk Portal Warga'}
+            </button>
+          </form>
+        </div>
+
+        {/* ── SECONDARY LOGIN LINKS BELOW (Pengurus & Booth Tenant) ── */}
+        <div className="mt-6 space-y-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              setShowAdminModal(true);
+              setErrorAdmin('');
+            }}
+            className="w-full flex items-center justify-between px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-xs font-semibold text-surface-200 transition-all cursor-pointer group"
+          >
+            <span className="flex items-center gap-2">
+              <UserCog className="w-4 h-4 text-amber-400" />
+              Login sebagai <strong>Pengurus / Admin</strong>
+            </span>
+            <span className="text-[11px] text-amber-400 group-hover:underline">
+              Buka Login Admin &rarr;
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowBoothModal(true);
+              setErrorBooth('');
+            }}
+            className="w-full flex items-center justify-between px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-xs font-semibold text-surface-200 transition-all cursor-pointer group"
+          >
+            <span className="flex items-center gap-2">
+              <Store className="w-4 h-4 text-accent-400" />
+              Login sebagai <strong>Tenant Booth Event</strong>
+            </span>
+            <span className="text-[11px] text-accent-400 group-hover:underline">
+              Buka Login Booth &rarr;
+            </span>
+          </button>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-surface-400 mt-6">
+          © 2026 Cluster Martinez. All rights reserved.
+        </p>
+      </div>
+
+      {/* ── MODAL 1: LOGIN PENGURUS / ADMIN ───────────────────── */}
+      {showAdminModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-md bg-surface-900 border border-white/10 rounded-3xl p-6 shadow-2xl text-white">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <UserCog className="w-5 h-5 text-amber-400" />
+                <h3 className="text-base font-bold">Login Pengurus / Admin</h3>
+              </div>
+              <button
+                onClick={() => setShowAdminModal(false)}
+                className="p-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAdminSubmit} className="space-y-4">
               <div>
-                <label
-                  htmlFor="admin-username"
-                  className="block text-xs font-medium text-surface-200/80 mb-1.5"
-                >
+                <label className="block text-xs font-medium text-surface-200 mb-1.5">
                   Username Admin
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-200/40" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
                   <input
-                    id="admin-username"
                     type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={adminUsername}
+                    onChange={(e) => setAdminUsername(e.target.value)}
                     placeholder="ADMIN / PENGURUS / BENDAHARA"
                     required
-                    className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-200/30 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all font-mono font-bold uppercase"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 font-mono font-bold uppercase text-sm"
                   />
                 </div>
               </div>
 
-              {/* Password */}
               <div>
-                <label
-                  htmlFor="admin-password"
-                  className="block text-xs font-medium text-surface-200/80 mb-1.5"
-                >
+                <label className="block text-xs font-medium text-surface-200 mb-1.5">
                   Password Admin
                 </label>
                 <div className="relative">
-                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-200/40" />
+                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
                   <input
-                    id="admin-password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    type={showAdminPass ? 'text' : 'password'}
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
                     placeholder="Masukkan password admin"
                     required
-                    className="w-full pl-10 pr-10 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-200/30 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all font-mono font-medium"
+                    className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 font-mono text-sm"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-surface-200/40 hover:text-white transition-colors cursor-pointer"
+                    onClick={() => setShowAdminPass(!showAdminPass)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-surface-400 hover:text-white cursor-pointer"
                   >
-                    {showPassword ? (
+                    {showAdminPass ? (
                       <EyeOff className="w-4 h-4" />
                     ) : (
                       <Eye className="w-4 h-4" />
@@ -324,36 +375,114 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Error Message */}
-              {error && (
-                <div className="flex items-center gap-2 p-3 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-400 text-xs animate-fade-in">
-                  <ShieldAlert className="w-4 h-4 flex-shrink-0" />
-                  {error}
+              {errorAdmin && (
+                <div className="p-3 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-400 text-xs font-medium">
+                  {errorAdmin}
                 </div>
               )}
 
-              {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer text-sm"
+                disabled={loadingAdmin}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/25 disabled:opacity-50 cursor-pointer text-sm"
               >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                {loadingAdmin ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <LogIn className="w-5 h-5" />
+                  <LogIn className="w-4 h-4" />
                 )}
-                {loading ? 'Memproses...' : 'Masuk Dashboard Admin'}
+                {loadingAdmin ? 'Memproses...' : 'Masuk Dashboard Admin'}
               </button>
             </form>
-          )}
+          </div>
         </div>
+      )}
 
-        {/* Footer */}
-        <p className="text-center text-xs text-surface-200/30 mt-6">
-          © 2026 Cluster Martinez. All rights reserved.
-        </p>
-      </div>
+      {/* ── MODAL 2: LOGIN TENANT BOOTH EVENT ──────────────────── */}
+      {showBoothModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-md bg-surface-900 border border-white/10 rounded-3xl p-6 shadow-2xl text-white">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <Store className="w-5 h-5 text-accent-400" />
+                <h3 className="text-base font-bold">Login Tenant Booth Event</h3>
+              </div>
+              <button
+                onClick={() => setShowBoothModal(false)}
+                className="p-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleBoothSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-surface-200 mb-1.5">
+                  Username / Nama Booth Tenant
+                </label>
+                <div className="relative">
+                  <Store className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <input
+                    type="text"
+                    value={boothUsername}
+                    onChange={(e) => setBoothUsername(e.target.value)}
+                    placeholder="Contoh: BOOTH_KULINER1"
+                    required
+                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-accent-500/50 font-mono font-bold uppercase text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-surface-200 mb-1.5">
+                  Password Booth
+                </label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <input
+                    type={showBoothPass ? 'text' : 'password'}
+                    value={boothPassword}
+                    onChange={(e) => setBoothPassword(e.target.value)}
+                    placeholder="Masukkan password booth"
+                    required
+                    className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-accent-500/50 font-mono text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowBoothPass(!showBoothPass)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-surface-400 hover:text-white cursor-pointer"
+                  >
+                    {showBoothPass ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {errorBooth && (
+                <div className="p-3 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-400 text-xs font-medium">
+                  {errorBooth}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loadingBooth}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-accent-500 to-primary-500 hover:from-accent-600 hover:to-primary-600 text-white font-bold rounded-xl shadow-lg shadow-accent-500/25 disabled:opacity-50 cursor-pointer text-sm"
+              >
+                {loadingBooth ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <LogIn className="w-4 h-4" />
+                )}
+                {loadingBooth ? 'Memproses...' : 'Masuk Dashboard Booth'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

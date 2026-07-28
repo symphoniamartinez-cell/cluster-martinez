@@ -261,3 +261,78 @@ export async function fetchProfilesFromCloud(): Promise<{ profiles: Profile[]; r
     return null;
   }
 }
+
+// ── 3. EVENTS & KUPONS CLOUD SYNC ───────────────────────────
+export async function syncEventsAndKuponsToCloud(
+  events: any[],
+  kupons: any[],
+  booths: any[]
+) {
+  const client = createClient();
+  if (!client) return;
+
+  try {
+    if (events && events.length > 0) {
+      const evtRecords = events.map((e) => ({
+        id: e.id,
+        nama_event: e.nama_event,
+        nama_kupon: e.nama_kupon,
+        tanggal_event: e.tanggal_event,
+        lokasi_event: e.lokasi_event,
+        is_active: e.is_active,
+        rules: e.rules,
+        created_at: e.created_at,
+      }));
+      await client.from('events').upsert(evtRecords, { onConflict: 'id' });
+    }
+
+    if (booths && booths.length > 0) {
+      const bthRecords = booths.map((b) => ({
+        id: b.id,
+        event_id: b.event_id,
+        nama_booth: b.nama_booth,
+        username: b.username,
+        password: b.password,
+        created_at: b.created_at,
+      }));
+      await client.from('tenant_booths').upsert(bthRecords, { onConflict: 'id' });
+    }
+
+    if (kupons && kupons.length > 0) {
+      const kpnRecords = kupons.map((k) => ({
+        id: k.id,
+        event_id: k.event_id,
+        nama_event: k.nama_event,
+        nama_kupon: k.nama_kupon,
+        warga_id: k.warga_id,
+        nomor_rumah: k.nomor_rumah,
+        kode_kupon: k.kode_kupon,
+        is_used: k.is_used,
+        used_at: k.used_at,
+        used_by_booth_id: k.used_by_booth_id,
+        used_by_booth_nama: k.used_by_booth_nama,
+        created_at: k.created_at,
+      }));
+      await client.from('kupons').upsert(kpnRecords, { onConflict: 'id' });
+    }
+  } catch (e) {
+    console.error('syncEventsAndKuponsToCloud error:', e);
+  }
+}
+
+export async function fetchKuponsFromCloud(nomorRumahInput?: string): Promise<any[] | null> {
+  const client = createClient();
+  if (!client) return null;
+
+  try {
+    const { data } = await client.from('kupons').select('*');
+    if (!data) return null;
+    if (nomorRumahInput) {
+      const targetClean = cleanHouseNo(nomorRumahInput);
+      return data.filter((k) => cleanHouseNo(k.nomor_rumah) === targetClean);
+    }
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
