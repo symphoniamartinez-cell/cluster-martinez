@@ -108,7 +108,7 @@ export default function SettingsPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleSaveConfig = (e: React.FormEvent) => {
+  const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) return;
 
@@ -122,13 +122,22 @@ export default function SettingsPage() {
       updated_at: new Date().toISOString(),
     };
 
-    saveIuranConfigToStorage(updated);
     setConfig(updated);
-    showToast(
-      `Pengaturan iuran berhasil disimpan! Tarif Rp ${config.nominal_per_bulan.toLocaleString(
-        'id-ID'
-      )} / bulan (Rp ${(config.nominal_per_bulan * 12).toLocaleString('id-ID')} / tahun).`
-    );
+    
+    // Save and wait for cloud sync result
+    const res = await saveIuranConfigToStorage(updated);
+    
+    if (res && res.cloudOk === false) {
+      showToast(
+        `⚠️ Tersimpan di Lokal, tapi GAGAL ke Cloud Supabase: ${res.error}`
+      );
+    } else {
+      showToast(
+        `✅ Pengaturan iuran berhasil disimpan! Tarif Rp ${config.nominal_per_bulan.toLocaleString(
+          'id-ID'
+        )} / bulan (Rp ${(config.nominal_per_bulan * 12).toLocaleString('id-ID')} / tahun).`
+      );
+    }
   };
 
   return (

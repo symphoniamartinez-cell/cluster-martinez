@@ -305,7 +305,7 @@ export default function CreateEventPage() {
   };
 
   // Final Execute Event Creation
-  const handleFinalExecute = () => {
+  const handleFinalExecute = async () => {
     try {
       const savedIuran = localStorage.getItem(STORAGE_KEY_IURAN);
       let matrix: IuranMatrixRow[] = [];
@@ -313,7 +313,7 @@ export default function CreateEventPage() {
         matrix = JSON.parse(savedIuran);
       }
 
-      createEventAndGenerateKupons(
+      const res = await createEventAndGenerateKupons(
         {
           nama_event: namaEvent,
           nama_kupon: namaKupon,
@@ -324,6 +324,10 @@ export default function CreateEventPage() {
         },
         matrix
       );
+
+      if (res.cloudOk === false) {
+        alert(`⚠️ Event berhasil dibuat di lokal, namun GAGAL di-sync ke Cloud: ${res.error}. Warga belum bisa melihat kupon ini.`);
+      }
 
       router.push('/admin/events');
     } catch (err) {

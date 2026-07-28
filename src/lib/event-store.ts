@@ -6,7 +6,7 @@
 // ============================================================
 
 import type { EventAcara, KuponAcara, IuranMatrixRow, CouponRules, TenantBooth, KuponCategory, DynamicCouponRuleTier } from '@/types';
-import { syncEventsAndKuponsToCloud } from '@/lib/db-sync';
+import { createClient } from '@/lib/supabase/client';
 
 const STORAGE_KEY_EVENTS = 'martinez_events_v1';
 const STORAGE_KEY_KUPONS = 'martinez_kupons_v1';
@@ -36,9 +36,7 @@ export const DEFAULT_RULES: CouponRules = {
   tidak_bayar_0: 0,
 };
 
-// Initial Default Event if empty
 export const DEFAULT_EVENTS: EventAcara[] = [];
-
 export const DEFAULT_BOOTHS: TenantBooth[] = [];
 
 export function getEventsFromStorage(): EventAcara[] {
@@ -54,16 +52,6 @@ export function getEventsFromStorage(): EventAcara[] {
   return [];
 }
 
-export function saveEventsToStorage(events: EventAcara[]) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
-    syncEventsAndKuponsToCloud(events, getKuponsFromStorage(), getBoothsFromStorage());
-  } catch (e) {
-    console.error(e);
-  }
-}
-
 export function getKuponsFromStorage(): KuponAcara[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -75,16 +63,6 @@ export function getKuponsFromStorage(): KuponAcara[] {
     console.error(e);
   }
   return [];
-}
-
-export function saveKuponsToStorage(kupons: KuponAcara[]) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY_KUPONS, JSON.stringify(kupons));
-    syncEventsAndKuponsToCloud(getEventsFromStorage(), kupons, getBoothsFromStorage());
-  } catch (e) {
-    console.error(e);
-  }
 }
 
 export function getBoothsFromStorage(): TenantBooth[] {
@@ -100,29 +78,77 @@ export function getBoothsFromStorage(): TenantBooth[] {
   return [];
 }
 
-export function saveBoothsToStorage(booths: TenantBooth[]) {
-  if (typeof window === 'undefined') return;
+function _saveEvents(events: EventAcara[]) {
+  if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
+}
+function _saveKupons(kupons: KuponAcara[]) {
+  if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY_KUPONS, JSON.stringify(kupons));
+}
+function _saveBooths(booths: TenantBooth[]) {
+  if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY_BOOTHS, JSON.stringify(booths));
+}
+
+// ── Async Cloud Upsert Helper ───────────────────────────────
+async function upsertToCloud(events: EventAcara[], kupons: KuponAcara[], booths: TenantBooth[]) {
+  const client = createClient();
+  if (!client) {
+    console.warn('[EVENT-STORE] Supabase client NULL — hanya simpan di localStorage');
+    return { cloudOk: false, error: 'Supabase tidak terhubung' };
+  }
+
   try {
-    localStorage.setItem(STORAGE_KEY_BOOTHS, JSON.stringify(booths));
-    syncEventsAndKuponsToCloud(getEventsFromStorage(), getKuponsFromStorage(), booths);
-  } catch (e) {
-    console.error(e);
+    const chunkSize = 100;
+    
+    if (events.length > 0) {
+      const { error: eErr } = await client.from('events').upsert(events, { onConflict: 'id' });
+      if (eErr) throw new Error('Events: ' + eErr.message);
+    }
+
+    if (booths.length > 0) {
+      const { error: bErr } = await client.from('tenant_booths').upsert(booths, { onConflict: 'id' });
+      if (bErr) throw new Error('Booths: ' + bErr.message);
+    }
+
+    if (kupons.length > 0) {
+      const safeKupons = kupons.map(k => ({
+        id: k.id,
+        event_id: k.event_id,
+        nama_event: k.nama_event,
+        nama_kupon: k.nama_kupon,
+        warga_id: k.warga_id,
+        nomor_rumah: k.nomor_rumah,
+        kode_kupon: k.kode_kupon,
+        is_used: k.is_used,
+        used_at: k.used_at,
+        used_by_booth_id: k.used_by_booth_id,
+        used_by_booth_nama: k.used_by_booth_nama,
+        used_by_admin: k.used_by_admin,
+        created_at: k.created_at
+      }));
+
+      for (let i = 0; i < safeKupons.length; i += chunkSize) {
+        const chunk = safeKupons.slice(i, i + chunkSize);
+        const { error: kErr } = await client.from('kupons').upsert(chunk, { onConflict: 'id' });
+        if (kErr) throw new Error('Kupons: ' + kErr.message);
+      }
+    }
+    
+    return { cloudOk: true };
+  } catch (err: any) {
+    console.error('[EVENT-STORE] Upsert error:', err);
+    return { cloudOk: false, error: err.message };
   }
 }
 
-// ── Calculate Kupon Count based on Leveling Rules ───────────
 export function calculateKuponForHouse(
   lunasCount: number,
   rules: CouponRules
 ): number {
   if (!rules) return 0;
-
   const t1Min = rules.tier1_min_bulan ?? 8;
   const t1Kupon = rules.tier1_kupon ?? rules.full_lunas_12 ?? 5;
-
   const t2Min = rules.tier2_min_bulan ?? 5;
   const t2Kupon = rules.tier2_kupon ?? rules.rajin_8_11 ?? 3;
-
   const t3Min = rules.tier3_min_bulan ?? 1;
   const t3Kupon = rules.tier3_kupon ?? rules.bolong_1_7 ?? 1;
 
@@ -132,8 +158,7 @@ export function calculateKuponForHouse(
   return rules.tidak_bayar_0 ?? 0;
 }
 
-// ── Create Event & Auto-Generate Kupon Warga ───────────────
-export function createEventAndGenerateKupons(
+export async function createEventAndGenerateKupons(
   eventData: {
     nama_event: string;
     nama_kupon: string;
@@ -143,7 +168,7 @@ export function createEventAndGenerateKupons(
     booths: { nama_booth: string; username: string; password: string }[];
   },
   matrix: IuranMatrixRow[]
-): { newEvent: EventAcara; createdKuponsCount: number } {
+): Promise<{ newEvent: EventAcara; createdKuponsCount: number; cloudOk: boolean; error?: string }> {
   const events = getEventsFromStorage();
   const currentKupons = getKuponsFromStorage();
   const currentBooths = getBoothsFromStorage();
@@ -160,7 +185,6 @@ export function createEventAndGenerateKupons(
     created_at: new Date().toISOString(),
   };
 
-  // Generate Kupons for Warga
   const newGeneratedKupons: KuponAcara[] = [];
   const tahun = new Date().getFullYear();
   const rules = eventData.rules || DEFAULT_RULES;
@@ -173,7 +197,6 @@ export function createEventAndGenerateKupons(
       if (row.bulan[m] === 'lunas') lunasCount++;
     }
 
-    // Calculate required months based on Tanggal Masuk (Move-in date)
     let requiredMonths = 12;
     try {
       if (typeof window !== 'undefined') {
@@ -188,7 +211,7 @@ export function createEventAndGenerateKupons(
             if (prof && prof.tanggal_masuk) {
               const entryDate = new Date(prof.tanggal_masuk);
               if (!isNaN(entryDate.getTime()) && entryDate.getFullYear() === tahun) {
-                const entryMonth = entryDate.getMonth() + 1; // 1..12
+                const entryMonth = entryDate.getMonth() + 1;
                 requiredMonths = Math.max(1, 12 - entryMonth + 1);
               }
             }
@@ -197,9 +220,7 @@ export function createEventAndGenerateKupons(
       }
     } catch (e) {}
 
-    // Calculate Effective Paid Months normalized to 12-month scale
     const effectiveMonths = Math.min(12, Math.round((lunasCount / requiredMonths) * 12));
-
     const sortedTiers = [...tiers].sort((a, b) => b.min_lunas_bulan - a.min_lunas_bulan);
     const matchedTier = sortedTiers.find((t) => effectiveMonths >= t.min_lunas_bulan);
     const cleanNo = cleanHouseNo(row.nomor_rumah);
@@ -210,7 +231,6 @@ export function createEventAndGenerateKupons(
         for (let k = 1; k <= qty; k++) {
           const randomCode = generateRandom8();
           const kodeKupon = `${cleanNo}-${randomCode}`;
-
           newGeneratedKupons.push({
             id: `kpn-${newEventId}-${cleanNo}-${cat.id}-${k}-${Date.now()}`,
             event_id: newEventId,
@@ -235,7 +255,6 @@ export function createEventAndGenerateKupons(
         for (let k = 1; k <= totalKuponsForHouse; k++) {
           const randomCode = generateRandom8();
           const kodeKupon = `${cleanNo}-${randomCode}`;
-
           newGeneratedKupons.push({
             id: `kpn-${newEventId}-${cleanNo}-${k}-${Date.now()}`,
             event_id: newEventId,
@@ -256,7 +275,6 @@ export function createEventAndGenerateKupons(
     }
   });
 
-  // Generate Booth Accounts for this Event
   const newBooths: TenantBooth[] = (eventData.booths || []).map((b, idx) => ({
     id: `bth-${newEventId}-${idx + 1}`,
     event_id: newEventId,
@@ -271,11 +289,13 @@ export function createEventAndGenerateKupons(
   const updatedKupons = [...newGeneratedKupons, ...currentKupons];
   const updatedBooths = [...newBooths, ...currentBooths];
 
-  saveEventsToStorage(updatedEvents);
-  saveKuponsToStorage(updatedKupons);
-  saveBoothsToStorage(updatedBooths);
+  _saveEvents(updatedEvents);
+  _saveKupons(updatedKupons);
+  _saveBooths(updatedBooths);
 
-  return { newEvent, createdKuponsCount: newGeneratedKupons.length };
+  const res = await upsertToCloud([newEvent], newGeneratedKupons, newBooths);
+
+  return { newEvent, createdKuponsCount: newGeneratedKupons.length, cloudOk: res.cloudOk, error: res.error };
 }
 
 function generateRandom8(): string {
@@ -287,19 +307,17 @@ function generateRandom8(): string {
   return res;
 }
 
-// ── Get Kupons for specific Warga ───────────────────────────
 export function getKuponsForWarga(nomorRumahInput: string): KuponAcara[] {
   const allKupons = getKuponsFromStorage();
   const targetClean = cleanHouseNo(nomorRumahInput);
   return allKupons.filter((k) => cleanHouseNo(k.nomor_rumah) === targetClean);
 }
 
-// ── Manual Coupon Creation for Field Correction ─────────────
-export function addManualKupon(
+export async function addManualKupon(
   eventId: string,
   nomorRumah: string,
   count: number = 1
-): KuponAcara[] {
+): Promise<{ newKupons: KuponAcara[]; cloudOk: boolean; error?: string }> {
   const events = getEventsFromStorage();
   const allKupons = getKuponsFromStorage();
 
@@ -312,7 +330,6 @@ export function addManualKupon(
   for (let k = 1; k <= count; k++) {
     const randomCode = generateRandom8();
     const kodeKupon = `${cleanNo}-${randomCode}`;
-
     const newKupon: KuponAcara = {
       id: `kpn-manual-${Date.now()}-${k}`,
       event_id: event ? event.id : 'evt-001',
@@ -332,35 +349,28 @@ export function addManualKupon(
   }
 
   const updatedKupons = [...newKupons, ...allKupons];
-  saveKuponsToStorage(updatedKupons);
-  return newKupons;
+  _saveKupons(updatedKupons);
+  
+  const res = await upsertToCloud([], newKupons, []);
+
+  return { newKupons, cloudOk: res.cloudOk, error: res.error };
 }
 
-
-
-// ── Scan & Verify Kupon by Admin OR Tenant Booth ────────────
-export function scanAndUseKuponByBooth(
+export async function scanAndUseKuponByBooth(
   kodeKuponInput: string,
   boothId?: string,
   boothNama?: string
-): { success: boolean; message: string; kupon?: KuponAcara } {
+): Promise<{ success: boolean; message: string; kupon?: KuponAcara }> {
   const allKupons = getKuponsFromStorage();
   const allBooths = getBoothsFromStorage();
   const cleanInput = kodeKuponInput.trim().toUpperCase();
 
-  const kuponIndex = allKupons.findIndex(
-    (k) => k.kode_kupon.toUpperCase() === cleanInput
-  );
-
+  const kuponIndex = allKupons.findIndex((k) => k.kode_kupon.toUpperCase() === cleanInput);
   if (kuponIndex === -1) {
-    return {
-      success: false,
-      message: `Kode Kupon "${kodeKuponInput}" TIDAK DITEMUKAN dalam sistem!`,
-    };
+    return { success: false, message: `Kode Kupon "${kodeKuponInput}" TIDAK DITEMUKAN dalam sistem!` };
   }
 
   const kupon = allKupons[kuponIndex];
-
   if (kupon.is_used) {
     const usedWhere = kupon.used_by_booth_nama
       ? `di ${kupon.used_by_booth_nama}`
@@ -376,7 +386,6 @@ export function scanAndUseKuponByBooth(
     };
   }
 
-  // Mark as USED by Booth
   const updatedKupon: KuponAcara = {
     ...kupon,
     is_used: true,
@@ -387,21 +396,22 @@ export function scanAndUseKuponByBooth(
   };
 
   allKupons[kuponIndex] = updatedKupon;
-  saveKuponsToStorage(allKupons);
+  _saveKupons(allKupons);
 
-  // Update total_scanned counter for booth
+  let updatedBooth: TenantBooth | null = null;
   if (boothId || boothNama) {
     const bIndex = allBooths.findIndex(
-      (b) =>
-        (boothId && b.id === boothId) ||
-        (boothId && b.username === boothId) ||
-        (boothNama && b.nama_booth === boothNama)
+      (b) => (boothId && b.id === boothId) || (boothId && b.username === boothId) || (boothNama && b.nama_booth === boothNama)
     );
     if (bIndex !== -1) {
       allBooths[bIndex].total_scanned = (allBooths[bIndex].total_scanned || 0) + 1;
-      saveBoothsToStorage(allBooths);
+      updatedBooth = allBooths[bIndex];
+      _saveBooths(allBooths);
     }
   }
+
+  const boothsToUpdate = updatedBooth ? [updatedBooth] : [];
+  await upsertToCloud([], [updatedKupon], boothsToUpdate);
 
   return {
     success: true,
@@ -410,21 +420,18 @@ export function scanAndUseKuponByBooth(
   };
 }
 
-export function scanAndUseKupon(
+export async function scanAndUseKupon(
   kodeKuponInput: string,
   adminName: string
-): { success: boolean; message: string; kupon?: KuponAcara } {
+): Promise<{ success: boolean; message: string; kupon?: KuponAcara }> {
   return scanAndUseKuponByBooth(kodeKuponInput, undefined, adminName);
 }
 
-// ── Generate Real-Time Booth Report for Event ───────────────
 export function getBoothReportForEvent(eventId: string) {
   const allBooths = getBoothsFromStorage().filter((b) => b.event_id === eventId);
   const allKupons = getKuponsFromStorage().filter((k) => k.event_id === eventId);
-
   const totalEventKupons = allKupons.length;
   const totalUsedKupons = allKupons.filter((k) => k.is_used).length;
-
   const boothStats = allBooths.map((booth) => {
     const redeemedKupons = allKupons.filter((k) => k.used_by_booth_id === booth.id);
     return {
@@ -434,7 +441,6 @@ export function getBoothReportForEvent(eventId: string) {
       details: redeemedKupons,
     };
   });
-
   return {
     eventId,
     totalEventKupons,
@@ -444,19 +450,26 @@ export function getBoothReportForEvent(eventId: string) {
   };
 }
 
-// ── Delete Event & Cascading Kupons/Booths ─────────────────
-export function deleteEvent(eventId: string): void {
+export async function deleteEvent(eventId: string): Promise<void> {
   const events = getEventsFromStorage().filter((e) => e.id !== eventId);
   const kupons = getKuponsFromStorage().filter((k) => k.event_id !== eventId);
   const booths = getBoothsFromStorage().filter((b) => b.event_id !== eventId);
+  _saveEvents(events);
+  _saveKupons(kupons);
+  _saveBooths(booths);
 
-  saveEventsToStorage(events);
-  saveKuponsToStorage(kupons);
-  saveBoothsToStorage(booths);
+  const client = createClient();
+  if (client) {
+    await client.from('events').delete().eq('id', eventId);
+  }
 }
 
-// ── Delete Single Kupon ─────────────────────────────────────
-export function deleteKupon(kuponId: string): void {
+export async function deleteKupon(kuponId: string): Promise<void> {
   const kupons = getKuponsFromStorage().filter((k) => k.id !== kuponId);
-  saveKuponsToStorage(kupons);
+  _saveKupons(kupons);
+  
+  const client = createClient();
+  if (client) {
+    await client.from('kupons').delete().eq('id', kuponId);
+  }
 }

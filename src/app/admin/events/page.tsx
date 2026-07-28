@@ -38,9 +38,6 @@ import {
   getEventsFromStorage,
   getKuponsFromStorage,
   getBoothsFromStorage,
-  saveEventsToStorage,
-  saveKuponsToStorage,
-  saveBoothsToStorage,
   scanAndUseKupon,
   addManualKupon,
   getBoothReportForEvent,
@@ -123,53 +120,59 @@ export default function AdminEventsPage() {
   }, [selectedEventId, kupons, booths]);
 
   // Handle Manual Coupon Creation (Field Correction)
-  const handleAddManualKupon = (e: React.FormEvent) => {
+  const handleAddManualKupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualHouse.trim()) {
       alert('Nomor / Alamat Rumah Wajib Diisi!');
       return;
     }
 
-    const created = addManualKupon(selectedEventId || (events[0]?.id || 'evt-001'), manualHouse, manualCount);
+    const res = await addManualKupon(selectedEventId || (events[0]?.id || 'evt-001'), manualHouse, manualCount);
     loadData();
     setShowManualModal(false);
     setManualHouse('');
     setManualCount(1);
-    showToast(`${created.length} Kupon Manual berhasil dibuat untuk ${manualHouse}!`);
+    
+    if (res.cloudOk === false) {
+      showToast(`⚠️ ${res.newKupons.length} Kupon dibuat di lokal, tapi GAGAL ke Cloud: ${res.error}`);
+    } else {
+      showToast(`✅ ${res.newKupons.length} Kupon Manual berhasil dibuat untuk ${manualHouse}!`);
+    }
   };
 
   // Handle Delete Event
-  const handleDeleteEvent = (eventId: string, eventName: string) => {
+  const handleDeleteEvent = async (eventId: string, eventName: string) => {
     if (
       confirm(
         `Apakah Anda yakin ingin menghapus Event "${eventName}"?\n\nSemua data kupon warga dan akun booth tenant yang terasosiasi dengan event ini akan ikut terhapus.`
       )
     ) {
-      deleteEvent(eventId);
+      await deleteEvent(eventId);
       if (selectedEventId === eventId) {
         setSelectedEventId('');
       }
       loadData();
-      showToast(`Event "${eventName}" berhasil dihapus.`);
+      showToast(`Event "${eventName}" beserta kupon & booth berhasil dihapus.`);
     }
   };
 
   // Handle Delete Single Kupon
-  const handleDeleteKupon = (kuponId: string, kodeKupon: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus Kupon "${kodeKupon}"?`)) {
-      deleteKupon(kuponId);
+  const handleDeleteKupon = async (kuponId: string, kodeKupon: string) => {
+    if (confirm(`Yakin ingin menghapus kupon "${kodeKupon}" secara permanen?`)) {
+      await deleteKupon(kuponId);
       loadData();
       showToast(`Kupon "${kodeKupon}" berhasil dihapus.`);
     }
   };
 
   // Handle Scan Kupon
-  const handleScanSubmit = (e: React.FormEvent) => {
+  const handleScanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scanInput.trim()) return;
 
-    const res = scanAndUseKupon(scanInput, userName);
+    const res = await scanAndUseKupon(scanInput, userName);
     setScanResult(res);
+    setScanInput('');
     loadData();
   };
 
@@ -200,9 +203,9 @@ export default function AdminEventsPage() {
         'Apakah Anda yakin ingin MENGHAPUS SEMUA EVENT, KUPON & TENANT BOOTH dari peramban dan Cloud Database Supabase?'
       )
     ) {
-      saveEventsToStorage([]);
-      saveKuponsToStorage([]);
-      saveBoothsToStorage([]);
+      localStorage.removeItem('martinez_events_v1');
+      localStorage.removeItem('martinez_kupons_v1');
+      localStorage.removeItem('martinez_booths_v1');
       await clearAllEventsAndKuponsCloud();
       loadData();
       showToast('✨ Seluruh data event, kupon, dan tenant booth telah dibersihkan!');

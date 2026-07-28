@@ -65,11 +65,11 @@ export default function BoothPortalPage() {
     }
   }, [router]);
 
-  const handleScanSubmit = (e: React.FormEvent) => {
+  const handleScanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scanInput.trim()) return;
 
-    const res = scanAndUseKuponByBooth(scanInput, boothId, boothNama);
+    const res = await scanAndUseKuponByBooth(scanInput, boothId, boothNama);
     setScanResult(res);
     setScanInput('');
     loadBoothScans(boothId);

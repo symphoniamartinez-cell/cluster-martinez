@@ -41,8 +41,6 @@ import {
   getBoothReportForEvent,
   deleteEvent,
   deleteKupon,
-  saveKuponsToStorage,
-  saveBoothsToStorage,
 } from '@/lib/event-store';
 
 export default function SingleEventDetailPage({
@@ -136,7 +134,7 @@ export default function SingleEventDetailPage({
   }, [event, kupons, booths]);
 
   // Handle Manual Coupon Addition
-  const handleAddManualKuponSubmit = (e: React.FormEvent) => {
+  const handleAddManualKuponSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualHouse.trim()) {
       alert('Nomor rumah wajib diisi!');
@@ -144,43 +142,46 @@ export default function SingleEventDetailPage({
     }
     if (!event) return;
 
-    addManualKupon(event.id, manualHouse.trim(), manualCount);
+    const res = await addManualKupon(event.id, manualHouse.trim(), manualCount);
     loadEventData();
     setShowManualModal(false);
     setManualHouse('');
     setManualCount(1);
-    showToast(`Sukses menambahkan ${manualCount} kupon manual untuk ${manualHouse}!`);
+    
+    if (res.cloudOk === false) {
+      showToast(`⚠️ ${res.newKupons.length} Kupon dibuat di lokal, tapi GAGAL ke Cloud: ${res.error}`);
+    } else {
+      showToast(`✅ ${res.newKupons.length} Kupon Manual berhasil dibuat untuk ${manualHouse}!`);
+    }
   };
 
   // Handle Delete Kupon
-  const handleDeleteSingleKupon = (kuponId: string, kodeKupon: string) => {
+  const handleDeleteSingleKupon = async (kuponId: string, kodeKupon: string) => {
     if (confirm(`Hapus kupon "${kodeKupon}" secara permanen?`)) {
-      deleteKupon(kuponId);
+      await deleteKupon(kuponId);
       loadEventData();
       showToast(`Kupon ${kodeKupon} berhasil dihapus.`);
     }
   };
 
   // Handle Delete Event
-  const handleDeleteEventClick = () => {
+  const handleDeleteEventClick = async () => {
     if (!event) return;
     if (confirm(`Hapus event "${event.nama_event}" beserta seluruh kupon & booth yang terdaftar?`)) {
-      deleteEvent(event.id);
+      await deleteEvent(event.id);
       router.push('/admin/events');
     }
   };
 
   // Handle Scanner
-  const handleScanSubmit = (e: React.FormEvent) => {
+  const handleScanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scanInput.trim()) return;
 
-    const res = scanAndUseKupon(scanInput.trim(), userName);
+    const res = await scanAndUseKupon(scanInput.trim(), userName);
     setScanResult(res);
     setScanInput('');
-    if (res.success) {
-      loadEventData();
-    }
+    loadEventData();
   };
 
   if (!event) {
