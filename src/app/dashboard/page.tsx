@@ -701,7 +701,7 @@ export default function WargaDashboardPage() {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowPaymentModal(false)}
           />
-          <div className="relative w-full max-w-lg bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="relative w-full max-w-2xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden max-h-[90vh] flex flex-col">
             <div className="h-1.5 bg-gradient-to-r from-primary-500 to-accent-500 flex-shrink-0" />
             <div className="p-6 overflow-y-auto space-y-4">
               <div className="flex items-center gap-3">
@@ -723,41 +723,106 @@ export default function WargaDashboardPage() {
                   Kami selaku Pengurus mengucapkan Terima Kasih bagi warga yang sudah ikut berpartisipasi iuran warga selama ini. Sampai berjumpa di Event Selanjutnya.
                 </p>
                 <p>
-                  Iuran warga th {tahun} masih sama dengan sebelumnya yaitu <strong>{formatRupiah(nominalTahunan)}/tahun</strong> ({formatRupiah(config.nominal_per_bulan)}/bulan) dan kami juga tetap membuka kesempatan bapak/ibu/Koko/Cici yang belum berpartisipasi dalam iuran warga martinez bisa transfer ke rekening berikut :
+                  Iuran warga th {tahun} yaitu <strong>{formatRupiah(nominalTahunan)}/tahun</strong> ({formatRupiah(config.nominal_per_bulan)}/bulan) dan kami juga tetap membuka kesempatan bapak/ibu/Koko/Cici yang belum berpartisipasi dalam iuran warga martinez bisa transfer ke rekening berikut :
                 </p>
               </div>
 
-              {/* Bank Box */}
-              <div className="p-4 bg-gradient-to-br from-primary-500/10 to-accent-500/10 rounded-2xl border border-primary-500/20 space-y-2 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-surface-500">Bank Tujuan:</span>
-                  <span className="font-bold text-surface-900 dark:text-white">{config.nama_bank}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-surface-500">No. Rekening:</span>
-                  <div className="flex items-center gap-2 font-mono font-bold text-primary-600 dark:text-primary-400 text-sm">
-                    <span>{config.no_rekening}</span>
-                    <button
-                      onClick={handleCopyRekening}
-                      className="px-2 py-0.5 bg-primary-500/20 hover:bg-primary-500/30 rounded text-[10px] text-primary-600 dark:text-primary-300 transition-colors cursor-pointer"
-                    >
-                      {copiedRekening ? 'Tersalin!' : 'Salin'}
-                    </button>
+              <p className="text-xs font-bold text-surface-900 dark:text-white pt-1">
+                Contoh rincian transfer bank tujuan (Silakan pilih Opsi Pembayaran Bulanan atau Tahunan):
+              </p>
+
+              {/* 2-Column Payment Options Box */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Opsi 1: Pembayaran Bulanan */}
+                <div className="p-4 bg-gradient-to-br from-primary-500/10 to-primary-500/5 rounded-2xl border border-primary-500/20 space-y-2 text-xs flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between pb-2 border-b border-primary-500/20">
+                      <span className="font-bold text-primary-600 dark:text-primary-400 text-xs">
+                        📅 OPSI 1: BAYAR BULANAN
+                      </span>
+                      <span className="px-2 py-0.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold rounded text-[9px]">
+                        Eceran
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-surface-500">Bank Tujuan:</span>
+                      <span className="font-bold text-surface-900 dark:text-white">{config.nama_bank}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-surface-500">No. Rekening:</span>
+                      <div className="flex items-center gap-1.5 font-mono font-bold text-primary-600 dark:text-primary-400 text-xs">
+                        <span>{config.no_rekening}</span>
+                        <button
+                          onClick={handleCopyRekening}
+                          className="px-1.5 py-0.5 bg-primary-500/20 hover:bg-primary-500/30 rounded text-[9px] text-primary-600 dark:text-primary-300 transition-colors cursor-pointer"
+                        >
+                          {copiedRekening ? 'Tersalin!' : 'Salin'}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-surface-500">Atas Nama:</span>
+                      <span className="font-bold text-surface-900 dark:text-white">{config.atas_nama}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-surface-200 dark:border-surface-700">
+                      <span className="text-surface-500">Nominal Per Bulan:</span>
+                      <span className="font-bold font-mono text-primary-600 dark:text-primary-400">{formatRupiah(config.nominal_per_bulan)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-surface-200 dark:border-surface-700 mt-2">
+                    <span className="text-surface-500 block mb-1">Berita Transfer:</span>
+                    <code className="font-mono font-bold text-surface-900 dark:text-white bg-white dark:bg-surface-900 px-2 py-1 rounded block text-center text-[11px] truncate">
+                      Iuran {currentMonthName} {tahun} - {nomorRumah}
+                    </code>
                   </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-surface-500">Atas Nama:</span>
-                  <span className="font-bold text-surface-900 dark:text-white">{config.atas_nama}</span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t border-surface-200 dark:border-surface-700">
-                  <span className="text-surface-500">Nominal Tahunan:</span>
-                  <span className="font-bold font-mono text-success-600 dark:text-success-400">{formatRupiah(nominalTahunan)}</span>
-                </div>
-                <div className="pt-2 border-t border-surface-200 dark:border-surface-700">
-                  <span className="text-surface-500 block mb-1">Berita Transfer:</span>
-                  <code className="font-mono font-bold text-surface-900 dark:text-white bg-white dark:bg-surface-900 px-2 py-1 rounded block text-center">
-                    Iuran Januari - Desember {tahun} - {nomorRumah}
-                  </code>
+
+                {/* Opsi 2: Pembayaran Tahunan (Full 1 Tahun) */}
+                <div className="p-4 bg-gradient-to-br from-success-500/10 to-accent-500/10 rounded-2xl border border-success-500/20 space-y-2 text-xs flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between pb-2 border-b border-success-500/20">
+                      <span className="font-bold text-success-600 dark:text-success-400 text-xs">
+                        🏆 OPSI 2: BAYAR TAHUNAN
+                      </span>
+                      <span className="px-2 py-0.5 bg-success-500/10 text-success-600 dark:text-success-400 font-bold rounded text-[9px]">
+                        Full 1 Tahun
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-surface-500">Bank Tujuan:</span>
+                      <span className="font-bold text-surface-900 dark:text-white">{config.nama_bank}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-surface-500">No. Rekening:</span>
+                      <div className="flex items-center gap-1.5 font-mono font-bold text-primary-600 dark:text-primary-400 text-xs">
+                        <span>{config.no_rekening}</span>
+                        <button
+                          onClick={handleCopyRekening}
+                          className="px-1.5 py-0.5 bg-primary-500/20 hover:bg-primary-500/30 rounded text-[9px] text-primary-600 dark:text-primary-300 transition-colors cursor-pointer"
+                        >
+                          {copiedRekening ? 'Tersalin!' : 'Salin'}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-surface-500">Atas Nama:</span>
+                      <span className="font-bold text-surface-900 dark:text-white">{config.atas_nama}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-surface-200 dark:border-surface-700">
+                      <span className="text-surface-500">Nominal Tahunan:</span>
+                      <span className="font-bold font-mono text-success-600 dark:text-success-400">{formatRupiah(nominalTahunan)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-surface-200 dark:border-surface-700 mt-2">
+                    <span className="text-surface-500 block mb-1">Berita Transfer:</span>
+                    <code className="font-mono font-bold text-surface-900 dark:text-white bg-white dark:bg-surface-900 px-2 py-1 rounded block text-center text-[11px] truncate">
+                      Iuran Jan - Des {tahun} - {nomorRumah}
+                    </code>
+                  </div>
                 </div>
               </div>
 

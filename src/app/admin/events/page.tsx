@@ -33,10 +33,14 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { EventAcara, KuponAcara, UserRole, TenantBooth } from '@/types';
+import { clearAllEventsAndKuponsCloud } from '@/lib/db-sync';
 import {
   getEventsFromStorage,
   getKuponsFromStorage,
   getBoothsFromStorage,
+  saveEventsToStorage,
+  saveKuponsToStorage,
+  saveBoothsToStorage,
   scanAndUseKupon,
   addManualKupon,
   getBoothReportForEvent,
@@ -189,6 +193,22 @@ export default function AdminEventsPage() {
     });
   }, [kupons, selectedEventId, kuponSearch, kuponStatusFilter]);
 
+  // Handle Clear All Events & Database Wipe
+  const handleClearAllEvents = async () => {
+    if (
+      confirm(
+        'Apakah Anda yakin ingin MENGHAPUS SEMUA EVENT, KUPON & TENANT BOOTH dari peramban dan Cloud Database Supabase?'
+      )
+    ) {
+      saveEventsToStorage([]);
+      saveKuponsToStorage([]);
+      saveBoothsToStorage([]);
+      await clearAllEventsAndKuponsCloud();
+      loadData();
+      showToast('✨ Seluruh data event, kupon, dan tenant booth telah dibersihkan!');
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-[1300px] mx-auto animate-fade-in pb-12">
       {/* ── Toast Notification ───────────────────────────────── */}
@@ -216,6 +236,17 @@ export default function AdminEventsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {events.length > 0 && (
+            <button
+              onClick={handleClearAllEvents}
+              className="flex items-center gap-1.5 px-3 py-2.5 bg-danger-500/10 hover:bg-danger-500/20 text-danger-600 dark:text-danger-400 font-bold text-xs rounded-xl border border-danger-500/20 transition-all cursor-pointer"
+              title="Hapus seluruh event & kupon di database"
+            >
+              <Trash2 className="w-4 h-4 text-danger-500" />
+              Bersihkan Semua Event
+            </button>
+          )}
+
           {/* Manual Coupon Button */}
           <button
             onClick={() => setShowManualModal(true)}

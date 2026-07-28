@@ -37,18 +37,7 @@ export const DEFAULT_RULES: CouponRules = {
 };
 
 // Initial Default Event if empty
-export const DEFAULT_EVENTS: EventAcara[] = [
-  {
-    id: 'evt-001',
-    nama_event: 'Acara HUT RI Kluster Martinez',
-    nama_kupon: 'Kupon Acara Utama',
-    tanggal_event: new Date().toISOString().split('T')[0],
-    lokasi_event: 'Lapangan Serbaguna Kluster',
-    rules: DEFAULT_RULES,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-];
+export const DEFAULT_EVENTS: EventAcara[] = [];
 
 export const DEFAULT_BOOTHS: TenantBooth[] = [];
 

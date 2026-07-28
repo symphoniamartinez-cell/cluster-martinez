@@ -370,3 +370,15 @@ export async function fetchIuranConfigFromCloud(): Promise<any | null> {
   } catch (e) {}
   return null;
 }
+
+export async function clearAllEventsAndKuponsCloud() {
+  const client = createClient();
+  if (!client) return;
+  try {
+    await client.from('kupons').delete().gte('created_at', '1970-01-01');
+    await client.from('tenant_booths').delete().gte('created_at', '1970-01-01');
+    await client.from('events').delete().gte('created_at', '1970-01-01');
+  } catch (e) {
+    console.error('clearAllEventsAndKuponsCloud error:', e);
+  }
+}
