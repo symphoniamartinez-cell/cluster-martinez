@@ -307,7 +307,7 @@ export function getKuponsForWarga(nomorRumahInput: string): KuponAcara[] {
 export async function addManualKupon(
   eventId: string,
   nomorRumah: string,
-  count: number = 1
+  counts: { categoryId: string; count: number }[]
 ): Promise<{ newKupons: KuponAcara[]; cloudOk: boolean; error?: string }> {
   const events = getEventsFromStorage();
   const allKupons = getKuponsFromStorage();
@@ -315,28 +315,38 @@ export async function addManualKupon(
   const event = events.find((e) => e.id === eventId) || events[0];
   const tahun = new Date().getFullYear();
   const cleanNo = cleanHouseNo(nomorRumah);
-  const catNama = event?.rules?.categories?.[0]?.nama_kategori || 'Kupon Event';
 
   const newKupons: KuponAcara[] = [];
-  for (let k = 1; k <= count; k++) {
-    const randomCode = generateRandom8();
-    const kodeKupon = `${cleanNo}-${randomCode}`;
-    const newKupon: KuponAcara = {
-      id: `kpn-manual-${Date.now()}-${k}`,
-      event_id: event ? event.id : 'evt-001',
-      nama_event: event ? event.nama_event : 'Doorprize Kluster',
-      nama_kupon: catNama,
-      kategori_id: 'cat-1',
-      kategori_nama: catNama,
-      warga_id: `r-${cleanNo}`,
-      nomor_rumah: nomorRumah,
-      tahun,
-      kode_kupon: kodeKupon,
-      is_used: false,
-      used_at: null,
-      created_at: new Date().toISOString(),
-    };
-    newKupons.push(newKupon);
+  
+  for (const { categoryId, count } of counts) {
+    if (count <= 0) continue;
+    
+    let catNama = 'Kupon Event';
+    if (event?.rules?.categories) {
+      const cat = event.rules.categories.find(c => c.id === categoryId);
+      if (cat) catNama = cat.nama_kategori;
+    }
+
+    for (let k = 1; k <= count; k++) {
+      const randomCode = generateRandom8();
+      const kodeKupon = `${cleanNo}-${randomCode}`;
+      const newKupon: KuponAcara = {
+        id: `kpn-manual-${Date.now()}-${categoryId}-${k}`,
+        event_id: event ? event.id : 'evt-001',
+        nama_event: event ? event.nama_event : 'Doorprize Kluster',
+        nama_kupon: catNama,
+        kategori_id: categoryId || 'cat-1',
+        kategori_nama: catNama,
+        warga_id: `r-${cleanNo}`,
+        nomor_rumah: nomorRumah,
+        tahun,
+        kode_kupon: kodeKupon,
+        is_used: false,
+        used_at: null,
+        created_at: new Date().toISOString(),
+      };
+      newKupons.push(newKupon);
+    }
   }
 
   const updatedKupons = [...newKupons, ...allKupons];

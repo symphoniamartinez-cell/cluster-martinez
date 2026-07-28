@@ -72,10 +72,10 @@ export default function SingleEventDetailPage({
     kupon?: KuponAcara;
   } | null>(null);
 
-  // Manual Coupon Modal State
+  // Manual Kupon State
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualHouse, setManualHouse] = useState('');
-  const [manualCount, setManualCount] = useState(1);
+  const [manualCounts, setManualCounts] = useState<Record<string, number>>({});
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [kuponSearch, setKuponSearch] = useState('');
@@ -172,11 +172,21 @@ export default function SingleEventDetailPage({
     }
     if (!event) return;
 
-    const res = await addManualKupon(event.id, manualHouse.trim(), manualCount);
+    const countsToPass = Object.keys(manualCounts).map(categoryId => ({
+      categoryId,
+      count: manualCounts[categoryId]
+    })).filter(c => c.count > 0);
+
+    if (countsToPass.length === 0) {
+      alert('Pilih minimal 1 kupon untuk ditambahkan!');
+      return;
+    }
+
+    const res = await addManualKupon(event.id, manualHouse.trim(), countsToPass);
     loadEventData();
     setShowManualModal(false);
     setManualHouse('');
-    setManualCount(1);
+    setManualCounts({});
     
     if (res.cloudOk === false) {
       showToast(`⚠️ ${res.newKupons.length} Kupon dibuat di lokal, tapi GAGAL ke Cloud: ${res.error}`);
@@ -728,16 +738,20 @@ export default function SingleEventDetailPage({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1">Jumlah Kupon Manual</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={manualCount}
-                  onChange={(e) => setManualCount(parseInt(e.target.value) || 1)}
-                  required
-                  className="w-full px-4 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-xs font-bold"
-                />
+                <label className="block text-xs font-semibold mb-2">Pilih Kategori Kupon & Jumlah</label>
+                {event.rules?.categories?.map((cat) => (
+                  <div key={cat.id} className="flex items-center justify-between gap-4 p-3 mb-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl">
+                    <span className="text-xs font-semibold">{cat.nama_kategori}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={20}
+                      value={manualCounts[cat.id] || 0}
+                      onChange={(e) => setManualCounts(prev => ({ ...prev, [cat.id]: parseInt(e.target.value) || 0 }))}
+                      className="w-20 px-3 py-1.5 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg text-xs font-bold text-center"
+                    />
+                  </div>
+                ))}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">

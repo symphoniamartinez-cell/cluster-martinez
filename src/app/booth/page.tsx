@@ -103,7 +103,7 @@ export default function BoothPortalPage() {
     const res = await scanAndUseKuponByBooth(code.trim(), boothId, boothNama);
     setScanResult(res);
     setScanInput('');
-    loadBoothScans(boothId);
+    loadBoothScans(boothId, boothNama);
   };
 
   const handleScanSubmit = async (e: React.FormEvent) => {
