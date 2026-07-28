@@ -200,32 +200,8 @@ export async function createEventAndGenerateKupons(
       if (row.bulan[m] === 'lunas') lunasCount++;
     }
 
-    let requiredMonths = 12;
-    try {
-      if (typeof window !== 'undefined') {
-        const savedProfiles = localStorage.getItem('martinez_profiles_list_v3');
-        const savedRumah = localStorage.getItem('martinez_rumah_list_v3');
-        if (savedProfiles && savedRumah) {
-          const parsedProfiles: any[] = JSON.parse(savedProfiles);
-          const parsedRumah: any[] = JSON.parse(savedRumah);
-          const targetRumah = parsedRumah.find((r) => cleanHouseNo(r.nomor_rumah) === cleanHouseNo(row.nomor_rumah));
-          if (targetRumah) {
-            const prof = parsedProfiles.find((p) => p.rumah_id === targetRumah.id);
-            if (prof && prof.tanggal_masuk) {
-              const entryDate = new Date(prof.tanggal_masuk);
-              if (!isNaN(entryDate.getTime()) && entryDate.getFullYear() === tahun) {
-                const entryMonth = entryDate.getMonth() + 1;
-                requiredMonths = Math.max(1, 12 - entryMonth + 1);
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {}
-
-    const effectiveMonths = Math.min(12, Math.round((lunasCount / requiredMonths) * 12));
     const sortedTiers = [...tiers].sort((a, b) => b.min_lunas_bulan - a.min_lunas_bulan);
-    const matchedTier = sortedTiers.find((t) => effectiveMonths >= t.min_lunas_bulan);
+    const matchedTier = sortedTiers.find((t) => lunasCount >= t.min_lunas_bulan);
     const cleanNo = cleanHouseNo(row.nomor_rumah);
 
     if (matchedTier && matchedTier.kupon_per_category) {
@@ -368,12 +344,36 @@ export async function scanAndUseKuponByBooth(
   const allBooths = getBoothsFromStorage();
   const cleanInput = kodeKuponInput.trim().toUpperCase();
 
-  const kuponIndex = allKupons.findIndex((k) => k.kode_kupon.toUpperCase() === cleanInput);
+  let kuponIndex = allKupons.findIndex((k) => k.kode_kupon.toUpperCase() === cleanInput);
+  let kupon: KuponAcara | undefined;
+
   if (kuponIndex === -1) {
-    return { success: false, message: `Kode Kupon "${kodeKuponInput}" TIDAK DITEMUKAN dalam sistem!` };
+    // Fallback: Fetch from cloud if not found locally (crucial for booth devices)
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const client = createClient();
+      if (client) {
+        const { data } = await client.from('kupons').select('*').eq('kode_kupon', cleanInput).single();
+        if (data) {
+          kupon = data as KuponAcara;
+          allKupons.push(kupon);
+          kuponIndex = allKupons.length - 1;
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching kupon from cloud:', e);
+    }
+
+    if (kuponIndex === -1) {
+      return { success: false, message: `Kode Kupon "${kodeKuponInput}" TIDAK DITEMUKAN dalam sistem!` };
+    }
   }
 
-  const kupon = allKupons[kuponIndex];
+  if (!kupon) {
+    kupon = allKupons[kuponIndex];
+  }
+
+
   if (kupon.is_used) {
     const usedWhere = kupon.used_by_booth_nama
       ? `di ${kupon.used_by_booth_nama}`

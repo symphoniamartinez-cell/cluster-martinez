@@ -213,21 +213,6 @@ export default function CreateEventPage() {
       let grandTotalKupons = 0;
       let unqualifiedHouses = 0;
 
-      const tahun = new Date().getFullYear();
-      let parsedProfiles: any[] = [];
-      let parsedRumah: any[] = [];
-      
-      try {
-        const savedProfiles = localStorage.getItem('martinez_profiles_list_v3');
-        const savedRumah = localStorage.getItem('martinez_rumah_list_v3');
-        if (savedProfiles && savedRumah) {
-          parsedProfiles = JSON.parse(savedProfiles);
-          parsedRumah = JSON.parse(savedRumah);
-        }
-      } catch (e) {}
-
-      const cleanNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-
       matrix.forEach((row) => {
         let lunasCount = 0;
         for (let m = 1; m <= 12; m++) {
@@ -235,21 +220,7 @@ export default function CreateEventPage() {
           if (val === 'lunas') lunasCount++;
         }
 
-        let requiredMonths = 12;
-        const targetRumah = parsedRumah.find((r) => cleanNo(r.nomor_rumah) === cleanNo(row.nomor_rumah));
-        if (targetRumah) {
-          const prof = parsedProfiles.find((p) => p.rumah_id === targetRumah.id);
-          if (prof && prof.tanggal_masuk) {
-            const entryDate = new Date(prof.tanggal_masuk);
-            if (!isNaN(entryDate.getTime()) && entryDate.getFullYear() === tahun) {
-              const entryMonth = entryDate.getMonth() + 1;
-              requiredMonths = Math.max(1, 12 - entryMonth + 1);
-            }
-          }
-        }
-
-        const effectiveMonths = Math.min(12, Math.round((lunasCount / requiredMonths) * 12));
-        const matchedTier = sortedTiers.find((t) => effectiveMonths >= t.min_lunas_bulan);
+        const matchedTier = sortedTiers.find((t) => lunasCount >= t.min_lunas_bulan);
 
         if (matchedTier) {
           tierHouseCounts[matchedTier.id] =
