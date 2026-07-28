@@ -14,6 +14,12 @@ const STORAGE_KEY_PROFILES = 'martinez_profiles_list_v3';
 
 const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
+// ── Debug Logger ────────────────────────────────────────────
+function dbLog(tag: string, msg: string, data?: any) {
+  const ts = new Date().toLocaleTimeString('id-ID');
+  console.log(`[DB-SYNC ${ts}] [${tag}] ${msg}`, data !== undefined ? data : '');
+}
+
 // ── 1. IURAN MATRIX CLOUD SYNC ──────────────────────────────
 export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<{ success: boolean; error?: string }> {
   if (typeof window !== 'undefined') {
@@ -23,7 +29,10 @@ export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<
   }
 
   const client = createClient();
-  if (!client) return { success: false, error: 'Supabase client belum terkonfigurasi di Vercel env' };
+  if (!client) {
+    dbLog('IURAN_SYNC', '⚠️ Supabase client NULL — data hanya tersimpan di localStorage');
+    return { success: false, error: 'Supabase client belum terkonfigurasi di Vercel env' };
+  }
 
   try {
     const recordsToUpsert = matrix.map((row) => {
@@ -44,23 +53,34 @@ export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<
       .upsert(recordsToUpsert, { onConflict: 'nomor_rumah,tahun' });
 
     if (error) {
-      console.warn('Supabase Iuran Sync Error:', error.message);
+      dbLog('IURAN_SYNC', '❌ Supabase Error:', error.message);
       return { success: false, error: error.message };
     }
+    dbLog('IURAN_SYNC', '✅ Berhasil sync iuran matrix ke cloud', { rows: matrix.length });
     return { success: true };
   } catch (e: any) {
-    console.error('Supabase Iuran Exception:', e);
+    dbLog('IURAN_SYNC', '❌ Exception:', e?.message);
     return { success: false, error: e?.message || 'Gagal terhubung ke Supabase' };
   }
 }
 
 export async function fetchIuranMatrixFromCloud(): Promise<IuranMatrixRow[] | null> {
   const client = createClient();
-  if (!client) return null;
+  if (!client) {
+    dbLog('IURAN_FETCH', '⚠️ Supabase client NULL — skip cloud fetch');
+    return null;
+  }
 
   try {
     const { data, error } = await client.from('iuran_matrix').select('*');
-    if (error || !data || data.length === 0) return null;
+    if (error) {
+      dbLog('IURAN_FETCH', '❌ Query error:', error.message);
+      return null;
+    }
+    if (!data || data.length === 0) {
+      dbLog('IURAN_FETCH', '⚠️ Tabel iuran_matrix kosong di cloud');
+      return null;
+    }
 
     // Cross-reference RT & status_hunian with local/cloud rumah table if available
     let savedRumah: Rumah[] = [];
@@ -89,8 +109,10 @@ export async function fetchIuranMatrixFromCloud(): Promise<IuranMatrixRow[] | nu
     if (typeof window !== 'undefined' && matrix.length > 0) {
       localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(matrix));
     }
+    dbLog('IURAN_FETCH', '✅ Berhasil fetch iuran matrix dari cloud', { rows: matrix.length });
     return matrix;
-  } catch (e) {
+  } catch (e: any) {
+    dbLog('IURAN_FETCH', '❌ Exception:', e?.message);
     return null;
   }
 }
@@ -105,7 +127,10 @@ export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[
   }
 
   const client = createClient();
-  if (!client) return { success: false, error: 'Supabase client belum terkonfigurasi di Vercel env' };
+  if (!client) {
+    dbLog('PROFILES_SYNC', '⚠️ Supabase client NULL — data hanya di localStorage');
+    return { success: false, error: 'Supabase client belum terkonfigurasi di Vercel env' };
+  }
 
   try {
     if (rumahList.length > 0) {
@@ -116,7 +141,7 @@ export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[
         status_hunian: r.status_hunian || 'pemilik',
       }));
       const { error: rErr } = await client.from('rumah').upsert(rumahRecords, { onConflict: 'nomor_rumah' });
-      if (rErr) console.warn('Supabase Rumah Sync Note:', rErr.message);
+      if (rErr) dbLog('PROFILES_SYNC', '⚠️ Rumah sync note:', rErr.message);
     }
 
     if (profiles.length > 0) {
@@ -140,16 +165,20 @@ export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[
         const retry = await client.from('profiles').upsert(legacyRecords, { onConflict: 'id' });
         pErr = retry.error;
       }
-      if (pErr) return { success: false, error: pErr.message };
+      if (pErr) {
+        dbLog('PROFILES_SYNC', '❌ Profile sync error:', pErr.message);
+        return { success: false, error: pErr.message };
+      }
     }
+    dbLog('PROFILES_SYNC', '✅ Berhasil sync profiles ke cloud');
     return { success: true };
   } catch (e: any) {
-    console.error('Supabase Profiles Error:', e);
+    dbLog('PROFILES_SYNC', '❌ Exception:', e?.message);
     return { success: false, error: e?.message || 'Gagal terhubung ke Supabase' };
   }
 }
 
-// ── 3. FACTORY RESET ALL CLOUD & LOCAL DATA ─────────────────
+// ── FACTORY RESET ALL CLOUD & LOCAL DATA ─────────────────
 export async function clearAllCloudData(): Promise<{ success: boolean; error?: string }> {
   if (typeof window !== 'undefined') {
     try {
@@ -159,6 +188,7 @@ export async function clearAllCloudData(): Promise<{ success: boolean; error?: s
       localStorage.removeItem('martinez_events_v1');
       localStorage.removeItem('martinez_kupons_v1');
       localStorage.removeItem('martinez_booths_v1');
+      localStorage.removeItem('martinez_iuran_config_v1');
     } catch (e) {}
   }
 
@@ -172,22 +202,30 @@ export async function clearAllCloudData(): Promise<{ success: boolean; error?: s
     await client.from('iuran_matrix').delete().gte('updated_at', '1970-01-01');
     await client.from('profiles').delete().gte('created_at', '1970-01-01');
     await client.from('rumah').delete().gte('created_at', '1970-01-01');
+    await client.from('app_config').delete().eq('id', 'iuran_config_v1');
     return { success: true };
   } catch (e: any) {
-    console.error('Supabase Reset Error:', e);
+    dbLog('RESET', '❌ Exception:', e?.message);
     return { success: false, error: e?.message || 'Gagal reset data di Cloud Supabase' };
   }
 }
 
 export async function fetchProfilesFromCloud(): Promise<{ profiles: Profile[]; rumahList: Rumah[] } | null> {
   const client = createClient();
-  if (!client) return null;
+  if (!client) {
+    dbLog('PROFILES_FETCH', '⚠️ Supabase client NULL — skip cloud fetch');
+    return null;
+  }
 
   try {
-    const { data: rumahData } = await client.from('rumah').select('*');
-    const { data: profileData } = await client.from('profiles').select('*');
+    const { data: rumahData, error: rErr } = await client.from('rumah').select('*');
+    const { data: profileData, error: pErr } = await client.from('profiles').select('*');
+
+    if (rErr) dbLog('PROFILES_FETCH', '⚠️ Rumah query error:', rErr.message);
+    if (pErr) dbLog('PROFILES_FETCH', '⚠️ Profiles query error:', pErr.message);
 
     if ((!rumahData || rumahData.length === 0) && (!profileData || profileData.length === 0)) {
+      dbLog('PROFILES_FETCH', '⚠️ Cloud profiles & rumah kosong');
       return null;
     }
 
@@ -255,9 +293,10 @@ export async function fetchProfilesFromCloud(): Promise<{ profiles: Profile[]; r
       localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(profiles));
       localStorage.setItem(STORAGE_KEY_RUMAH, JSON.stringify(rumahList));
     }
+    dbLog('PROFILES_FETCH', '✅ Berhasil fetch profiles dari cloud', { count: profiles.length });
     return { profiles, rumahList };
-  } catch (e) {
-    console.error('fetchProfilesFromCloud error:', e);
+  } catch (e: any) {
+    dbLog('PROFILES_FETCH', '❌ Exception:', e?.message);
     return null;
   }
 }
@@ -269,7 +308,10 @@ export async function syncEventsAndKuponsToCloud(
   booths: any[]
 ) {
   const client = createClient();
-  if (!client) return;
+  if (!client) {
+    dbLog('EVENTS_SYNC', '⚠️ Supabase client NULL — event/kupon hanya di localStorage');
+    return;
+  }
 
   try {
     if (events && events.length > 0) {
@@ -283,7 +325,8 @@ export async function syncEventsAndKuponsToCloud(
         rules: e.rules,
         created_at: e.created_at,
       }));
-      await client.from('events').upsert(evtRecords, { onConflict: 'id' });
+      const { error } = await client.from('events').upsert(evtRecords, { onConflict: 'id' });
+      if (error) dbLog('EVENTS_SYNC', '❌ Events upsert error:', error.message);
     }
 
     if (booths && booths.length > 0) {
@@ -295,7 +338,8 @@ export async function syncEventsAndKuponsToCloud(
         password: b.password,
         created_at: b.created_at,
       }));
-      await client.from('tenant_booths').upsert(bthRecords, { onConflict: 'id' });
+      const { error } = await client.from('tenant_booths').upsert(bthRecords, { onConflict: 'id' });
+      if (error) dbLog('EVENTS_SYNC', '❌ Booths upsert error:', error.message);
     }
 
     if (kupons && kupons.length > 0) {
@@ -313,26 +357,42 @@ export async function syncEventsAndKuponsToCloud(
         used_by_booth_nama: k.used_by_booth_nama,
         created_at: k.created_at,
       }));
-      await client.from('kupons').upsert(kpnRecords, { onConflict: 'id' });
+      const { error } = await client.from('kupons').upsert(kpnRecords, { onConflict: 'id' });
+      if (error) dbLog('EVENTS_SYNC', '❌ Kupons upsert error:', error.message);
+      else dbLog('EVENTS_SYNC', '✅ Kupons synced to cloud', { count: kupons.length });
     }
-  } catch (e) {
-    console.error('syncEventsAndKuponsToCloud error:', e);
+  } catch (e: any) {
+    dbLog('EVENTS_SYNC', '❌ Exception:', e?.message);
   }
 }
 
 export async function fetchKuponsFromCloud(nomorRumahInput?: string): Promise<any[] | null> {
   const client = createClient();
-  if (!client) return null;
+  if (!client) {
+    dbLog('KUPONS_FETCH', '⚠️ Supabase client NULL — skip cloud kupon fetch');
+    return null;
+  }
 
   try {
-    const { data } = await client.from('kupons').select('*');
-    if (!data) return null;
+    const { data, error } = await client.from('kupons').select('*');
+    if (error) {
+      dbLog('KUPONS_FETCH', '❌ Query error:', error.message);
+      return null;
+    }
+    if (!data) {
+      dbLog('KUPONS_FETCH', '⚠️ No data returned');
+      return null;
+    }
+    dbLog('KUPONS_FETCH', '✅ Fetched kupons from cloud', { total: data.length });
     if (nomorRumahInput) {
       const targetClean = cleanHouseNo(nomorRumahInput);
-      return data.filter((k) => cleanHouseNo(k.nomor_rumah) === targetClean);
+      const filtered = data.filter((k) => cleanHouseNo(k.nomor_rumah) === targetClean);
+      dbLog('KUPONS_FETCH', `  → Filtered for ${nomorRumahInput}:`, { count: filtered.length });
+      return filtered;
     }
     return data;
-  } catch (e) {
+  } catch (e: any) {
+    dbLog('KUPONS_FETCH', '❌ Exception:', e?.message);
     return null;
   }
 }
@@ -340,10 +400,13 @@ export async function fetchKuponsFromCloud(nomorRumahInput?: string): Promise<an
 // ── 4. IURAN CONFIG CLOUD SYNC ──────────────────────────────
 export async function syncIuranConfigToCloud(config: any) {
   const client = createClient();
-  if (!client) return;
+  if (!client) {
+    dbLog('CONFIG_SYNC', '⚠️ Supabase client NULL — config hanya di localStorage');
+    return;
+  }
 
   try {
-    await client.from('app_config').upsert(
+    const { error } = await client.from('app_config').upsert(
       [
         {
           id: 'iuran_config_v1',
@@ -353,32 +416,59 @@ export async function syncIuranConfigToCloud(config: any) {
       ],
       { onConflict: 'id' }
     );
-  } catch (e) {
-    console.error('syncIuranConfigToCloud error:', e);
+    if (error) {
+      dbLog('CONFIG_SYNC', '❌ Config sync error:', error.message);
+    } else {
+      dbLog('CONFIG_SYNC', '✅ Config synced to cloud', { nominal: config.nominal_per_bulan });
+    }
+  } catch (e: any) {
+    dbLog('CONFIG_SYNC', '❌ Exception:', e?.message);
   }
 }
 
 export async function fetchIuranConfigFromCloud(): Promise<any | null> {
   const client = createClient();
-  if (!client) return null;
+  if (!client) {
+    dbLog('CONFIG_FETCH', '⚠️ Supabase client NULL — config dari localStorage saja');
+    return null;
+  }
 
   try {
-    const { data } = await client.from('app_config').select('*').eq('id', 'iuran_config_v1').single();
+    const { data, error } = await client.from('app_config').select('*').eq('id', 'iuran_config_v1').single();
+    if (error) {
+      dbLog('CONFIG_FETCH', '❌ Config fetch error:', error.message);
+      return null;
+    }
     if (data && data.data) {
+      dbLog('CONFIG_FETCH', '✅ Config fetched from cloud', { nominal: data.data.nominal_per_bulan });
+      // Also save to localStorage so it persists across tabs
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('martinez_iuran_config_v1', JSON.stringify(data.data));
+        } catch (e) {}
+      }
       return data.data;
     }
-  } catch (e) {}
-  return null;
+    dbLog('CONFIG_FETCH', '⚠️ Config data null/empty in cloud');
+    return null;
+  } catch (e: any) {
+    dbLog('CONFIG_FETCH', '❌ Exception:', e?.message);
+    return null;
+  }
 }
 
 export async function clearAllEventsAndKuponsCloud() {
   const client = createClient();
-  if (!client) return;
+  if (!client) {
+    dbLog('CLEAR_EVENTS', '⚠️ Supabase client NULL — hanya clear localStorage');
+    return;
+  }
   try {
     await client.from('kupons').delete().gte('created_at', '1970-01-01');
     await client.from('tenant_booths').delete().gte('created_at', '1970-01-01');
     await client.from('events').delete().gte('created_at', '1970-01-01');
-  } catch (e) {
-    console.error('clearAllEventsAndKuponsCloud error:', e);
+    dbLog('CLEAR_EVENTS', '✅ All events/kupons/booths cleared from cloud');
+  } catch (e: any) {
+    dbLog('CLEAR_EVENTS', '❌ Exception:', e?.message);
   }
 }

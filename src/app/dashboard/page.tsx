@@ -53,6 +53,8 @@ export default function WargaDashboardPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [copiedRekening, setCopiedRekening] = useState(false);
   const [copiedBerita, setCopiedBerita] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugLines, setDebugLines] = useState<string[]>([]);
 
   const [config, setConfig] = useState<IuranConfig>({
     nominal_per_bulan: 50000,
@@ -70,10 +72,17 @@ export default function WargaDashboardPage() {
   const currentMonthNum = new Date().getMonth() + 1; // 1-12
   const currentMonthName = BULAN_FULL[currentMonthNum] || 'Bulan Ini';
 
-  // Dynamic annual rate: Rp 50.000 * 12 = Rp 600.000 (Dynamic from settings)
+  // Dynamic annual rate
   const nominalTahunan = config.nominal_per_bulan * 12;
 
-  // Read Session User & Database Storage
+  // Debug logger helper
+  const addDebug = (msg: string) => {
+    const ts = new Date().toLocaleTimeString('id-ID');
+    setDebugLines((prev) => [`[${ts}] ${msg}`, ...prev.slice(0, 30)]);
+    console.log(`[WARGA-DASH] ${msg}`);
+  };
+
+  // ── MASTER DATA LOADING ─────────────────────────────────────
   useEffect(() => {
     const stored = sessionStorage.getItem('demo_user');
     let houseNo = 'MTNU3/2';
@@ -85,35 +94,31 @@ export default function WargaDashboardPage() {
       setNomorRumah(houseNo);
     }
 
-    const reloadConfig = () => {
-      const cfg = getIuranConfigFromStorage();
-      if (cfg) setConfig(cfg);
-      fetchIuranConfigFromCloud().then((cloudCfg) => {
-        if (cloudCfg) setConfig((prev) => ({ ...prev, ...cloudCfg }));
-      });
-    };
+    // ─── STEP 1: Load config (localStorage first, then cloud override) ───
+    const localConfig = getIuranConfigFromStorage();
+    setConfig(localConfig);
+    addDebug(`📦 localStorage config: Rp ${localConfig.nominal_per_bulan.toLocaleString('id-ID')}/bln`);
 
-    reloadConfig();
+    fetchIuranConfigFromCloud().then((cloudCfg) => {
+      if (cloudCfg) {
+        const merged = { ...localConfig, ...cloudCfg };
+        setConfig(merged);
+        addDebug(`☁️ Cloud config loaded: Rp ${merged.nominal_per_bulan.toLocaleString('id-ID')}/bln`);
+        // Also persist cloud config to localStorage for next load
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('martinez_iuran_config_v1', JSON.stringify(merged));
+          } catch (e) {}
+        }
+      } else {
+        addDebug('⚠️ Cloud config: NULL (Supabase tidak terkonfigurasi / tabel belum ada)');
+      }
+    });
 
-    const handleCustomEvent = (e: any) => {
-      if (e.detail) setConfig(e.detail);
-    };
-
-    window.addEventListener('martinez_config_updated', handleCustomEvent);
-    window.addEventListener('storage', reloadConfig);
-    window.addEventListener('focus', reloadConfig);
-
-    let bc: BroadcastChannel | null = null;
-    try {
-      bc = new BroadcastChannel('martinez_config_channel');
-      bc.onmessage = (msg) => {
-        if (msg.data) setConfig(msg.data);
-      };
-    } catch (e) {}
-
-    // 1. Fetch Cloud Iuran Matrix for Real-time Status Sync
+    // ─── STEP 2: Load Iuran Matrix ───
     fetchIuranMatrixFromCloud().then((cloudMatrix) => {
       if (cloudMatrix && cloudMatrix.length > 0) {
+        addDebug(`☁️ Cloud iuran matrix: ${cloudMatrix.length} rows`);
         const targetClean = cleanHouseNo(houseNo);
         const matches = cloudMatrix.filter(
           (m) => cleanHouseNo(m.nomor_rumah) === targetClean
@@ -137,13 +142,19 @@ export default function WargaDashboardPage() {
             }
           });
           setIuranData(targetBulan);
+          addDebug(`☁️ Iuran ${houseNo}: matched ${matches.length} rows from cloud`);
+        } else {
+          addDebug(`⚠️ Cloud iuran: no match for ${houseNo}`);
         }
+      } else {
+        addDebug('⚠️ Cloud iuran matrix: NULL atau kosong');
       }
     });
 
-    // 2. Fetch Cloud Profiles & Tanggal Masuk
+    // ─── STEP 3: Load Profiles & Tanggal Masuk ───
     fetchProfilesFromCloud().then((cloudRes) => {
       if (cloudRes && cloudRes.profiles) {
+        addDebug(`☁️ Cloud profiles: ${cloudRes.profiles.length} profiles`);
         const targetClean = cleanHouseNo(houseNo);
         const targetRumah = cloudRes.rumahList.find(
           (r) => cleanHouseNo(r.nomor_rumah) === targetClean
@@ -163,29 +174,38 @@ export default function WargaDashboardPage() {
           if (prof.tanggal_masuk) {
             setTanggalMasuk(prof.tanggal_masuk);
           }
+          addDebug(`☁️ Profile ${houseNo}: ${prof.nama}`);
         }
+      } else {
+        addDebug('⚠️ Cloud profiles: NULL');
       }
     });
 
-    // 3. Fetch Kupons for this exact house number from Local Storage AND Supabase Cloud
-    const targetClean = cleanHouseNo(houseNo);
+    // ─── STEP 4: Load Kupons (LOCAL + CLOUD merged) ───
     const localKupons = getKuponsForWarga(houseNo);
+    addDebug(`📦 localStorage kupons for ${houseNo}: ${localKupons.length}`);
     if (localKupons.length > 0) {
       setKupons(localKupons);
     }
-    fetchKuponsFromCloud().then((cloudKupons) => {
+
+    fetchKuponsFromCloud(houseNo).then((cloudKupons) => {
       if (cloudKupons && cloudKupons.length > 0) {
-        const matchingCloud = cloudKupons.filter(
-          (k) => cleanHouseNo(k.nomor_rumah) === targetClean
-        );
-        if (matchingCloud.length > 0) {
-          setKupons(matchingCloud);
-        } else if (localKupons.length > 0) {
+        addDebug(`☁️ Cloud kupons for ${houseNo}: ${cloudKupons.length}`);
+        // Merge: cloud takes priority, deduplicate by id
+        const mergedMap = new Map<string, KuponAcara>();
+        localKupons.forEach((k) => mergedMap.set(k.id, k));
+        cloudKupons.forEach((k) => mergedMap.set(k.id, k));
+        setKupons(Array.from(mergedMap.values()));
+      } else {
+        addDebug(`⚠️ Cloud kupons for ${houseNo}: NULL / 0`);
+        // Keep local kupons if any
+        if (localKupons.length > 0) {
           setKupons(localKupons);
         }
       }
     });
 
+    // ─── STEP 5: Fallback - also load from localStorage iuran matrix ───
     try {
       const savedIuran = localStorage.getItem(STORAGE_KEY_IURAN);
       let matrix: IuranMatrixRow[] = [];
@@ -197,7 +217,6 @@ export default function WargaDashboardPage() {
         localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(matrix));
       }
 
-      // Robust house number matching & matrix row merging
       const targetClean = cleanHouseNo(houseNo);
       const matches = matrix.filter(
         (m) => cleanHouseNo(m.nomor_rumah) === targetClean
@@ -228,11 +247,16 @@ export default function WargaDashboardPage() {
         });
       }
 
-      setIuranData(targetBulan);
-      setRt(targetRt);
-      setStatusHunian(targetHunian);
+      setIuranData((prev) => {
+        // Only use localStorage if cloud didn't set anything
+        const hasCloudData = Object.values(prev).some((v) => v === 'lunas');
+        if (!hasCloudData && matches.length > 0) return targetBulan;
+        return prev;
+      });
+      setRt((prev) => prev === '03' && targetRt !== '03' ? targetRt : prev);
+      setStatusHunian((prev) => prev === 'pemilik' && targetHunian !== 'pemilik' ? targetHunian : prev);
 
-      // Resolve Real Resident Name & Tanggal Masuk from Profiles & Rumah list
+      // Resolve Resident Name & Tanggal Masuk from localStorage profiles
       let realName = '';
       let realTglMasuk = '';
 
@@ -274,20 +298,53 @@ export default function WargaDashboardPage() {
         realName = userLabel;
       }
 
-      setNamaWarga(realName || `Penghuni ${houseNo}`);
-      if (realTglMasuk) setTanggalMasuk(realTglMasuk);
-
-      // Read real coupons for this house immediately
-      const realKupons = getKuponsForWarga(houseNo);
-      setKupons(realKupons);
+      setNamaWarga((prev) => prev === 'Warga' ? (realName || `Penghuni ${houseNo}`) : prev);
+      if (realTglMasuk) setTanggalMasuk((prev) => prev || realTglMasuk);
     } catch (e) {
-      console.error('Failed to load database iuran for warga:', e);
+      addDebug(`❌ localStorage iuran fallback error: ${e}`);
     }
 
+    // ─── Event Listeners for config sync ───
+    const handleConfigEvent = (e: any) => {
+      if (e.detail) {
+        setConfig(e.detail);
+        addDebug(`🔔 Config updated via CustomEvent: Rp ${e.detail.nominal_per_bulan?.toLocaleString('id-ID')}/bln`);
+      }
+    };
+    const handleStorageEvent = () => {
+      const cfg = getIuranConfigFromStorage();
+      setConfig(cfg);
+      addDebug(`🔔 Config updated via storage event: Rp ${cfg.nominal_per_bulan.toLocaleString('id-ID')}/bln`);
+    };
+    const handleFocusEvent = () => {
+      const cfg = getIuranConfigFromStorage();
+      setConfig(cfg);
+      // Also reload kupons on focus
+      const freshKupons = getKuponsForWarga(houseNo);
+      if (freshKupons.length > 0) {
+        setKupons(freshKupons);
+      }
+    };
+
+    window.addEventListener('martinez_config_updated', handleConfigEvent);
+    window.addEventListener('storage', handleStorageEvent);
+    window.addEventListener('focus', handleFocusEvent);
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('martinez_config_channel');
+      bc.onmessage = (msg) => {
+        if (msg.data) {
+          setConfig(msg.data);
+          addDebug(`🔔 Config updated via BroadcastChannel: Rp ${msg.data.nominal_per_bulan?.toLocaleString('id-ID')}/bln`);
+        }
+      };
+    } catch (e) {}
+
     return () => {
-      window.removeEventListener('martinez_config_updated', handleCustomEvent);
-      window.removeEventListener('storage', reloadConfig);
-      window.removeEventListener('focus', reloadConfig);
+      window.removeEventListener('martinez_config_updated', handleConfigEvent);
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('focus', handleFocusEvent);
       if (bc) bc.close();
     };
   }, [tahun, nomorRumah]);
@@ -308,7 +365,13 @@ export default function WargaDashboardPage() {
 
       if (targetHouse) {
         const freshKupons = getKuponsForWarga(targetHouse);
-        setKupons(freshKupons);
+        setKupons((prev) => {
+          // Merge: keep cloud kupons that aren't in local
+          const mergedMap = new Map<string, KuponAcara>();
+          prev.forEach((k) => mergedMap.set(k.id, k));
+          freshKupons.forEach((k) => mergedMap.set(k.id, k));
+          return Array.from(mergedMap.values());
+        });
       }
     };
 
@@ -316,7 +379,7 @@ export default function WargaDashboardPage() {
 
     window.addEventListener('focus', syncKupons);
     window.addEventListener('storage', syncKupons);
-    const interval = setInterval(syncKupons, 1500);
+    const interval = setInterval(syncKupons, 3000);
 
     return () => {
       window.removeEventListener('focus', syncKupons);
@@ -932,6 +995,37 @@ export default function WargaDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ── DEBUG SYNC PANEL ─────────────────────────────────── */}
+      <div className="fixed bottom-4 right-4 z-40">
+        <button
+          onClick={() => setShowDebug(!showDebug)}
+          className="px-3 py-1.5 bg-surface-900 text-white text-[10px] font-mono font-bold rounded-lg shadow-lg hover:bg-surface-800 transition-colors cursor-pointer opacity-50 hover:opacity-100"
+        >
+          {showDebug ? '✕ Tutup Debug' : '🔧 Sync Debug'}
+        </button>
+        {showDebug && (
+          <div className="absolute bottom-10 right-0 w-[420px] max-h-[300px] bg-surface-950 text-green-400 text-[10px] font-mono rounded-xl border border-surface-700 shadow-2xl overflow-hidden">
+            <div className="px-3 py-2 bg-surface-900 text-white font-bold text-[11px] flex items-center justify-between border-b border-surface-700">
+              <span>📡 Sync Debug Log — {nomorRumah}</span>
+              <span className="text-[9px] text-surface-400">
+                Config: Rp {config.nominal_per_bulan.toLocaleString('id-ID')}/bln | Kupons: {kupons.length}
+              </span>
+            </div>
+            <div className="p-2 overflow-y-auto max-h-[250px] space-y-0.5">
+              {debugLines.length === 0 ? (
+                <p className="text-surface-500">Belum ada log...</p>
+              ) : (
+                debugLines.map((line, i) => (
+                  <p key={i} className={`leading-tight ${line.includes('❌') ? 'text-red-400' : line.includes('⚠️') ? 'text-yellow-400' : line.includes('✅') || line.includes('☁️') ? 'text-green-400' : 'text-surface-400'}`}>
+                    {line}
+                  </p>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
