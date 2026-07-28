@@ -144,10 +144,22 @@ export default function WargaDashboardPage() {
       }
     });
 
-    // 3. Fetch Cloud Kupons for this house number
-    fetchKuponsFromCloud(houseNo).then((cloudKupons) => {
+    // 3. Fetch Kupons for this exact house number from Local Storage AND Supabase Cloud
+    const targetClean = cleanHouseNo(houseNo);
+    const localKupons = getKuponsForWarga(houseNo);
+    if (localKupons.length > 0) {
+      setKupons(localKupons);
+    }
+    fetchKuponsFromCloud().then((cloudKupons) => {
       if (cloudKupons && cloudKupons.length > 0) {
-        setKupons(cloudKupons);
+        const matchingCloud = cloudKupons.filter(
+          (k) => cleanHouseNo(k.nomor_rumah) === targetClean
+        );
+        if (matchingCloud.length > 0) {
+          setKupons(matchingCloud);
+        } else if (localKupons.length > 0) {
+          setKupons(localKupons);
+        }
       }
     });
 

@@ -105,12 +105,10 @@ export default function AdminEventsPage() {
 
     window.addEventListener('focus', loadData);
     window.addEventListener('storage', loadData);
-    const interval = setInterval(loadData, 1500);
 
     return () => {
       window.removeEventListener('focus', loadData);
       window.removeEventListener('storage', loadData);
-      clearInterval(interval);
     };
   }, []);
 
@@ -352,13 +350,6 @@ export default function AdminEventsPage() {
                           <span className="text-xs font-mono text-surface-400">
                             {evt.tanggal_event}
                           </span>
-                          <button
-                            onClick={() => handleDeleteEvent(evt.id, evt.nama_event)}
-                            className="p-1 text-danger-500 hover:bg-danger-500/10 rounded-lg transition-colors cursor-pointer"
-                            title="Hapus Event"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
                         </div>
                       </div>
 
