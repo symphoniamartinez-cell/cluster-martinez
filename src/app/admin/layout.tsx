@@ -38,7 +38,7 @@ const NAV_ITEMS = [
   },
   {
     label: 'Data Iuran',
-    href: '/admin',
+    href: '/admin/iuran',
     icon: TableProperties,
   },
   {
