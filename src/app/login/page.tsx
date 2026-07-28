@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { authenticateBooth } from '@/lib/event-store';
 import {
   Home,
   User,
@@ -132,13 +133,13 @@ export default function LoginPage() {
 
     try {
       await new Promise((r) => setTimeout(r, 400));
-      const res = authenticateAdmin(boothUsername, boothPassword);
+      const res = await authenticateBooth(boothUsername, boothPassword);
 
-      if (res.success && res.user && res.user.role === 'booth') {
+      if (res.success && res.booth) {
         const sessionData = {
-          id: res.user.id,
-          label: res.user.nama,
-          nomor: res.user.username,
+          id: res.booth.id,
+          label: res.booth.nama_booth,
+          nomor: res.booth.username,
           role: 'booth',
         };
 
@@ -148,8 +149,6 @@ export default function LoginPage() {
         )}; path=/; max-age=86400`;
 
         router.push('/booth');
-      } else if (res.success && res.user) {
-        setErrorBooth('Akun ini adalah akun Admin. Silakan login via tab Pengurus.');
       } else {
         setErrorBooth(res.error || 'Username booth atau password booth salah.');
       }

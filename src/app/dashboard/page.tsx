@@ -34,6 +34,7 @@ import { getMockIuranMatrix } from '@/lib/mock-data';
 import { fetchIuranMatrixFromCloud, fetchProfilesFromCloud, fetchKuponsFromCloud, fetchIuranConfigFromCloud } from '@/lib/db-sync';
 import { getIuranConfigFromStorage, type IuranConfig } from '@/lib/config-store';
 import { getKuponsForWarga } from '@/lib/event-store';
+import { createClient } from '@/lib/supabase/client';
 
 const STORAGE_KEY_IURAN = 'martinez_iuran_matrix_v2';
 
@@ -55,6 +56,7 @@ export default function WargaDashboardPage() {
   const [copiedBerita, setCopiedBerita] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [debugLines, setDebugLines] = useState<string[]>([]);
+  const [eventMap, setEventMap] = useState<Record<string, string>>({});
 
   const [config, setConfig] = useState<IuranConfig>({
     nominal_per_bulan: 50000,
@@ -248,9 +250,7 @@ export default function WargaDashboardPage() {
       }
 
       setIuranData((prev) => {
-        // Only use localStorage if cloud didn't set anything
-        const hasCloudData = Object.values(prev).some((v) => v === 'lunas');
-        if (!hasCloudData && matches.length > 0) return targetBulan;
+        if (Object.keys(prev).length === 0) return targetBulan;
         return prev;
       });
       setRt((prev) => prev === '03' && targetRt !== '03' ? targetRt : prev);
@@ -259,7 +259,6 @@ export default function WargaDashboardPage() {
       // Resolve Resident Name & Tanggal Masuk from localStorage profiles
       let realName = '';
       let realTglMasuk = '';
-
       try {
         const savedRumah = localStorage.getItem('martinez_rumah_list_v3');
         const savedProfiles = localStorage.getItem('martinez_profiles_list_v3');
@@ -302,6 +301,20 @@ export default function WargaDashboardPage() {
       if (realTglMasuk) setTanggalMasuk((prev) => prev || realTglMasuk);
     } catch (e) {
       addDebug(`❌ localStorage iuran fallback error: ${e}`);
+    }
+
+    // ─── STEP 6: Load Events to get Tanggal Event ───
+    const client = createClient();
+    if (client) {
+      client.from('events').select('id, tanggal_event').then(({ data }) => {
+        if (data) {
+          const map: Record<string, string> = {};
+          data.forEach((e: any) => {
+            map[e.id] = e.tanggal_event;
+          });
+          setEventMap(map);
+        }
+      });
     }
 
     // ─── Event Listeners for config sync ───
@@ -943,6 +956,12 @@ export default function WargaDashboardPage() {
               <h3 className="text-lg font-bold text-surface-900 dark:text-white mb-1">
                 {selectedKupon.kategori_nama || selectedKupon.nama_kupon || 'Kupon Acara Doorprize'}
               </h3>
+              
+              <div className="mb-4">
+                 <p className="font-semibold text-primary-600 dark:text-primary-400 text-sm">Event: {selectedKupon.nama_event || '-'}</p>
+                 <p className="text-xs text-surface-500 font-medium">Tanggal: {eventMap[selectedKupon.event_id] || '-'}</p>
+              </div>
+
               <p className="text-xs text-surface-500 mb-6">
                 {selectedKupon.is_used
                   ? 'Kupon ini telah digunakan (diredeem)'

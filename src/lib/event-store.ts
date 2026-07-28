@@ -476,3 +476,28 @@ export async function deleteKupon(kuponId: string): Promise<void> {
     await client.from('kupons').delete().eq('id', kuponId);
   }
 }
+
+export async function authenticateBooth(username: string, password: string): Promise<{ success: boolean; booth?: TenantBooth; error?: string }> {
+  const client = createClient();
+  if (client) {
+    const { data, error } = await client
+      .from('tenant_booths')
+      .select('*')
+      .eq('username', username)
+      .eq('password', password)
+      .single();
+
+    if (error || !data) {
+      return { success: false, error: 'Username booth atau password booth salah. Atau booth tidak terdaftar.' };
+    }
+    return { success: true, booth: data as TenantBooth };
+  } else {
+    // Fallback to local
+    const booths = getBoothsFromStorage();
+    const booth = booths.find((b) => b.username === username && b.password === password);
+    if (!booth) {
+      return { success: false, error: 'Username booth atau password booth salah. Atau booth tidak terdaftar.' };
+    }
+    return { success: true, booth };
+  }
+}
