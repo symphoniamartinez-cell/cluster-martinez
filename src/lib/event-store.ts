@@ -227,30 +227,6 @@ export async function createEventAndGenerateKupons(
           });
         }
       });
-    } else {
-      const totalKuponsForHouse = calculateKuponForHouse(lunasCount, rules);
-      if (totalKuponsForHouse > 0) {
-        const cat = categories[0] || { id: 'cat-1', nama_kategori: 'Kupon Event' };
-        for (let k = 1; k <= totalKuponsForHouse; k++) {
-          const randomCode = generateRandom8();
-          const kodeKupon = `${cleanNo}-${randomCode}`;
-          newGeneratedKupons.push({
-            id: `kpn-${newEventId}-${cleanNo}-${k}-${Date.now()}`,
-            event_id: newEventId,
-            nama_event: eventData.nama_event,
-            nama_kupon: cat.nama_kategori,
-            kategori_id: cat.id,
-            kategori_nama: cat.nama_kategori,
-            warga_id: row.rumah_id,
-            nomor_rumah: row.nomor_rumah,
-            tahun,
-            kode_kupon: kodeKupon,
-            is_used: false,
-            used_at: null,
-            created_at: new Date().toISOString(),
-          });
-        }
-      }
     }
   });
 
