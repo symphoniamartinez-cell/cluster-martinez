@@ -336,3 +336,37 @@ export async function fetchKuponsFromCloud(nomorRumahInput?: string): Promise<an
     return null;
   }
 }
+
+// ── 4. IURAN CONFIG CLOUD SYNC ──────────────────────────────
+export async function syncIuranConfigToCloud(config: any) {
+  const client = createClient();
+  if (!client) return;
+
+  try {
+    await client.from('app_config').upsert(
+      [
+        {
+          id: 'iuran_config_v1',
+          data: config,
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      { onConflict: 'id' }
+    );
+  } catch (e) {
+    console.error('syncIuranConfigToCloud error:', e);
+  }
+}
+
+export async function fetchIuranConfigFromCloud(): Promise<any | null> {
+  const client = createClient();
+  if (!client) return null;
+
+  try {
+    const { data } = await client.from('app_config').select('*').eq('id', 'iuran_config_v1').single();
+    if (data && data.data) {
+      return data.data;
+    }
+  } catch (e) {}
+  return null;
+}

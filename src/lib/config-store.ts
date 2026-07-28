@@ -45,10 +45,13 @@ export function getIuranConfigFromStorage(): IuranConfig {
   return DEFAULT_IURAN_CONFIG;
 }
 
+import { syncIuranConfigToCloud } from '@/lib/db-sync';
+
 export function saveIuranConfigToStorage(config: IuranConfig) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+    syncIuranConfigToCloud(config);
   } catch (e) {
     console.error(e);
   }
