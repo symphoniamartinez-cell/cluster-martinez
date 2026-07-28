@@ -119,6 +119,45 @@ export async function addPembelianGudang(barangId: string, jumlahSatuanBesar: nu
   }
 }
 
+export async function keluarkanGudang(barangId: string, jumlahSatuanBesar: number, catatan: string, user: string) {
+  try {
+    const barang = getTokoBarangLocal().find(b => b.id === barangId);
+    if (!barang) throw new Error('Barang tidak ditemukan');
+
+    const jumlahSatuanKecil = jumlahSatuanBesar * (barang.qty_per_satuan_besar || 1);
+
+    if ((barang.stok_gudang || 0) < jumlahSatuanKecil) {
+      throw new Error(`Stok gudang tidak cukup. Sisa: ${barang.stok_gudang}`);
+    }
+
+    const pergerakan: TokoPergerakanStok = {
+      id: 'tps-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+      barang_id: barangId,
+      jenis_pergerakan: 'STOK_KELUAR',
+      jumlah_satuan_besar: jumlahSatuanBesar,
+      jumlah_satuan_kecil: jumlahSatuanKecil,
+      catatan,
+      dibuat_oleh: user,
+      created_at: new Date().toISOString()
+    };
+
+    const client = createClient();
+    if (client) {
+      const { error: err1 } = await client.from('toko_pergerakan_stok').insert(pergerakan);
+      if (err1) throw err1;
+
+      const newStokGudang = (barang.stok_gudang || 0) - jumlahSatuanKecil;
+      const { error: err2 } = await client.from('toko_barang').update({ stok_gudang: newStokGudang }).eq('id', barangId);
+      if (err2) throw err2;
+    }
+
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 // -------------------------------------------------------------
 // GUARD / CASHIER ACTIONS
 // -------------------------------------------------------------
