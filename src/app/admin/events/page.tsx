@@ -44,6 +44,7 @@ import {
   DEFAULT_RULES,
   deleteEvent,
   deleteKupon,
+  syncEventDataFromCloud,
 } from '@/lib/event-store';
 
 export default function AdminEventsPage() {
@@ -58,6 +59,7 @@ export default function AdminEventsPage() {
   const [booths, setBooths] = useState<TenantBooth[]>([]);
 
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Scan Form State
   const [scanInput, setScanInput] = useState('');
@@ -112,6 +114,27 @@ export default function AdminEventsPage() {
       window.removeEventListener('storage', loadData);
     };
   }, []);
+
+  const handleSyncData = async (eventIdToSync: string, showNotification = true) => {
+    if (!eventIdToSync) return;
+    setIsSyncing(true);
+    const res = await syncEventDataFromCloud(eventIdToSync);
+    if (res.success && res.updated) {
+      loadData();
+      if (showNotification) showToast('Data berhasil disinkronisasi dengan Cloud!');
+    } else if (res.success && !res.updated) {
+      if (showNotification) showToast('Data sudah versi terbaru.');
+    } else {
+      if (showNotification) showToast('Gagal sinkronisasi dari Cloud.');
+    }
+    setIsSyncing(false);
+  };
+
+  useEffect(() => {
+    if (selectedEventId) {
+      handleSyncData(selectedEventId, false);
+    }
+  }, [selectedEventId]);
 
   // Real-Time Booth Report Calculation
   const boothReport = useMemo(() => {
@@ -258,6 +281,23 @@ export default function AdminEventsPage() {
             >
               <Trash2 className="w-4 h-4 text-danger-500" />
               Bersihkan Semua Event
+            </button>
+          )}
+
+          {/* Sync Cloud Button */}
+          {selectedEventId && (
+            <button
+              onClick={() => handleSyncData(selectedEventId)}
+              disabled={isSyncing}
+              className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs rounded-xl shadow-sm transition-all border ${
+                isSyncing
+                  ? 'bg-surface-100 dark:bg-surface-800 text-surface-400 border-surface-200 dark:border-surface-700 cursor-not-allowed'
+                  : 'bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700 hover:bg-primary-50 dark:hover:bg-surface-700 text-primary-600 dark:text-primary-400 cursor-pointer'
+              }`}
+              title="Tarik data penukaran terbaru dari Cloud"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Menyinkronkan...' : 'Sync Cloud'}
             </button>
           )}
 
