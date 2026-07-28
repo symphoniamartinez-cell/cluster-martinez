@@ -18,7 +18,7 @@ function BarangForm() {
     satuan_besar: 'Dus',
     satuan_kecil: 'Botol',
     qty_per_satuan_besar: 24,
-    harga_beli_satuan_besar: 50000,
+    harga_beli_satuan_besar: 0,
     harga_jual_satuan_kecil: 3000,
   });
 

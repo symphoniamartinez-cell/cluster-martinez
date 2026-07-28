@@ -349,39 +349,80 @@ export default function AdminTokoPage() {
 
           <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6">
             <h3 className="font-bold text-sm text-surface-900 dark:text-white mb-4">Riwayat Pembelian Gudang Terakhir</h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {pergerakanList.filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG').length === 0 ? (
                 <p className="text-xs text-surface-400">Belum ada riwayat pembelian.</p>
               ) : (
-                pergerakanList
-                  .filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG')
-                  .slice(0, 10)
-                  .map(p => {
-                    const brg = barangList.find(b => b.id === p.barang_id);
-                    return (
-                      <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-surface-50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700">
-                        <div>
-                          <p className="text-xs font-bold text-surface-900 dark:text-white">
-                            {brg?.nama_barang || 'Barang Dihapus'}
-                          </p>
-                          <p className="text-[11px] text-surface-500 mt-0.5">
-                            Oleh: {p.dibuat_oleh} • {new Date(p.created_at || '').toLocaleString('id-ID')}
-                          </p>
-                          {p.catatan && (
-                            <p className="text-[11px] text-surface-400 italic mt-1">"{p.catatan}"</p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                            +{p.jumlah_satuan_besar} {brg?.satuan_besar || 'Dus'}
-                          </p>
-                          <p className="text-[10px] text-surface-500 font-mono">
-                            (= {p.jumlah_satuan_kecil} {brg?.satuan_kecil || 'Pcs'})
-                          </p>
-                        </div>
+                Object.values(
+                  pergerakanList
+                    .filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG')
+                    .reduce((acc, p) => {
+                      // Gunakan nomor invoice sebagai key, fallback ke ID untuk legacy data
+                      const key = p.nomor_invoice || `legacy-${p.id}`;
+                      if (!acc[key]) {
+                        acc[key] = {
+                          nomor_invoice: p.nomor_invoice || 'Tanpa Invoice (Lama)',
+                          tanggal: p.created_at || new Date().toISOString(),
+                          dibuat_oleh: p.dibuat_oleh || 'System',
+                          catatan: p.catatan || '',
+                          items: []
+                        };
+                      }
+                      acc[key].items.push(p);
+                      return acc;
+                    }, {} as Record<string, { nomor_invoice: string; tanggal: string; dibuat_oleh: string; catatan: string; items: TokoPergerakanStok[] }>)
+                )
+                .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+                .slice(0, 20)
+                .map((invoice, idx) => (
+                  <div key={idx} className="bg-surface-50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                    <div className="p-4 bg-surface-100/50 dark:bg-surface-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-200 dark:border-surface-700">
+                      <div>
+                        <h4 className="font-bold text-sm text-indigo-600 dark:text-indigo-400">
+                          {invoice.nomor_invoice}
+                        </h4>
+                        <p className="text-[11px] text-surface-500 mt-0.5">
+                          {new Date(invoice.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • Oleh: {invoice.dibuat_oleh}
+                        </p>
+                        {invoice.catatan && (
+                          <p className="text-[11px] text-surface-500 italic mt-1">"{invoice.catatan}"</p>
+                        )}
                       </div>
-                    );
-                  })
+                      <div className="text-right text-xs font-bold text-surface-700 dark:text-surface-300">
+                        {invoice.items.length} Macam Barang
+                      </div>
+                    </div>
+                    <div className="p-4 overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[500px]">
+                        <thead>
+                          <tr className="border-b border-surface-200 dark:border-surface-700">
+                            <th className="pb-2 text-[10px] font-bold text-surface-400 uppercase tracking-wider">Nama Barang</th>
+                            <th className="pb-2 text-[10px] font-bold text-surface-400 uppercase tracking-wider text-right">Qty</th>
+                            <th className="pb-2 text-[10px] font-bold text-surface-400 uppercase tracking-wider text-right">Harga Satuan (Besar)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-surface-100 dark:divide-surface-800/50">
+                          {invoice.items.map(p => {
+                            const brg = barangList.find(b => b.id === p.barang_id);
+                            return (
+                              <tr key={p.id}>
+                                <td className="py-2 text-xs font-medium text-surface-900 dark:text-white">
+                                  {brg?.nama_barang || 'Barang Terhapus'}
+                                </td>
+                                <td className="py-2 text-xs text-right font-medium text-indigo-600 dark:text-indigo-400">
+                                  +{p.jumlah_satuan_besar} {brg?.satuan_besar || 'Dus'}
+                                </td>
+                                <td className="py-2 text-xs text-right text-surface-600 dark:text-surface-400 font-mono">
+                                  Rp {(p.harga_beli_satuan_besar || 0).toLocaleString('id-ID')}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>

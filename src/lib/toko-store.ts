@@ -126,10 +126,29 @@ export async function addPembelianBatchGudang(
       });
 
       // Accumulate local updates to avoid duplicate fetching
-      const currentStok = barangUpdates[item.barang_id]?.stok_gudang ?? (barang.stok_gudang || 0);
+      const currentStokKecil = barangUpdates[item.barang_id]?.stok_gudang ?? (barang.stok_gudang || 0);
+      const currentHargaBeli = barangUpdates[item.barang_id]?.harga_beli_satuan_besar ?? (barang.harga_beli_satuan_besar || 0);
+      
+      const currentStokBesar = currentStokKecil / (barang.qty_per_satuan_besar || 1);
+      const addedStokBesar = item.jumlah_satuan_besar;
+      
+      let newAverageHarga = currentHargaBeli;
+      
+      if (item.harga_beli_satuan_besar > 0) {
+        if (currentStokBesar <= 0) {
+          // If no existing stock, average cost is just the new cost
+          newAverageHarga = item.harga_beli_satuan_besar;
+        } else {
+          // Moving average cost
+          const totalOldValue = currentStokBesar * currentHargaBeli;
+          const totalNewValue = addedStokBesar * item.harga_beli_satuan_besar;
+          newAverageHarga = Math.round((totalOldValue + totalNewValue) / (currentStokBesar + addedStokBesar));
+        }
+      }
+
       barangUpdates[item.barang_id] = {
-        stok_gudang: currentStok + jumlahSatuanKecil,
-        harga_beli_satuan_besar: item.harga_beli_satuan_besar > 0 ? item.harga_beli_satuan_besar : barang.harga_beli_satuan_besar
+        stok_gudang: currentStokKecil + jumlahSatuanKecil,
+        harga_beli_satuan_besar: newAverageHarga
       };
     }
 
