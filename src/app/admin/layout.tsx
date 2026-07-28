@@ -20,6 +20,7 @@ import {
   UserCog,
   Settings,
   Ticket,
+  Store,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 import { ROLE_LABELS } from '@/types';
@@ -49,6 +50,11 @@ const NAV_ITEMS = [
     label: 'Acara & Kupon',
     href: '/admin/events',
     icon: Ticket,
+  },
+  {
+    label: 'Toko Martinez',
+    href: '/admin/toko',
+    icon: Store,
   },
   {
     label: 'Pengaturan',

@@ -462,21 +462,6 @@ export default function AdminEventsPage() {
                         {evt.lokasi_event}
                       </p>
 
-                      {/* Leveling Rules Summary */}
-                      <div className="p-3 bg-surface-50 dark:bg-surface-800/60 rounded-2xl space-y-1 text-[11px] mb-4 border border-surface-200 dark:border-surface-700">
-                        <p className="font-bold text-surface-700 dark:text-surface-200 mb-1 flex items-center gap-1">
-                          <Layers className="w-3.5 h-3.5 text-primary-500" />
-                          Rule Kupon:
-                        </p>
-                        <div className="flex justify-between text-surface-600 dark:text-surface-300">
-                          <span>T1 (&ge;{rules.tier1_min_bulan ?? 8} Bln): <strong>{rules.tier1_kupon ?? rules.full_lunas_12 ?? 5} Kpn</strong></span>
-                          <span>T2 (&ge;{rules.tier2_min_bulan ?? 5} Bln): <strong>{rules.tier2_kupon ?? rules.rajin_8_11 ?? 3} Kpn</strong></span>
-                        </div>
-                        <div className="flex justify-between text-surface-600 dark:text-surface-300">
-                          <span>T3 (&ge;{rules.tier3_min_bulan ?? 1} Bln): <strong>{rules.tier3_kupon ?? rules.bolong_1_7 ?? 1} Kpn</strong></span>
-                          <span>Tidak Bayar: <strong>{rules.tidak_bayar_0 ?? 0} Kpn</strong></span>
-                        </div>
-                      </div>
 
                       <div className="p-3 bg-accent-500/5 rounded-2xl space-y-1 text-xs mb-4 border border-accent-500/10">
                         <div className="flex justify-between">

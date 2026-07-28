@@ -580,5 +580,64 @@ CREATE POLICY "Allow public update tenant_booths" ON tenant_booths FOR UPDATE US
 CREATE POLICY "Allow public delete tenant_booths" ON tenant_booths FOR DELETE USING (true);
 
 -- Selesai! Refresh halaman admin setelah menjalankan SQL ini.
+
+-- =========================================================================
+-- TOKO MARTINEZ INVENTORY & SALES SYSTEM
+-- =========================================================================
+
+-- 5. Tabel toko_barang (Master Barang)
+CREATE TABLE IF NOT EXISTS toko_barang (
+  id TEXT PRIMARY KEY,
+  nama_barang TEXT NOT NULL,
+  kategori TEXT DEFAULT 'Umum',
+  satuan_besar TEXT DEFAULT 'Dus',
+  satuan_kecil TEXT DEFAULT 'Botol',
+  qty_per_satuan_besar INTEGER DEFAULT 1,
+  harga_beli_satuan_besar INTEGER DEFAULT 0,
+  harga_jual_satuan_kecil INTEGER DEFAULT 0,
+  stok_gudang INTEGER DEFAULT 0, -- Dalam satuan kecil
+  stok_display INTEGER DEFAULT 0, -- Dalam satuan kecil
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE toko_barang ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read toko_barang" ON toko_barang FOR SELECT USING (true);
+CREATE POLICY "Allow public insert toko_barang" ON toko_barang FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update toko_barang" ON toko_barang FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete toko_barang" ON toko_barang FOR DELETE USING (true);
+
+-- 6. Tabel toko_pergerakan_stok (Log masuk barang dan pindah gudang ke display)
+CREATE TABLE IF NOT EXISTS toko_pergerakan_stok (
+  id TEXT PRIMARY KEY,
+  barang_id TEXT REFERENCES toko_barang(id) ON DELETE CASCADE,
+  jenis_pergerakan TEXT NOT NULL, -- 'PEMBELIAN_GUDANG' atau 'PINDAH_DISPLAY'
+  jumlah_satuan_besar INTEGER DEFAULT 0,
+  jumlah_satuan_kecil INTEGER NOT NULL,
+  catatan TEXT,
+  dibuat_oleh TEXT DEFAULT 'Admin',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE toko_pergerakan_stok ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read toko_pergerakan_stok" ON toko_pergerakan_stok FOR SELECT USING (true);
+CREATE POLICY "Allow public insert toko_pergerakan_stok" ON toko_pergerakan_stok FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update toko_pergerakan_stok" ON toko_pergerakan_stok FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete toko_pergerakan_stok" ON toko_pergerakan_stok FOR DELETE USING (true);
+
+-- 7. Tabel toko_penjualan (Transaksi Penjualan Harian Kasir)
+CREATE TABLE IF NOT EXISTS toko_penjualan (
+  id TEXT PRIMARY KEY,
+  barang_id TEXT REFERENCES toko_barang(id) ON DELETE CASCADE,
+  jumlah_satuan_kecil INTEGER NOT NULL,
+  harga_satuan INTEGER NOT NULL,
+  total_harga INTEGER NOT NULL,
+  dijual_oleh TEXT DEFAULT 'Kasir',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE toko_penjualan ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read toko_penjualan" ON toko_penjualan FOR SELECT USING (true);
+CREATE POLICY "Allow public insert toko_penjualan" ON toko_penjualan FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update toko_penjualan" ON toko_penjualan FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete toko_penjualan" ON toko_penjualan FOR DELETE USING (true);
+
 `;
 }

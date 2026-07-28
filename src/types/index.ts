@@ -134,6 +134,46 @@ export interface UserAccount {
 }
 
 // -----------------------------------------------------------
+// TOKO MARTINEZ MODELS
+// -----------------------------------------------------------
+
+export interface TokoBarang {
+  id: string;
+  nama_barang: string;
+  kategori: string;
+  satuan_besar: string; // e.g. 'Dus'
+  satuan_kecil: string; // e.g. 'Botol'
+  qty_per_satuan_besar: number;
+  harga_beli_satuan_besar: number;
+  harga_jual_satuan_kecil: number;
+  stok_gudang: number; // in satuan_kecil
+  stok_display: number; // in satuan_kecil
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TokoPergerakanStok {
+  id: string;
+  barang_id: string;
+  jenis_pergerakan: 'PEMBELIAN_GUDANG' | 'PINDAH_DISPLAY';
+  jumlah_satuan_besar: number;
+  jumlah_satuan_kecil: number;
+  catatan?: string | null;
+  dibuat_oleh?: string;
+  created_at?: string;
+}
+
+export interface TokoPenjualan {
+  id: string;
+  barang_id: string;
+  jumlah_satuan_kecil: number;
+  harga_satuan: number;
+  total_harga: number;
+  dijual_oleh?: string;
+  created_at?: string;
+}
+
+// -----------------------------------------------------------
 // UI / Component Props Helpers
 // -----------------------------------------------------------
 
