@@ -42,13 +42,44 @@ export default function BoothPortalPage() {
   const [recentScans, setRecentScans] = useState<KuponAcara[]>([]);
   const [totalScannedCount, setTotalScannedCount] = useState<number>(0);
 
-  const loadBoothScans = (currentBoothId: string) => {
+  const loadBoothScans = async (currentBoothId: string, currentBoothNama: string) => {
+    // 1. Load from local first for fast display
     const allKupons = getKuponsFromStorage();
-    const myScans = allKupons.filter(
-      (k) => k.used_by_booth_id === currentBoothId || k.used_by_booth_nama === boothNama
+    let myScans = allKupons.filter(
+      (k) => k.used_by_booth_id === currentBoothId || k.used_by_booth_nama === currentBoothNama
     );
     setRecentScans(myScans.reverse());
     setTotalScannedCount(myScans.length);
+
+    // 2. Sync from cloud to clean up deleted events
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const client = createClient();
+      if (client) {
+        const { data } = await client
+          .from('kupons')
+          .select('*')
+          .or(`used_by_booth_id.eq.${currentBoothId},used_by_booth_nama.ilike.${currentBoothNama}`);
+        
+        if (data) {
+          const cloudKupons = data as KuponAcara[];
+          // Update local storage: keep local kupons that are NOT belonging to this booth,
+          // then add the fresh cloud kupons for this booth.
+          const otherKupons = allKupons.filter(
+            (k) => k.used_by_booth_id !== currentBoothId && k.used_by_booth_nama !== currentBoothNama
+          );
+          const newLocal = [...cloudKupons, ...otherKupons];
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('martinez_kupon_list_v2', JSON.stringify(newLocal));
+          }
+          
+          setRecentScans(cloudKupons.reverse());
+          setTotalScannedCount(cloudKupons.length);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync booth scans:', e);
+    }
   };
 
   useEffect(() => {
@@ -61,7 +92,7 @@ export default function BoothPortalPage() {
       }
       setBoothId(user.id);
       setBoothNama(user.label || 'Tenant Booth');
-      loadBoothScans(user.id);
+      loadBoothScans(user.id, user.label || 'Tenant Booth');
     } else {
       router.push('/login');
     }
