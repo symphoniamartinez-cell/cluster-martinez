@@ -143,9 +143,45 @@ async function upsertToCloud(events: EventAcara[], kupons: KuponAcara[], booths:
   }
 }
 
+// ── Async Cloud Fetch Helper ───────────────────────────────
+export async function syncEventDataFromCloud(eventId: string) {
+  const client = createClient();
+  if (!client) return { success: false, error: 'Supabase client NULL' };
+
+  try {
+    const [kuponsRes, boothsRes] = await Promise.all([
+      client.from('kupons').select('*').eq('event_id', eventId),
+      client.from('tenant_booths').select('*').eq('event_id', eventId),
+    ]);
+
+    let updated = false;
+
+    if (kuponsRes.data && kuponsRes.data.length > 0) {
+      const allKupons = getKuponsFromStorage();
+      const otherKupons = allKupons.filter((k) => k.event_id !== eventId);
+      const newKupons = [...kuponsRes.data, ...otherKupons];
+      _saveKupons(newKupons as KuponAcara[]);
+      updated = true;
+    }
+
+    if (boothsRes.data && boothsRes.data.length > 0) {
+      const allBooths = getBoothsFromStorage();
+      const otherBooths = allBooths.filter((b) => b.event_id !== eventId);
+      const newBooths = [...boothsRes.data, ...otherBooths];
+      _saveBooths(newBooths as TenantBooth[]);
+      updated = true;
+    }
+
+    return { success: true, updated };
+  } catch (err: any) {
+    console.error('Error fetching event data from cloud:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 export function calculateKuponForHouse(
   lunasCount: number,
-  rules: CouponRules
+  rules?: CouponRules
 ): number {
   if (!rules) return 0;
   const t1Min = rules.tier1_min_bulan ?? 8;

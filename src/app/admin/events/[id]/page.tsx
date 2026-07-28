@@ -30,6 +30,8 @@ import {
   AlertTriangle,
   UserCheck,
   ShieldCheck,
+  Building2,
+  Clock,
 } from 'lucide-react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import type { EventAcara, KuponAcara, UserRole, TenantBooth } from '@/types';
@@ -37,11 +39,12 @@ import {
   getEventsFromStorage,
   getKuponsFromStorage,
   getBoothsFromStorage,
-  scanAndUseKupon,
-  addManualKupon,
-  getBoothReportForEvent,
   deleteEvent,
   deleteKupon,
+  addManualKupon,
+  getBoothReportForEvent,
+  scanAndUseKupon,
+  syncEventDataFromCloud,
 } from '@/lib/event-store';
 
 export default function SingleEventDetailPage({
@@ -77,6 +80,7 @@ export default function SingleEventDetailPage({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [kuponSearch, setKuponSearch] = useState('');
   const [kuponStatusFilter, setKuponStatusFilter] = useState<'all' | 'unused' | 'used'>('all');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -101,6 +105,21 @@ export default function SingleEventDetailPage({
     setBooths(eventBooths);
   };
 
+  const handleSyncData = async () => {
+    if (!eventId) return;
+    setIsSyncing(true);
+    const res = await syncEventDataFromCloud(eventId);
+    if (res.success && res.updated) {
+      loadEventData();
+      showToast('Data berhasil disinkronisasi dengan Cloud!');
+    } else if (res.success && !res.updated) {
+      showToast('Data sudah versi terbaru.');
+    } else {
+      showToast('Gagal sinkronisasi dari Cloud.');
+    }
+    setIsSyncing(false);
+  };
+
   useEffect(() => {
     const stored = sessionStorage.getItem('demo_user');
     if (stored) {
@@ -109,6 +128,15 @@ export default function SingleEventDetailPage({
       setUserName(u.label);
     }
     loadEventData();
+
+    // Sync from cloud in the background to get latest scanned coupons from booths
+    if (eventId) {
+      syncEventDataFromCloud(eventId).then((res) => {
+        if (res.success && res.updated) {
+          loadEventData(); // refresh local state
+        }
+      });
+    }
   }, [eventId]);
 
   // Filtered Kupons for this Event
@@ -243,12 +271,23 @@ export default function SingleEventDetailPage({
               </span>
               <span>•</span>
               <span className="font-semibold text-primary-600 dark:text-primary-400">
-                Total {kupons.length} Kupon Terbit
+                Total {kupons.length} Kupon
               </span>
               <span>•</span>
               <span className="font-semibold text-accent-600 dark:text-accent-400">
-                {booths.length} Tenant Booth
+                {booths.length} Booth
               </span>
+              <span>•</span>
+              <button
+                onClick={handleSyncData}
+                disabled={isSyncing}
+                className="flex items-center gap-1 px-2 py-1 bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 rounded-lg hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors font-bold disabled:opacity-50 cursor-pointer"
+              >
+                <div className={isSyncing ? 'animate-spin' : ''}>
+                  <RefreshCw className="w-3 h-3" />
+                </div>
+                {isSyncing ? 'Syncing...' : 'Sync Cloud'}
+              </button>
             </p>
           </div>
         </div>
