@@ -150,19 +150,6 @@ function BarangForm() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block font-semibold mb-2">Harga Beli per {formData.satuan_besar || 'Dus'}</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-400 font-bold">Rp</span>
-                  <input
-                    type="number"
-                    required min={0}
-                    value={formData.harga_beli_satuan_besar}
-                    onChange={e => setFormData({ ...formData, harga_beli_satuan_besar: parseInt(e.target.value) || 0 })}
-                    className="w-full pl-10 pr-4 py-3 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl font-mono text-lg"
-                  />
-                </div>
-              </div>
-              <div>
                 <label className="block font-semibold mb-2">Harga Jual per {formData.satuan_kecil || 'Botol'}</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-400 font-bold">Rp</span>
@@ -175,17 +162,6 @@ function BarangForm() {
                   />
                 </div>
               </div>
-            </div>
-
-            {/* Info Box */}
-            <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl mt-2">
-              <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-400">
-                💡 Analisis Harga: Modal per {formData.satuan_kecil} adalah Rp {
-                  Math.round((formData.harga_beli_satuan_besar || 0) / (formData.qty_per_satuan_besar || 1)).toLocaleString('id-ID')
-                }. Keuntungan kotor per {formData.satuan_kecil} = Rp {
-                  ((formData.harga_jual_satuan_kecil || 0) - Math.round((formData.harga_beli_satuan_besar || 0) / (formData.qty_per_satuan_besar || 1))).toLocaleString('id-ID')
-                }.
-              </p>
             </div>
 
             <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-surface-100 dark:border-surface-800">

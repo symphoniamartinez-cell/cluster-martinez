@@ -43,6 +43,7 @@ export default function AdminTokoPage() {
   const [beliForm, setBeliForm] = useState({
     barang_id: '',
     jumlah_satuan_besar: 1,
+    harga_beli_satuan_besar: 0,
     catatan: '',
   });
 
@@ -102,7 +103,8 @@ export default function AdminTokoPage() {
       beliForm.barang_id,
       beliForm.jumlah_satuan_besar,
       beliForm.catatan,
-      user
+      user,
+      beliForm.harga_beli_satuan_besar
     );
 
     if (res.success) {
@@ -320,7 +322,7 @@ export default function AdminTokoPage() {
               </button>
               <button
                 onClick={() => {
-                  setBeliForm({ barang_id: barangList[0]?.id || '', jumlah_satuan_besar: 1, catatan: '' });
+                  setBeliForm({ barang_id: barangList[0]?.id || '', jumlah_satuan_besar: 1, harga_beli_satuan_besar: barangList[0]?.harga_beli_satuan_besar || 0, catatan: '' });
                   setShowModalBeli(true);
                 }}
                 className="px-5 py-2.5 bg-white text-indigo-600 hover:bg-indigo-50 font-bold rounded-xl shadow-lg transition-all cursor-pointer whitespace-nowrap"
@@ -408,6 +410,24 @@ export default function AdminTokoPage() {
                       onChange={e => setBeliForm({ ...beliForm, jumlah_satuan_besar: parseInt(e.target.value) || 1 })}
                       className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
                     />
+                  </div>
+                )}
+
+                {beliForm.barang_id && (
+                  <div>
+                    <label className="block font-semibold mb-1">
+                      Harga Beli per {barangList.find(b => b.id === beliForm.barang_id)?.satuan_besar}
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 font-bold">Rp</span>
+                      <input
+                        type="number"
+                        required min={0}
+                        value={beliForm.harga_beli_satuan_besar}
+                        onChange={e => setBeliForm({ ...beliForm, harga_beli_satuan_besar: parseInt(e.target.value) || 0 })}
+                        className="w-full pl-9 pr-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl font-mono text-sm"
+                      />
+                    </div>
                   </div>
                 )}
 

@@ -158,6 +158,7 @@ export interface TokoPergerakanStok {
   jenis_pergerakan: 'PEMBELIAN_GUDANG' | 'PINDAH_DISPLAY' | 'STOK_KELUAR';
   jumlah_satuan_besar: number;
   jumlah_satuan_kecil: number;
+  harga_beli_satuan_besar?: number;
   catatan?: string | null;
   dibuat_oleh?: string;
   created_at?: string;

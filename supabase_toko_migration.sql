@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS public.toko_pergerakan_stok (
   jenis_pergerakan TEXT NOT NULL, -- 'PEMBELIAN_GUDANG' | 'PINDAH_DISPLAY' | 'STOK_KELUAR'
   jumlah_satuan_besar INTEGER NOT NULL DEFAULT 0,
   jumlah_satuan_kecil INTEGER NOT NULL DEFAULT 0,
+  harga_beli_satuan_besar INTEGER,
   catatan TEXT,
   dibuat_oleh TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL

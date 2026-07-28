@@ -84,7 +84,7 @@ export async function deleteTokoBarang(id: string) {
   }
 }
 
-export async function addPembelianGudang(barangId: string, jumlahSatuanBesar: number, catatan: string, user: string) {
+export async function addPembelianGudang(barangId: string, jumlahSatuanBesar: number, catatan: string, user: string, hargaBeliSatuanBesar: number = 0) {
   try {
     const barang = getTokoBarangLocal().find(b => b.id === barangId);
     if (!barang) throw new Error('Barang tidak ditemukan');
@@ -97,6 +97,7 @@ export async function addPembelianGudang(barangId: string, jumlahSatuanBesar: nu
       jenis_pergerakan: 'PEMBELIAN_GUDANG',
       jumlah_satuan_besar: jumlahSatuanBesar,
       jumlah_satuan_kecil: jumlahSatuanKecil,
+      harga_beli_satuan_besar: hargaBeliSatuanBesar,
       catatan,
       dibuat_oleh: user,
       created_at: new Date().toISOString()
@@ -108,7 +109,10 @@ export async function addPembelianGudang(barangId: string, jumlahSatuanBesar: nu
       if (err1) throw err1;
 
       const newStokGudang = (barang.stok_gudang || 0) + jumlahSatuanKecil;
-      const { error: err2 } = await client.from('toko_barang').update({ stok_gudang: newStokGudang }).eq('id', barangId);
+      const { error: err2 } = await client.from('toko_barang').update({ 
+        stok_gudang: newStokGudang,
+        harga_beli_satuan_besar: hargaBeliSatuanBesar > 0 ? hargaBeliSatuanBesar : barang.harga_beli_satuan_besar
+      }).eq('id', barangId);
       if (err2) throw err2;
     }
 
