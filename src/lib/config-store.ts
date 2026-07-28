@@ -51,6 +51,12 @@ export function saveIuranConfigToStorage(config: IuranConfig) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+    window.dispatchEvent(new CustomEvent('martinez_config_updated', { detail: config }));
+    try {
+      const bc = new BroadcastChannel('martinez_config_channel');
+      bc.postMessage(config);
+      bc.close();
+    } catch (e) {}
     syncIuranConfigToCloud(config);
   } catch (e) {
     console.error(e);

@@ -85,14 +85,31 @@ export default function WargaDashboardPage() {
       setNomorRumah(houseNo);
     }
 
-    const currentConfig = getIuranConfigFromStorage();
-    if (currentConfig) setConfig(currentConfig);
+    const reloadConfig = () => {
+      const cfg = getIuranConfigFromStorage();
+      if (cfg) setConfig(cfg);
+      fetchIuranConfigFromCloud().then((cloudCfg) => {
+        if (cloudCfg) setConfig((prev) => ({ ...prev, ...cloudCfg }));
+      });
+    };
 
-    fetchIuranConfigFromCloud().then((cloudCfg) => {
-      if (cloudCfg) {
-        setConfig((prev) => ({ ...prev, ...cloudCfg }));
-      }
-    });
+    reloadConfig();
+
+    const handleCustomEvent = (e: any) => {
+      if (e.detail) setConfig(e.detail);
+    };
+
+    window.addEventListener('martinez_config_updated', handleCustomEvent);
+    window.addEventListener('storage', reloadConfig);
+    window.addEventListener('focus', reloadConfig);
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('martinez_config_channel');
+      bc.onmessage = (msg) => {
+        if (msg.data) setConfig(msg.data);
+      };
+    } catch (e) {}
 
     // 1. Fetch Cloud Iuran Matrix for Real-time Status Sync
     fetchIuranMatrixFromCloud().then((cloudMatrix) => {
@@ -266,6 +283,13 @@ export default function WargaDashboardPage() {
     } catch (e) {
       console.error('Failed to load database iuran for warga:', e);
     }
+
+    return () => {
+      window.removeEventListener('martinez_config_updated', handleCustomEvent);
+      window.removeEventListener('storage', reloadConfig);
+      window.removeEventListener('focus', reloadConfig);
+      if (bc) bc.close();
+    };
   }, [tahun, nomorRumah]);
 
   // Real-Time Kupon Synchronization Listener
