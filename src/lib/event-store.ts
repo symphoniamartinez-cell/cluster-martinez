@@ -463,6 +463,8 @@ export async function deleteEvent(eventId: string): Promise<void> {
 
   const client = createClient();
   if (client) {
+    await client.from('kupons').delete().eq('event_id', eventId);
+    await client.from('tenant_booths').delete().eq('event_id', eventId);
     await client.from('events').delete().eq('id', eventId);
   }
 }
