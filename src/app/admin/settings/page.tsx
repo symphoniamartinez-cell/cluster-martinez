@@ -24,6 +24,11 @@ import {
   AlertTriangle,
   Clock,
   Loader2,
+  Database,
+  Copy,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 import {
@@ -32,10 +37,10 @@ import {
   DEFAULT_IURAN_CONFIG,
   type IuranConfig,
 } from '@/lib/config-store';
-import { clearAllCloudData } from '@/lib/db-sync';
+import { clearAllCloudData, checkSupabaseTableStatus, getMissingTablesSQL, type TableStatus } from '@/lib/db-sync';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'iuran' | 'info' | 'reset'>('iuran');
+  const [activeTab, setActiveTab] = useState<'iuran' | 'info' | 'reset' | 'database'>('iuran');
   const [userRole, setUserRole] = useState<UserRole>('superadmin');
   const [config, setConfig] = useState<IuranConfig>(DEFAULT_IURAN_CONFIG);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -44,6 +49,11 @@ export default function SettingsPage() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [isResetting, setIsResetting] = useState(false);
+
+  // ── Database Setup State ────────────────────────────────────
+  const [dbStatus, setDbStatus] = useState<{ connected: boolean; tables: TableStatus[] } | null>(null);
+  const [dbChecking, setDbChecking] = useState(false);
+  const [sqlCopied, setSqlCopied] = useState(false);
 
   const canEdit = userRole === 'superadmin' || userRole === 'pengurus' || userRole === 'bendahara';
   const isSuperAdmin = userRole === 'superadmin';
@@ -209,6 +219,22 @@ export default function SettingsPage() {
             Reset All Data (Danger Zone)
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('database')}
+          className={`
+            flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer
+            ${
+              activeTab === 'database'
+                ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20'
+                : 'text-accent-600 dark:text-accent-400 hover:bg-accent-500/10'
+            }
+          `}
+        >
+          <Database className="w-4 h-4" />
+          Database Setup
+        </button>
       </div>
 
       {/* ── TAB 1: PENGATURAN IURAN & REKENING BANK ──────────── */}
@@ -458,6 +484,128 @@ export default function SettingsPage() {
               </p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── TAB 4: DATABASE SETUP ──────────────────────────────── */}
+      {activeTab === 'database' && (
+        <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 p-6 lg:p-8 shadow-sm space-y-6">
+          <div className="flex items-center justify-between pb-4 border-b border-surface-100 dark:border-surface-800">
+            <div className="flex items-center gap-2.5">
+              <Database className="w-5 h-5 text-accent-500" />
+              <div>
+                <h2 className="text-base font-bold text-surface-900 dark:text-white">
+                  Status Database Supabase
+                </h2>
+                <p className="text-xs text-surface-500 mt-0.5">
+                  Periksa tabel mana yang sudah ada dan mana yang perlu dibuat.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setDbChecking(true);
+                const result = await checkSupabaseTableStatus();
+                setDbStatus(result);
+                setDbChecking(false);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-accent-500 hover:bg-accent-600 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md shadow-accent-500/20"
+            >
+              {dbChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {dbChecking ? 'Memeriksa...' : 'Cek Status Database'}
+            </button>
+          </div>
+
+          {!dbStatus && !dbChecking && (
+            <div className="text-center py-8 text-surface-500">
+              <Database className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm font-semibold">Klik tombol &quot;Cek Status Database&quot; di atas</p>
+              <p className="text-xs mt-1">untuk memeriksa tabel mana yang sudah tersedia di Supabase.</p>
+            </div>
+          )}
+
+          {dbStatus && !dbStatus.connected && (
+            <div className="p-4 bg-danger-500/10 border border-danger-500/20 rounded-2xl text-sm text-danger-600 dark:text-danger-400 font-semibold flex items-center gap-3">
+              <XCircle className="w-5 h-5 flex-shrink-0" />
+              Supabase TIDAK terhubung. Pastikan Environment Variables NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY sudah diset di Vercel.
+            </div>
+          )}
+
+          {dbStatus && dbStatus.connected && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {dbStatus.tables.map((t) => (
+                  <div
+                    key={t.name}
+                    className={`p-3.5 rounded-2xl border flex items-center gap-3 ${
+                      t.exists && !t.error
+                        ? 'bg-success-500/5 border-success-500/20'
+                        : 'bg-danger-500/5 border-danger-500/20'
+                    }`}
+                  >
+                    {t.exists && !t.error ? (
+                      <CheckCircle2 className="w-5 h-5 text-success-500 flex-shrink-0" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-danger-500 flex-shrink-0" />
+                    )}
+                    <div>
+                      <p className="text-xs font-bold text-surface-900 dark:text-white font-mono">{t.name}</p>
+                      {t.exists && !t.error ? (
+                        <p className="text-[10px] text-success-600 dark:text-success-400 font-medium">
+                          ✅ Tersedia ({t.rowCount} rows)
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-danger-600 dark:text-danger-400 font-medium truncate max-w-[180px]">
+                          ❌ {t.error || 'Tabel belum dibuat'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {dbStatus.tables.some((t) => !t.exists || t.error) && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-warning-400/10 border border-warning-400/20 rounded-2xl">
+                    <h3 className="text-sm font-bold text-warning-700 dark:text-warning-400 flex items-center gap-2 mb-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      Tabel Belum Lengkap — Jalankan SQL Berikut di Supabase
+                    </h3>
+                    <p className="text-xs text-surface-600 dark:text-surface-300 leading-relaxed">
+                      Buka <strong>Supabase Dashboard</strong> → <strong>SQL Editor</strong> → <strong>New Query</strong>, lalu paste dan jalankan SQL di bawah ini.
+                      Setelah selesai, klik &quot;Cek Status Database&quot; lagi untuk memastikan semua ✅.
+                    </p>
+                  </div>
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(getMissingTablesSQL());
+                        setSqlCopied(true);
+                        setTimeout(() => setSqlCopied(false), 3000);
+                      }}
+                      className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-accent-500 hover:bg-accent-600 text-white font-bold text-[10px] rounded-lg transition-all cursor-pointer z-10 shadow-md"
+                    >
+                      {sqlCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      {sqlCopied ? 'Tersalin!' : 'Salin SQL'}
+                    </button>
+                    <pre className="bg-surface-950 text-green-400 text-[10px] font-mono p-4 rounded-2xl overflow-x-auto max-h-[400px] overflow-y-auto border border-surface-700 leading-relaxed">
+                      {getMissingTablesSQL()}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {dbStatus.tables.every((t) => t.exists && !t.error) && (
+                <div className="p-4 bg-success-500/10 border border-success-500/20 rounded-2xl text-sm text-success-700 dark:text-success-400 font-bold flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                  Semua tabel sudah tersedia di Supabase! Database siap digunakan 100%.
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

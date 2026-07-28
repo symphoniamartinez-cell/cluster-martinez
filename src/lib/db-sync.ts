@@ -472,3 +472,110 @@ export async function clearAllEventsAndKuponsCloud() {
     dbLog('CLEAR_EVENTS', '❌ Exception:', e?.message);
   }
 }
+
+// ── 5. DATABASE TABLE HEALTH CHECK ──────────────────────────
+export type TableStatus = { name: string; exists: boolean; rowCount: number; error?: string };
+
+export async function checkSupabaseTableStatus(): Promise<{ connected: boolean; tables: TableStatus[] }> {
+  const client = createClient();
+  if (!client) {
+    return { connected: false, tables: [] };
+  }
+
+  const tableNames = ['rumah', 'profiles', 'iuran_matrix', 'app_config', 'events', 'kupons', 'tenant_booths'];
+  const results: TableStatus[] = [];
+
+  for (const name of tableNames) {
+    try {
+      const { data, error, count } = await client.from(name).select('*', { count: 'exact', head: true });
+      if (error) {
+        // Error code 42P01 = table doesn't exist in PostgreSQL
+        const notExist = error.message?.includes('does not exist') || error.code === '42P01' || error.message?.includes('relation');
+        results.push({ name, exists: !notExist, rowCount: 0, error: error.message });
+      } else {
+        results.push({ name, exists: true, rowCount: count || 0 });
+      }
+    } catch (e: any) {
+      results.push({ name, exists: false, rowCount: 0, error: e?.message });
+    }
+  }
+
+  return { connected: true, tables: results };
+}
+
+export function getMissingTablesSQL(): string {
+  return `-- ============================================================
+-- SQL untuk membuat tabel yang BELUM ADA di Supabase
+-- Jalankan di: Supabase Dashboard > SQL Editor > New Query
+-- Super App Cluster Martinez
+-- ============================================================
+
+-- 1. Tabel app_config (untuk menyimpan konfigurasi iuran)
+CREATE TABLE IF NOT EXISTS app_config (
+  id TEXT PRIMARY KEY,
+  data JSONB DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE app_config ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read app_config" ON app_config FOR SELECT USING (true);
+CREATE POLICY "Allow public insert app_config" ON app_config FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update app_config" ON app_config FOR UPDATE USING (true);
+
+-- 2. Tabel events (untuk menyimpan acara/event kluster)
+CREATE TABLE IF NOT EXISTS events (
+  id TEXT PRIMARY KEY,
+  nama_event TEXT NOT NULL DEFAULT '',
+  nama_kupon TEXT DEFAULT '',
+  tanggal_event TEXT DEFAULT '',
+  lokasi_event TEXT DEFAULT '',
+  is_active BOOLEAN DEFAULT true,
+  rules JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read events" ON events FOR SELECT USING (true);
+CREATE POLICY "Allow public insert events" ON events FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update events" ON events FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete events" ON events FOR DELETE USING (true);
+
+-- 3. Tabel kupons (untuk menyimpan kupon acara warga)
+CREATE TABLE IF NOT EXISTS kupons (
+  id TEXT PRIMARY KEY,
+  event_id TEXT REFERENCES events(id) ON DELETE CASCADE,
+  nama_event TEXT DEFAULT '',
+  nama_kupon TEXT DEFAULT '',
+  warga_id TEXT DEFAULT '',
+  nomor_rumah TEXT DEFAULT '',
+  kode_kupon TEXT DEFAULT '',
+  is_used BOOLEAN DEFAULT false,
+  used_at TIMESTAMPTZ,
+  used_by_booth_id TEXT,
+  used_by_booth_nama TEXT,
+  used_by_admin TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE kupons ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read kupons" ON kupons FOR SELECT USING (true);
+CREATE POLICY "Allow public insert kupons" ON kupons FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update kupons" ON kupons FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete kupons" ON kupons FOR DELETE USING (true);
+
+-- 4. Tabel tenant_booths (untuk akun booth makanan saat acara)
+CREATE TABLE IF NOT EXISTS tenant_booths (
+  id TEXT PRIMARY KEY,
+  event_id TEXT REFERENCES events(id) ON DELETE CASCADE,
+  nama_booth TEXT DEFAULT '',
+  username TEXT DEFAULT '',
+  password TEXT DEFAULT '',
+  total_scanned INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE tenant_booths ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read tenant_booths" ON tenant_booths FOR SELECT USING (true);
+CREATE POLICY "Allow public insert tenant_booths" ON tenant_booths FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update tenant_booths" ON tenant_booths FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete tenant_booths" ON tenant_booths FOR DELETE USING (true);
+
+-- Selesai! Refresh halaman admin setelah menjalankan SQL ini.
+`;
+}
