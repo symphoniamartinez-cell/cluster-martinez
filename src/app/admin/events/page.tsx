@@ -992,9 +992,9 @@ export default function AdminEventsPage() {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowManualModal(false)}
           />
-          <div className="relative w-full max-w-md bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden">
-            <div className="h-1.5 bg-gradient-to-r from-accent-500 to-primary-500" />
-            <div className="p-6">
+          <div className="relative w-full max-w-md max-h-[90vh] flex flex-col bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden">
+            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-accent-500 to-primary-500" />
+            <div className="p-6 overflow-y-auto flex-1">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-accent-500/10 text-accent-500">
                   <PlusCircle className="w-5 h-5" />

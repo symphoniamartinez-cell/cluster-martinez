@@ -715,7 +715,7 @@ export default function SingleEventDetailPage({
       {/* ── MODAL TAMBAH KUPON MANUAL ────────────────────────── */}
       {showManualModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-md bg-white dark:bg-surface-900 rounded-3xl p-6 shadow-2xl border border-surface-200 dark:border-surface-800 text-surface-900 dark:text-white space-y-4">
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-surface-900 rounded-3xl p-6 shadow-2xl border border-surface-200 dark:border-surface-800 text-surface-900 dark:text-white space-y-4">
             <h3 className="text-base font-bold flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary-500" />
               Tambah Kupon Manual Lapangan
