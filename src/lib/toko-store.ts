@@ -84,36 +84,67 @@ export async function deleteTokoBarang(id: string) {
   }
 }
 
-export async function addPembelianGudang(barangId: string, jumlahSatuanBesar: number, catatan: string, user: string, hargaBeliSatuanBesar: number = 0) {
+export interface PembelianItem {
+  barang_id: string;
+  jumlah_satuan_besar: number;
+  harga_beli_satuan_besar: number;
+}
+
+export async function addPembelianBatchGudang(
+  items: PembelianItem[],
+  nomorInvoice: string,
+  tanggal: string,
+  catatan: string,
+  user: string
+) {
   try {
-    const barang = getTokoBarangLocal().find(b => b.id === barangId);
-    if (!barang) throw new Error('Barang tidak ditemukan');
-
-    const jumlahSatuanKecil = jumlahSatuanBesar * (barang.qty_per_satuan_besar || 1);
-
-    const pergerakan: TokoPergerakanStok = {
-      id: 'tps-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-      barang_id: barangId,
-      jenis_pergerakan: 'PEMBELIAN_GUDANG',
-      jumlah_satuan_besar: jumlahSatuanBesar,
-      jumlah_satuan_kecil: jumlahSatuanKecil,
-      harga_beli_satuan_besar: hargaBeliSatuanBesar,
-      catatan,
-      dibuat_oleh: user,
-      created_at: new Date().toISOString()
-    };
-
     const client = createClient();
+    const localBarang = getTokoBarangLocal();
+
+    const pergerakanList: TokoPergerakanStok[] = [];
+    const barangUpdates: Record<string, { stok_gudang: number; harga_beli_satuan_besar: number }> = {};
+
+    for (const item of items) {
+      if (!item.barang_id || item.jumlah_satuan_besar <= 0) continue;
+      
+      const barang = localBarang.find(b => b.id === item.barang_id);
+      if (!barang) throw new Error(`Barang ID ${item.barang_id} tidak ditemukan`);
+
+      const jumlahSatuanKecil = item.jumlah_satuan_besar * (barang.qty_per_satuan_besar || 1);
+
+      pergerakanList.push({
+        id: 'tps-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+        barang_id: item.barang_id,
+        jenis_pergerakan: 'PEMBELIAN_GUDANG',
+        jumlah_satuan_besar: item.jumlah_satuan_besar,
+        jumlah_satuan_kecil: jumlahSatuanKecil,
+        harga_beli_satuan_besar: item.harga_beli_satuan_besar,
+        nomor_invoice: nomorInvoice || null,
+        catatan,
+        dibuat_oleh: user,
+        created_at: tanggal || new Date().toISOString()
+      });
+
+      // Accumulate local updates to avoid duplicate fetching
+      const currentStok = barangUpdates[item.barang_id]?.stok_gudang ?? (barang.stok_gudang || 0);
+      barangUpdates[item.barang_id] = {
+        stok_gudang: currentStok + jumlahSatuanKecil,
+        harga_beli_satuan_besar: item.harga_beli_satuan_besar > 0 ? item.harga_beli_satuan_besar : barang.harga_beli_satuan_besar
+      };
+    }
+
+    if (pergerakanList.length === 0) throw new Error('Tidak ada barang valid untuk ditambahkan');
+
     if (client) {
-      const { error: err1 } = await client.from('toko_pergerakan_stok').insert(pergerakan);
+      // 1. Insert pergerakan batch
+      const { error: err1 } = await client.from('toko_pergerakan_stok').insert(pergerakanList);
       if (err1) throw err1;
 
-      const newStokGudang = (barang.stok_gudang || 0) + jumlahSatuanKecil;
-      const { error: err2 } = await client.from('toko_barang').update({ 
-        stok_gudang: newStokGudang,
-        harga_beli_satuan_besar: hargaBeliSatuanBesar > 0 ? hargaBeliSatuanBesar : barang.harga_beli_satuan_besar
-      }).eq('id', barangId);
-      if (err2) throw err2;
+      // 2. Update each barang
+      for (const [bId, updateData] of Object.entries(barangUpdates)) {
+        const { error: err2 } = await client.from('toko_barang').update(updateData).eq('id', bId);
+        if (err2) throw err2;
+      }
     }
 
     await syncTokoDataFromCloud();

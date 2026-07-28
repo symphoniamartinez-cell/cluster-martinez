@@ -159,6 +159,7 @@ export interface TokoPergerakanStok {
   jumlah_satuan_besar: number;
   jumlah_satuan_kecil: number;
   harga_beli_satuan_besar?: number;
+  nomor_invoice?: string | null;
   catatan?: string | null;
   dibuat_oleh?: string;
   created_at?: string;

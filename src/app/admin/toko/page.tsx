@@ -24,8 +24,9 @@ import {
   getTokoPergerakanLocal,
   syncTokoDataFromCloud,
   deleteTokoBarang,
-  addPembelianGudang,
+  addPembelianBatchGudang,
   keluarkanGudang,
+  type PembelianItem,
 } from '@/lib/toko-store';
 
 export default function AdminTokoPage() {
@@ -40,11 +41,16 @@ export default function AdminTokoPage() {
 
   // ── MODAL STATES ──
   const [showModalBeli, setShowModalBeli] = useState(false);
-  const [beliForm, setBeliForm] = useState({
-    barang_id: '',
-    jumlah_satuan_besar: 1,
-    harga_beli_satuan_besar: 0,
+  const [beliForm, setBeliForm] = useState<{
+    nomor_invoice: string;
+    tanggal: string;
+    catatan: string;
+    items: PembelianItem[];
+  }>({
+    nomor_invoice: '',
+    tanggal: new Date().toISOString().slice(0, 10),
     catatan: '',
+    items: [],
   });
 
   const [showModalKeluarkan, setShowModalKeluarkan] = useState(false);
@@ -96,15 +102,15 @@ export default function AdminTokoPage() {
 
   const handleSimpanPembelian = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!beliForm.barang_id || beliForm.jumlah_satuan_besar <= 0) return;
+    if (beliForm.items.length === 0) return;
 
     const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
-    const res = await addPembelianGudang(
-      beliForm.barang_id,
-      beliForm.jumlah_satuan_besar,
+    const res = await addPembelianBatchGudang(
+      beliForm.items,
+      beliForm.nomor_invoice,
+      beliForm.tanggal,
       beliForm.catatan,
-      user,
-      beliForm.harga_beli_satuan_besar
+      user
     );
 
     if (res.success) {
@@ -322,7 +328,16 @@ export default function AdminTokoPage() {
               </button>
               <button
                 onClick={() => {
-                  setBeliForm({ barang_id: barangList[0]?.id || '', jumlah_satuan_besar: 1, harga_beli_satuan_besar: barangList[0]?.harga_beli_satuan_besar || 0, catatan: '' });
+                  setBeliForm({ 
+                    nomor_invoice: '',
+                    tanggal: new Date().toISOString().slice(0, 10),
+                    catatan: '',
+                    items: [{
+                      barang_id: barangList[0]?.id || '',
+                      jumlah_satuan_besar: 1,
+                      harga_beli_satuan_besar: barangList[0]?.harga_beli_satuan_besar || 0
+                    }]
+                  });
                   setShowModalBeli(true);
                 }}
                 className="px-5 py-2.5 bg-white text-indigo-600 hover:bg-indigo-50 font-bold rounded-xl shadow-lg transition-all cursor-pointer whitespace-nowrap"
@@ -377,77 +392,147 @@ export default function AdminTokoPage() {
       {showModalBeli && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalBeli(false)} />
-          <div className="relative w-full max-w-md bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden">
+          <div className="relative w-full max-w-3xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden max-h-[90vh] flex flex-col">
             <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-indigo-500 to-purple-500" />
-            <div className="p-6 text-xs">
-              <h3 className="text-base font-bold text-surface-900 dark:text-white mb-4">Input Pembelian (Gudang)</h3>
+            <div className="p-6 text-xs flex-1 overflow-y-auto">
+              <h3 className="text-base font-bold text-surface-900 dark:text-white mb-4">Input Pembelian (Restock Gudang)</h3>
               
-              <form onSubmit={handleSimpanPembelian} className="space-y-4">
-                <div>
-                  <label className="block font-semibold mb-1">Pilih Barang</label>
-                  <select
-                    required
-                    value={beliForm.barang_id}
-                    onChange={e => setBeliForm({ ...beliForm, barang_id: e.target.value })}
-                    className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
-                  >
-                    <option value="">-- Pilih Barang --</option>
-                    {barangList.map(b => (
-                      <option key={b.id} value={b.id}>{b.nama_barang}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                {beliForm.barang_id && (
+              <form onSubmit={handleSimpanPembelian} className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-semibold mb-1">
-                      Jumlah Beli ({barangList.find(b => b.id === beliForm.barang_id)?.satuan_besar})
-                    </label>
+                    <label className="block font-semibold mb-1">Nomor Invoice / Bukti</label>
                     <input
-                      type="number"
-                      required min={1}
-                      value={beliForm.jumlah_satuan_besar}
-                      onChange={e => setBeliForm({ ...beliForm, jumlah_satuan_besar: parseInt(e.target.value) || 1 })}
+                      type="text"
+                      required
+                      value={beliForm.nomor_invoice}
+                      onChange={e => setBeliForm({ ...beliForm, nomor_invoice: e.target.value })}
+                      placeholder="INV-001..."
                       className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
                     />
                   </div>
-                )}
-
-                {beliForm.barang_id && (
                   <div>
-                    <label className="block font-semibold mb-1">
-                      Harga Beli per {barangList.find(b => b.id === beliForm.barang_id)?.satuan_besar}
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 font-bold">Rp</span>
-                      <input
-                        type="number"
-                        required min={0}
-                        value={beliForm.harga_beli_satuan_besar}
-                        onChange={e => setBeliForm({ ...beliForm, harga_beli_satuan_besar: parseInt(e.target.value) || 0 })}
-                        className="w-full pl-9 pr-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl font-mono text-sm"
-                      />
-                    </div>
+                    <label className="block font-semibold mb-1">Tanggal Pembelian</label>
+                    <input
+                      type="date"
+                      required
+                      value={beliForm.tanggal}
+                      onChange={e => setBeliForm({ ...beliForm, tanggal: e.target.value })}
+                      className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
+                    />
                   </div>
-                )}
-
+                </div>
+                
                 <div>
-                  <label className="block font-semibold mb-1">Catatan / Supplier (Opsional)</label>
+                  <label className="block font-semibold mb-1">Catatan Tambahan (Opsional)</label>
                   <input
                     type="text"
                     value={beliForm.catatan}
                     onChange={e => setBeliForm({ ...beliForm, catatan: e.target.value })}
-                    placeholder="Beli dari Grosir A"
+                    placeholder="Beli dari Supplier A"
                     className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
                   />
                 </div>
 
-                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-surface-100 dark:border-surface-800">
-                  <button type="button" onClick={() => setShowModalBeli(false)} className="px-4 py-2 bg-surface-100 dark:bg-surface-800 rounded-xl font-bold cursor-pointer">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm">Daftar Barang</h4>
+                    <button
+                      type="button"
+                      onClick={() => setBeliForm(prev => ({
+                        ...prev,
+                        items: [...prev.items, { barang_id: barangList[0]?.id || '', jumlah_satuan_besar: 1, harga_beli_satuan_besar: barangList[0]?.harga_beli_satuan_besar || 0 }]
+                      }))}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      Tambah Baris
+                    </button>
+                  </div>
+                  
+                  {beliForm.items.map((item, index) => (
+                    <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700">
+                      <div className="w-full sm:flex-1">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Barang</label>
+                        <select
+                          required
+                          value={item.barang_id}
+                          onChange={e => {
+                            const newItems = [...beliForm.items];
+                            const selectedBarang = barangList.find(b => b.id === e.target.value);
+                            newItems[index] = { 
+                              ...newItems[index], 
+                              barang_id: e.target.value,
+                              harga_beli_satuan_besar: selectedBarang?.harga_beli_satuan_besar || 0
+                            };
+                            setBeliForm({ ...beliForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        >
+                          <option value="">-- Pilih --</option>
+                          {barangList.map(b => (
+                            <option key={b.id} value={b.id}>{b.nama_barang}</option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div className="w-full sm:w-32">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">
+                          Qty ({barangList.find(b => b.id === item.barang_id)?.satuan_besar || 'Besar'})
+                        </label>
+                        <input
+                          type="number"
+                          required min={1}
+                          value={item.jumlah_satuan_besar}
+                          onChange={e => {
+                            const newItems = [...beliForm.items];
+                            newItems[index].jumlah_satuan_besar = parseInt(e.target.value) || 1;
+                            setBeliForm({ ...beliForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        />
+                      </div>
+
+                      <div className="w-full sm:w-48">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Harga Beli / Satuan Besar</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 font-bold">Rp</span>
+                          <input
+                            type="number"
+                            required min={0}
+                            value={item.harga_beli_satuan_besar}
+                            onChange={e => {
+                              const newItems = [...beliForm.items];
+                              newItems[index].harga_beli_satuan_besar = parseInt(e.target.value) || 0;
+                              setBeliForm({ ...beliForm, items: newItems });
+                            }}
+                            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="sm:pt-5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = beliForm.items.filter((_, i) => i !== index);
+                            setBeliForm({ ...beliForm, items: newItems });
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                          disabled={beliForm.items.length === 1}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-surface-100 dark:border-surface-800 mt-6">
+                  <button type="button" onClick={() => setShowModalBeli(false)} className="px-5 py-2.5 bg-surface-100 dark:bg-surface-800 rounded-xl font-bold cursor-pointer">
                     Batal
                   </button>
-                  <button type="submit" className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-bold cursor-pointer shadow-md hover:brightness-110">
-                    Masukkan ke Gudang
+                  <button type="submit" className="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-bold cursor-pointer shadow-lg hover:brightness-110">
+                    Simpan Pembelian
                   </button>
                 </div>
               </form>
