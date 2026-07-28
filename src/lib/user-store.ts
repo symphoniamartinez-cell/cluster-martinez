@@ -152,7 +152,20 @@ export function authenticateWarga(
   if (!cleanRumah || !cleanKode) {
     return {
       success: false,
-      error: 'Nomor Rumah dan Kode Aktivasi wajib diisi.',
+      error: 'Nomor Rumah dan Password Warga wajib diisi.',
+    };
+  }
+
+  // Prevent Admin/Pengurus/Bendahara accounts from logging in via Portal Warga
+  const adminUsers = getAdminUsersFromStorage();
+  const isAdminMatch = adminUsers.some(
+    (u) => u.username.trim().toUpperCase() === cleanRumah
+  );
+
+  if (isAdminMatch) {
+    return {
+      success: false,
+      error: `Akun Pengurus/Admin "${cleanRumah}" tidak dapat login di Portal Warga. Silakan klik tab "Login Admin / Pengurus".`,
     };
   }
 
