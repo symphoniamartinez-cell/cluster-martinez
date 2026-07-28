@@ -110,11 +110,7 @@ export default function LoginPage() {
           JSON.stringify(sessionData)
         )}; path=/; max-age=86400`;
 
-        if (res.user.role === 'booth') {
-          router.push('/booth');
-        } else {
-          router.push('/admin');
-        }
+        router.push('/admin');
       } else {
         setErrorAdmin(res.error || 'Username atau password admin salah.');
       }

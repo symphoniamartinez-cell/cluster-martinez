@@ -483,7 +483,7 @@ export async function authenticateBooth(username: string, password: string): Pro
     const { data, error } = await client
       .from('tenant_booths')
       .select('*')
-      .eq('username', username)
+      .ilike('username', username)
       .eq('password', password)
       .single();
 
@@ -494,7 +494,7 @@ export async function authenticateBooth(username: string, password: string): Pro
   } else {
     // Fallback to local
     const booths = getBoothsFromStorage();
-    const booth = booths.find((b) => b.username === username && b.password === password);
+    const booth = booths.find((b) => b.username?.toLowerCase() === username?.toLowerCase() && b.password === password);
     if (!booth) {
       return { success: false, error: 'Username booth atau password booth salah. Atau booth tidak terdaftar.' };
     }

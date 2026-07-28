@@ -87,57 +87,9 @@ export function authenticateAdmin(
     }
   }
 
-  // Check if it's a Tenant Booth Account
-  const booths = getBoothsFromStorage();
-  const cleanInput = inputUsername.trim().toUpperCase();
-  const cleanAlphaNumeric = cleanInput.replace(/[^A-Z0-9]/g, '');
-
-  const foundBooth = booths.find((b) => {
-    const uUpper = (b.username || '').trim().toUpperCase();
-    const nUpper = (b.nama_booth || '').trim().toUpperCase();
-    const uClean = uUpper.replace(/[^A-Z0-9]/g, '');
-    const nClean = nUpper.replace(/[^A-Z0-9]/g, '');
-
-    return (
-      uUpper === cleanInput ||
-      nUpper === cleanInput ||
-      (cleanAlphaNumeric.length >= 2 && (
-        uClean === cleanAlphaNumeric ||
-        nClean === cleanAlphaNumeric ||
-        uClean.includes(cleanAlphaNumeric) ||
-        cleanAlphaNumeric.includes(uClean) ||
-        nClean.includes(cleanAlphaNumeric) ||
-        cleanAlphaNumeric.includes(nClean)
-      ))
-    );
-  });
-
-  if (foundBooth) {
-    if (foundBooth.password !== inputPassword) {
-      return {
-        success: false,
-        error: `Password booth "${foundBooth.nama_booth}" (Username: ${foundBooth.username}) salah.`,
-      };
-    }
-
-    const boothUser: UserAccount = {
-      id: foundBooth.id,
-      username: foundBooth.username,
-      nama: foundBooth.nama_booth,
-      role: 'booth',
-      password: foundBooth.password,
-      created_at: foundBooth.created_at,
-    };
-    return { success: true, user: boothUser };
-  }
-
-  const availableBoothList = booths.length > 0
-    ? `\nAkun booth terdaftar: ${booths.map((b) => `"${b.username}" (${b.nama_booth})`).join(', ')}`
-    : '\nBelum ada booth terdaftar di event.';
-
   return {
     success: false,
-    error: `Username/Booth "${inputUsername}" tidak ditemukan.${availableBoothList}`,
+    error: 'Username admin tidak terdaftar.',
   };
 }
 
