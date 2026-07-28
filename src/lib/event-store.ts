@@ -79,12 +79,8 @@ export function getKuponsFromStorage(): KuponAcara[] {
   if (typeof window === 'undefined') return [];
   try {
     const saved = localStorage.getItem(STORAGE_KEY_KUPONS);
-    if (saved !== null) {
-      const parsed: KuponAcara[] = JSON.parse(saved);
-      const activeEvents = getEventsFromStorage();
-      if (activeEvents.length === 0) return [];
-      const validEventIds = new Set(activeEvents.map((e) => e.id));
-      return parsed.filter((k) => validEventIds.has(k.event_id));
+    if (saved) {
+      return JSON.parse(saved);
     }
   } catch (e) {
     console.error(e);
@@ -106,12 +102,8 @@ export function getBoothsFromStorage(): TenantBooth[] {
   if (typeof window === 'undefined') return [];
   try {
     const saved = localStorage.getItem(STORAGE_KEY_BOOTHS);
-    if (saved !== null) {
-      const parsed: TenantBooth[] = JSON.parse(saved);
-      const activeEvents = getEventsFromStorage();
-      if (activeEvents.length === 0) return [];
-      const validEventIds = new Set(activeEvents.map((e) => e.id));
-      return parsed.filter((b) => b.event_id && validEventIds.has(b.event_id));
+    if (saved) {
+      return JSON.parse(saved);
     }
   } catch (e) {
     console.error(e);
@@ -221,17 +213,17 @@ export function createEventAndGenerateKupons(
 
     const sortedTiers = [...tiers].sort((a, b) => b.min_lunas_bulan - a.min_lunas_bulan);
     const matchedTier = sortedTiers.find((t) => effectiveMonths >= t.min_lunas_bulan);
+    const cleanNo = cleanHouseNo(row.nomor_rumah);
 
     if (matchedTier && matchedTier.kupon_per_category) {
-      let kuponSeq = 1;
       categories.forEach((cat) => {
         const qty = matchedTier.kupon_per_category[cat.id] || 0;
         for (let k = 1; k <= qty; k++) {
-          const cleanNo = row.nomor_rumah.replace(/[^a-zA-Z0-9]/g, '');
-          const kodeKupon = `MTZ-${cleanNo}-${tahun}-${mPad(kuponSeq)}`;
+          const randomCode = generateRandom8();
+          const kodeKupon = `${cleanNo}-${randomCode}`;
 
           newGeneratedKupons.push({
-            id: `kpn-${newEventId}-${cleanNo}-${kuponSeq}`,
+            id: `kpn-${newEventId}-${cleanNo}-${cat.id}-${k}-${Date.now()}`,
             event_id: newEventId,
             nama_event: eventData.nama_event,
             nama_kupon: cat.nama_kategori,
@@ -245,28 +237,32 @@ export function createEventAndGenerateKupons(
             used_at: null,
             created_at: new Date().toISOString(),
           });
-          kuponSeq++;
         }
       });
     } else {
       const totalKuponsForHouse = calculateKuponForHouse(lunasCount, rules);
-      for (let k = 1; k <= totalKuponsForHouse; k++) {
-        const cleanNo = row.nomor_rumah.replace(/[^a-zA-Z0-9]/g, '');
-        const kodeKupon = `MTZ-${cleanNo}-${tahun}-${mPad(k)}`;
+      if (totalKuponsForHouse > 0) {
+        const cat = categories[0] || { id: 'cat-1', nama_kategori: 'Kupon Event' };
+        for (let k = 1; k <= totalKuponsForHouse; k++) {
+          const randomCode = generateRandom8();
+          const kodeKupon = `${cleanNo}-${randomCode}`;
 
-        newGeneratedKupons.push({
-          id: `kpn-${newEventId}-${cleanNo}-${k}`,
-          event_id: newEventId,
-          nama_event: eventData.nama_event,
-          nama_kupon: eventData.nama_kupon,
-          warga_id: row.rumah_id,
-          nomor_rumah: row.nomor_rumah,
-          tahun,
-          kode_kupon: kodeKupon,
-          is_used: false,
-          used_at: null,
-          created_at: new Date().toISOString(),
-        });
+          newGeneratedKupons.push({
+            id: `kpn-${newEventId}-${cleanNo}-${k}-${Date.now()}`,
+            event_id: newEventId,
+            nama_event: eventData.nama_event,
+            nama_kupon: cat.nama_kategori,
+            kategori_id: cat.id,
+            kategori_nama: cat.nama_kategori,
+            warga_id: row.rumah_id,
+            nomor_rumah: row.nomor_rumah,
+            tahun,
+            kode_kupon: kodeKupon,
+            is_used: false,
+            used_at: null,
+            created_at: new Date().toISOString(),
+          });
+        }
       }
     }
   });
@@ -276,7 +272,7 @@ export function createEventAndGenerateKupons(
     id: `bth-${newEventId}-${idx + 1}`,
     event_id: newEventId,
     nama_booth: b.nama_booth || `Booth Makanan #${idx + 1}`,
-    username: b.username || `booth-${newEventId.slice(-4)}-${idx + 1}`,
+    username: b.username ? b.username.trim().toLowerCase() : `booth-${newEventId.slice(-4)}-${idx + 1}`,
     password: b.password || 'event123',
     total_scanned: 0,
     created_at: new Date().toISOString(),
@@ -293,8 +289,20 @@ export function createEventAndGenerateKupons(
   return { newEvent, createdKuponsCount: newGeneratedKupons.length };
 }
 
-function mPad(n: number): string {
-  return n.toString().padStart(2, '0');
+function generateRandom8(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let res = '';
+  for (let i = 0; i < 8; i++) {
+    res += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return res;
+}
+
+// ── Get Kupons for specific Warga ───────────────────────────
+export function getKuponsForWarga(nomorRumahInput: string): KuponAcara[] {
+  const allKupons = getKuponsFromStorage();
+  const targetClean = cleanHouseNo(nomorRumahInput);
+  return allKupons.filter((k) => cleanHouseNo(k.nomor_rumah) === targetClean);
 }
 
 // ── Manual Coupon Creation for Field Correction ─────────────
@@ -308,18 +316,21 @@ export function addManualKupon(
 
   const event = events.find((e) => e.id === eventId) || events[0];
   const tahun = new Date().getFullYear();
-  const cleanNo = nomorRumah.replace(/[^a-zA-Z0-9]/g, '');
+  const cleanNo = cleanHouseNo(nomorRumah);
+  const catNama = event?.rules?.categories?.[0]?.nama_kategori || 'Kupon Event';
 
   const newKupons: KuponAcara[] = [];
   for (let k = 1; k <= count; k++) {
-    const timestamp = Date.now().toString().slice(-4);
-    const kodeKupon = `MTZ-MANUAL-${cleanNo}-${timestamp}-${k}`;
+    const randomCode = generateRandom8();
+    const kodeKupon = `${cleanNo}-${randomCode}`;
 
     const newKupon: KuponAcara = {
       id: `kpn-manual-${Date.now()}-${k}`,
       event_id: event ? event.id : 'evt-001',
       nama_event: event ? event.nama_event : 'Doorprize Kluster',
-      nama_kupon: event ? event.nama_kupon : 'Kupon Manual Koreksi',
+      nama_kupon: catNama,
+      kategori_id: 'cat-1',
+      kategori_nama: catNama,
       warga_id: `r-${cleanNo}`,
       nomor_rumah: nomorRumah,
       tahun,
@@ -336,12 +347,7 @@ export function addManualKupon(
   return newKupons;
 }
 
-// ── Get Real Kupons for Specific Warga ─────────────────────
-export function getKuponsForWarga(nomorRumah: string): KuponAcara[] {
-  const allKupons = getKuponsFromStorage();
-  const targetClean = cleanHouseNo(nomorRumah);
-  return allKupons.filter((k) => cleanHouseNo(k.nomor_rumah) === targetClean);
-}
+
 
 // ── Scan & Verify Kupon by Admin OR Tenant Booth ────────────
 export function scanAndUseKuponByBooth(

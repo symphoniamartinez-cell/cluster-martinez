@@ -615,7 +615,7 @@ export default function AdminEventsPage() {
                   Kredensial Akun Login Tenant Booth Makanan
                 </h3>
                 <p className="text-xs text-surface-500">
-                  Daftar akun booth untuk event ini. Penjaga booth login di <code>/login</code> (Default pass: <code>event123</code>).
+                  Daftar akun booth untuk event ini. Akun aktif & dapat login kapan saja di halaman Login Tenant. Default password: <code>event123</code>.
                 </p>
               </div>
             </div>
