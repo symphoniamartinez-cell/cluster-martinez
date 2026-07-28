@@ -426,7 +426,20 @@ export async function scanAndUseKuponByBooth(
   }
 
   const boothsToUpdate = updatedBooth ? [updatedBooth] : [];
-  await upsertToCloud([], [updatedKupon], boothsToUpdate);
+  const res = await upsertToCloud([], [updatedKupon], boothsToUpdate);
+
+  if (!res.cloudOk) {
+    // REVERT LOCAL CHANGES IF CLOUD FAILS
+    _saveKupons(allKupons.map(k => k.id === kupon.id ? kupon : k));
+    if (updatedBooth) {
+       allBooths[allBooths.findIndex(b => b.id === updatedBooth.id)].total_scanned--;
+       _saveBooths(allBooths);
+    }
+    return {
+      success: false,
+      message: `Gagal verifikasi ke server pusat (Koneksi Terputus). Pastikan internet HP Booth Anda stabil!`,
+    };
+  }
 
   return {
     success: true,
