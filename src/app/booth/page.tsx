@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import type { KuponAcara } from '@/types';
 import { scanAndUseKuponByBooth, getKuponsFromStorage } from '@/lib/event-store';
+import { Scanner } from '@yudiel/react-qr-scanner';
 
 export default function BoothPortalPage() {
   const router = useRouter();
@@ -37,6 +38,7 @@ export default function BoothPortalPage() {
     kupon?: KuponAcara;
   } | null>(null);
 
+  const [showCamera, setShowCamera] = useState(false);
   const [recentScans, setRecentScans] = useState<KuponAcara[]>([]);
   const [totalScannedCount, setTotalScannedCount] = useState<number>(0);
 
@@ -65,15 +67,18 @@ export default function BoothPortalPage() {
     }
   }, [router]);
 
-  const handleScanSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!scanInput.trim()) return;
-
-    const res = await scanAndUseKuponByBooth(scanInput, boothId, boothNama);
+  const processScan = async (code: string) => {
+    if (!code.trim()) return;
+    const res = await scanAndUseKuponByBooth(code.trim(), boothId, boothNama);
     setScanResult(res);
     setScanInput('');
     loadBoothScans(boothId);
+  };
 
+  const handleScanSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await processScan(scanInput);
+    
     // Keep focus on input for fast rapid scanning
     setTimeout(() => {
       inputRef.current?.focus();
@@ -175,6 +180,37 @@ export default function BoothPortalPage() {
                 VERIFIKASI & TUKAR KUPON
               </button>
             </form>
+
+            <div className="pt-4 border-t border-surface-700">
+              <button
+                type="button"
+                onClick={() => setShowCamera(!showCamera)}
+                className="w-full py-3 bg-surface-700 hover:bg-surface-600 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2"
+              >
+                <QrCode className="w-5 h-5" />
+                {showCamera ? 'Tutup Kamera' : 'Buka Kamera HP'}
+              </button>
+            </div>
+            
+            {showCamera && (
+              <div className="mt-4 rounded-2xl overflow-hidden shadow-2xl ring-2 ring-accent-500/50">
+                <Scanner
+                  onScan={(detectedCodes) => {
+                    if (detectedCodes.length > 0) {
+                      const code = detectedCodes[0].rawValue;
+                      if (code) {
+                        setShowCamera(false);
+                        processScan(code);
+                      }
+                    }
+                  }}
+                  onError={(error) => {
+                    console.error(error);
+                  }}
+                  constraints={{ facingMode: 'environment' }}
+                />
+              </div>
+            )}
           </div>
 
           {/* ── SCAN RESULT FEEDBACK BANNER ────────────────────── */}

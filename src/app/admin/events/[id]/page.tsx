@@ -31,6 +31,7 @@ import {
   UserCheck,
   ShieldCheck,
 } from 'lucide-react';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import type { EventAcara, KuponAcara, UserRole, TenantBooth } from '@/types';
 import {
   getEventsFromStorage,
@@ -61,6 +62,7 @@ export default function SingleEventDetailPage({
 
   // Scan Form State
   const [scanInput, setScanInput] = useState('');
+  const [showCamera, setShowCamera] = useState(false);
   const [scanResult, setScanResult] = useState<{
     success: boolean;
     message: string;
@@ -173,15 +175,17 @@ export default function SingleEventDetailPage({
     }
   };
 
-  // Handle Scanner
-  const handleScanSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!scanInput.trim()) return;
-
-    const res = await scanAndUseKupon(scanInput.trim(), userName);
+  const processScan = async (code: string) => {
+    if (!code.trim()) return;
+    const res = await scanAndUseKupon(code.trim(), userName);
     setScanResult(res);
     setScanInput('');
     loadEventData();
+  };
+
+  const handleScanSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await processScan(scanInput);
   };
 
   if (!event) {
@@ -613,6 +617,37 @@ export default function SingleEventDetailPage({
               Verifikasi & Tukarkan Kupon
             </button>
           </form>
+
+          <div className="pt-4 mt-4 border-t border-surface-200 dark:border-surface-700">
+            <button
+              type="button"
+              onClick={() => setShowCamera(!showCamera)}
+              className="w-full py-2.5 bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 text-surface-900 dark:text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <QrCode className="w-4 h-4" />
+              {showCamera ? 'Tutup Kamera' : 'Buka Kamera HP'}
+            </button>
+          </div>
+          
+          {showCamera && (
+            <div className="mt-4 rounded-2xl overflow-hidden shadow-2xl ring-2 ring-primary-500/50">
+              <Scanner
+                onScan={(detectedCodes) => {
+                  if (detectedCodes.length > 0) {
+                    const code = detectedCodes[0].rawValue;
+                    if (code) {
+                      setShowCamera(false);
+                      processScan(code);
+                    }
+                  }
+                }}
+                onError={(error) => {
+                  console.error(error);
+                }}
+                constraints={{ facingMode: 'environment' }}
+              />
+            </div>
+          )}
 
           {scanResult && (
             <div
