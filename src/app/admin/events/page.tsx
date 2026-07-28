@@ -350,12 +350,27 @@ export default function AdminEventsPage() {
                           <span className="text-xs font-mono text-surface-400">
                             {evt.tanggal_event}
                           </span>
+                          <button
+                            onClick={() => handleDeleteEvent(evt.id, evt.nama_event)}
+                            className="p-1.5 text-danger-500 hover:bg-danger-500/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-danger-500/20"
+                            title="Hapus Event Ini"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
 
-                      <h3 className="font-bold text-surface-900 dark:text-white text-base mb-1">
-                        {evt.nama_event}
-                      </h3>
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-bold text-surface-900 dark:text-white text-base">
+                          {evt.nama_event}
+                        </h3>
+                        <button
+                          onClick={() => router.push(`/admin/events/${evt.id}`)}
+                          className="px-3 py-1 bg-primary-500/10 hover:bg-primary-500/20 text-primary-600 dark:text-primary-400 font-bold text-[11px] rounded-xl transition-all cursor-pointer"
+                        >
+                          Detail Page &rarr;
+                        </button>
+                      </div>
 
                       <p className="text-xs text-surface-500 mb-4 flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-accent-500" />
@@ -394,49 +409,59 @@ export default function AdminEventsPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-1.5 pt-3 border-t border-surface-100 dark:border-surface-800">
-                      <button
-                        onClick={() => {
-                          setSelectedEventId(evt.id);
-                          setActiveTab('reports');
-                        }}
-                        className="py-2 px-2.5 bg-gradient-to-r from-accent-500 to-primary-500 hover:from-accent-600 hover:to-primary-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
-                      >
-                        <BarChart3 className="w-3.5 h-3.5" />
-                        Laporan
-                      </button>
+                    <div className="space-y-2 pt-3 border-t border-surface-100 dark:border-surface-800">
+                      <div className="grid grid-cols-4 gap-1.5">
+                        <button
+                          onClick={() => {
+                            setSelectedEventId(evt.id);
+                            setActiveTab('reports');
+                          }}
+                          className="py-2 px-2 bg-gradient-to-r from-accent-500 to-primary-500 hover:from-accent-600 hover:to-primary-600 text-white font-bold text-[11px] rounded-xl shadow-sm transition-all cursor-pointer text-center flex items-center justify-center gap-1"
+                        >
+                          <BarChart3 className="w-3.5 h-3.5" />
+                          Laporan
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setSelectedEventId(evt.id);
+                            setActiveTab('booths');
+                          }}
+                          className="py-2 px-2 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-[11px] rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1"
+                        >
+                          <Store className="w-3.5 h-3.5 text-accent-500" />
+                          Booth ({boothCountForEvt})
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setSelectedEventId(evt.id);
+                            setActiveTab('kupons');
+                          }}
+                          className="py-2 px-2 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-[11px] rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1"
+                        >
+                          <Ticket className="w-3.5 h-3.5 text-primary-500" />
+                          Kupon ({countKuponsForEvt})
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setSelectedEventId(evt.id);
+                            setShowManualModal(true);
+                          }}
+                          className="py-2 px-2 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-[11px] rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-success-500" />
+                          Manual
+                        </button>
+                      </div>
 
                       <button
-                        onClick={() => {
-                          setSelectedEventId(evt.id);
-                          setActiveTab('booths');
-                        }}
-                        className="py-2 px-2.5 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-xs rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                        onClick={() => handleDeleteEvent(evt.id, evt.nama_event)}
+                        className="w-full py-1.5 bg-danger-500/5 hover:bg-danger-500/10 text-danger-600 dark:text-danger-400 font-bold text-[11px] rounded-xl border border-danger-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                       >
-                        <Store className="w-3.5 h-3.5 text-accent-500" />
-                        Booth ({boothCountForEvt})
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setSelectedEventId(evt.id);
-                          setActiveTab('kupons');
-                        }}
-                        className="py-2 px-2.5 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-xs rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
-                      >
-                        <Ticket className="w-3.5 h-3.5 text-primary-500" />
-                        Kupon ({countKuponsForEvt})
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setSelectedEventId(evt.id);
-                          setShowManualModal(true);
-                        }}
-                        className="py-2 px-2.5 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-xs rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-success-500" />
-                        Manual
+                        <Trash2 className="w-3.5 h-3.5 text-danger-500" />
+                        Hapus Event Ini
                       </button>
                     </div>
                   </div>
