@@ -519,59 +519,73 @@ export default function WargaDashboardPage() {
           <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/5 rounded-full" />
 
           <div className="relative">
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md">
-                  <Home className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xl font-bold tracking-tight">
-                      {cleanNamaWarga}
-                    </p>
-                    <span className="px-2.5 py-0.5 bg-white/20 text-white rounded-full text-xs font-semibold uppercase">
-                      RT {rt}
-                    </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+              <div className="flex items-start gap-3 w-full min-w-0">
+                <div className="flex flex-col items-center gap-1.5 flex-shrink-0 mt-0.5">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md shadow-inner">
+                    <Home className="w-6 h-6" />
                   </div>
-                  <p className="text-xs text-white/80 mt-0.5 font-mono">
-                    No. Rumah: <span className="font-bold">{nomorRumah}</span> • Status: <span className="capitalize font-bold">{statusHunian}</span>
-                    {formattedTanggalMasuk && (
-                      <span> • Sejak: <span className="font-bold">{formattedTanggalMasuk}</span></span>
-                    )}
+                  <span className="px-2 py-0.5 bg-white/20 text-white rounded-md text-[10px] font-bold uppercase tracking-widest">
+                    RT {rt}
+                  </span>
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <p className="text-xl sm:text-2xl font-bold tracking-tight truncate w-full" title={cleanNamaWarga}>
+                    {cleanNamaWarga}
                   </p>
+                  
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center text-xs text-white/90">
+                      <span className="w-20 text-white/70">No. Rumah</span>
+                      <span className="font-mono font-bold">: {nomorRumah}</span>
+                    </div>
+                    <div className="flex items-center text-xs text-white/90">
+                      <span className="w-20 text-white/70">Status</span>
+                      <span className="capitalize font-bold">: {statusHunian}</span>
+                    </div>
+                    {formattedTanggalMasuk && (
+                      <div className="flex items-center text-xs text-white/90">
+                        <span className="w-20 text-white/70">Sejak</span>
+                        <span className="font-bold">: {formattedTanggalMasuk}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Status Lunas Bulan Ini Badge */}
-              <div
-                className={`px-3.5 py-1.5 rounded-2xl flex items-center gap-2 text-xs font-bold shadow-lg ${
-                  isCurrentMonthLunas
-                    ? 'bg-success-500 text-white'
-                    : 'bg-danger-500 text-white'
-                }`}
-              >
-                {isCurrentMonthLunas ? (
-                  <>
-                    <Check className="w-4 h-4 stroke-[3]" />
-                    Lunas {currentMonthName}
-                  </>
-                ) : (
-                  <>
-                    <X className="w-4 h-4 stroke-[3]" />
-                    Belum Lunas {currentMonthName}
-                  </>
-                )}
+              <div className="flex-shrink-0 self-start">
+                <div
+                  className={`px-4 py-2 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold shadow-lg w-full sm:w-auto ${
+                    isCurrentMonthLunas
+                      ? 'bg-success-500 text-white'
+                      : 'bg-danger-500 text-white'
+                  }`}
+                >
+                  {isCurrentMonthLunas ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      Lunas {currentMonthName}
+                    </>
+                  ) : (
+                    <>
+                      <X className="w-4 h-4 stroke-[3]" />
+                      Belum Lunas {currentMonthName}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-white/90">
-              <span>Tarif Iuran: <strong>{formatRupiah(nominalTahunan)} / tahun</strong> ({formatRupiah(config.nominal_per_bulan)} / bulan)</span>
+            <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-white/90">
+              <span>Tarif Iuran: <strong>{formatRupiah(nominalTahunan)} / tahun</strong> <span className="opacity-70">({formatRupiah(config.nominal_per_bulan)} / bln)</span></span>
               <button
                 onClick={() => setShowPaymentModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+                className="w-full sm:w-auto justify-center flex items-center gap-1.5 px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl transition-all cursor-pointer shadow-sm"
               >
                 <CreditCard className="w-3.5 h-3.5" />
-                Tata Cara Pembayaran Transfer
+                Cara Pembayaran Transfer
               </button>
             </div>
           </div>
@@ -1046,36 +1060,7 @@ export default function WargaDashboardPage() {
         </div>
       )}
 
-      {/* ── DEBUG SYNC PANEL ─────────────────────────────────── */}
-      <div className="fixed bottom-4 right-4 z-40">
-        <button
-          onClick={() => setShowDebug(!showDebug)}
-          className="px-3 py-1.5 bg-surface-900 text-white text-[10px] font-mono font-bold rounded-lg shadow-lg hover:bg-surface-800 transition-colors cursor-pointer opacity-50 hover:opacity-100"
-        >
-          {showDebug ? '✕ Tutup Debug' : '🔧 Sync Debug'}
-        </button>
-        {showDebug && (
-          <div className="absolute bottom-10 right-0 w-[420px] max-h-[300px] bg-surface-950 text-green-400 text-[10px] font-mono rounded-xl border border-surface-700 shadow-2xl overflow-hidden">
-            <div className="px-3 py-2 bg-surface-900 text-white font-bold text-[11px] flex items-center justify-between border-b border-surface-700">
-              <span>📡 Sync Debug Log — {nomorRumah}</span>
-              <span className="text-[9px] text-surface-400">
-                Config: Rp {config.nominal_per_bulan.toLocaleString('id-ID')}/bln | Kupons: {kupons.length}
-              </span>
-            </div>
-            <div className="p-2 overflow-y-auto max-h-[250px] space-y-0.5">
-              {debugLines.length === 0 ? (
-                <p className="text-surface-500">Belum ada log...</p>
-              ) : (
-                debugLines.map((line, i) => (
-                  <p key={i} className={`leading-tight ${line.includes('❌') ? 'text-red-400' : line.includes('⚠️') ? 'text-yellow-400' : line.includes('✅') || line.includes('☁️') ? 'text-green-400' : 'text-surface-400'}`}>
-                    {line}
-                  </p>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* DEBUG PANEL REMOVED FOR CLEANER UI */}
     </div>
   );
 }
