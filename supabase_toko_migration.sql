@@ -45,6 +45,23 @@ CREATE TABLE IF NOT EXISTS public.toko_penjualan (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Mengupdate tabel toko_penjualan jika tabel sudah terlanjur ada sebelumnya
+-- tanpa kolom nomor_invoice, harga_modal_satuan, dan nama_pelanggan
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='toko_penjualan' AND column_name='nomor_invoice') THEN
+    ALTER TABLE public.toko_penjualan ADD COLUMN nomor_invoice TEXT NOT NULL DEFAULT 'INV-LAMA';
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='toko_penjualan' AND column_name='harga_modal_satuan') THEN
+    ALTER TABLE public.toko_penjualan ADD COLUMN harga_modal_satuan INTEGER NOT NULL DEFAULT 0;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='toko_penjualan' AND column_name='nama_pelanggan') THEN
+    ALTER TABLE public.toko_penjualan ADD COLUMN nama_pelanggan TEXT;
+  END IF;
+END $$;
+
 -- Aktifkan Row Level Security (opsional, jika Anda menggunakan RLS ketat)
 -- ALTER TABLE public.toko_barang ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE public.toko_pergerakan_stok ENABLE ROW LEVEL SECURITY;
