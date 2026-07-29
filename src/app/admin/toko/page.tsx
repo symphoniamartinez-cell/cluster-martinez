@@ -18,6 +18,8 @@ import {
   Trash2,
   TrendingUp,
   X,
+  History,
+  PieChart,
 } from 'lucide-react';
 import type { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
 import {
@@ -28,6 +30,7 @@ import {
   deleteTokoBarang,
   addPembelianBatchGudang,
   keluarkanBatchGudang,
+  deletePenjualanInvoice,
   type PembelianItem,
   type KeluarkanItem,
 } from '@/lib/toko-store';
@@ -35,7 +38,7 @@ import {
 export default function AdminTokoPage() {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'master' | 'pembelian' | 'mutasi'>('master');
+  const [activeTab, setActiveTab] = useState<'master' | 'pembelian' | 'mutasi' | 'riwayat' | 'laba_rugi'>('master');
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -73,6 +76,15 @@ export default function AdminTokoPage() {
     dibuat_oleh: string;
     catatan: string;
     items: TokoPergerakanStok[];
+  } | null>(null);
+
+  const [searchRiwayat, setSearchRiwayat] = useState('');
+  const [detailRiwayat, setDetailRiwayat] = useState<{
+    nomor_invoice: string;
+    tanggal: string;
+    nama_pelanggan: string;
+    dijual_oleh: string;
+    items: TokoPenjualan[];
   } | null>(null);
 
   const showToast = (msg: string) => {
@@ -156,6 +168,19 @@ export default function AdminTokoPage() {
     } else {
       showToast(`Gagal mengeluarkan stok: ${res.error}`);
     }
+  };
+
+  const handleDeleteRiwayat = async (nomorInvoice: string) => {
+    if (!confirm(`Hapus Invoice ${nomorInvoice} dan retur stok barang ke etalase?`)) return;
+    setIsSyncing(true);
+    const res = await deletePenjualanInvoice(nomorInvoice);
+    if (res.success) {
+      showToast('Riwayat penjualan berhasil dihapus!');
+      loadData();
+    } else {
+      showToast(`Gagal menghapus: ${res.error}`);
+    }
+    setIsSyncing(false);
   };
 
   return (
@@ -244,6 +269,28 @@ export default function AdminTokoPage() {
         >
           <RefreshCw className="w-4 h-4" />
           Riwayat Mutasi
+        </button>
+        <button
+          onClick={() => setActiveTab('riwayat')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            activeTab === 'riwayat'
+              ? 'bg-white dark:bg-surface-900 text-teal-600 dark:text-teal-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
+              : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          Riwayat Penjualan
+        </button>
+        <button
+          onClick={() => setActiveTab('laba_rugi')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            activeTab === 'laba_rugi'
+              ? 'bg-white dark:bg-surface-900 text-rose-600 dark:text-rose-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
+              : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+          }`}
+        >
+          <PieChart className="w-4 h-4" />
+          Laba Rugi
         </button>
       </div>
 
@@ -580,6 +627,198 @@ export default function AdminTokoPage() {
         </div>
       )}
 
+      {/* ── TAB CONTENT: RIWAYAT PENJUALAN ──────────────────────── */}
+      {activeTab === 'riwayat' && (
+        <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+            <div>
+              <h3 className="font-bold text-base text-surface-900 dark:text-white">Riwayat Penjualan (Struk)</h3>
+              <p className="text-xs text-surface-500 mt-1">Laporan penjualan kasir dengan nama pelanggan dan nomor nota.</p>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Cari Invoice / Pelanggan..."
+                value={searchRiwayat}
+                onChange={e => setSearchRiwayat(e.target.value)}
+                className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+              />
+            </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="bg-surface-50 dark:bg-surface-800/50 border-b border-surface-200 dark:border-surface-700 text-surface-500 uppercase tracking-wider font-semibold">
+                  <th className="px-4 py-3">Tanggal / Waktu</th>
+                  <th className="px-4 py-3">Nomor Invoice</th>
+                  <th className="px-4 py-3">Nama Pelanggan</th>
+                  <th className="px-4 py-3 text-right">Total Nominal</th>
+                  <th className="px-4 py-3 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+                {penjualanList.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat penjualan.</td>
+                  </tr>
+                ) : (
+                  Object.values(
+                    penjualanList.reduce((acc, p) => {
+                      const key = p.nomor_invoice || `legacy-${p.id}`;
+                      if (!acc[key]) {
+                        acc[key] = {
+                          nomor_invoice: p.nomor_invoice || 'Tanpa Invoice (Lama)',
+                          tanggal: p.created_at || new Date().toISOString(),
+                          nama_pelanggan: p.nama_pelanggan || '-',
+                          dijual_oleh: p.dijual_oleh || 'System',
+                          items: []
+                        };
+                      }
+                      acc[key].items.push(p);
+                      return acc;
+                    }, {} as Record<string, { nomor_invoice: string; tanggal: string; nama_pelanggan: string; dijual_oleh: string; items: TokoPenjualan[] }>)
+                  )
+                  .filter(invoice => 
+                    !searchRiwayat || 
+                    invoice.nomor_invoice.toLowerCase().includes(searchRiwayat.toLowerCase()) ||
+                    invoice.nama_pelanggan.toLowerCase().includes(searchRiwayat.toLowerCase())
+                  )
+                  .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+                  .slice(0, 100)
+                  .map((invoice, idx) => {
+                    const totalNominal = invoice.items.reduce((sum, item) => sum + item.total_harga, 0);
+                    return (
+                      <tr key={idx} className="hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                        <td className="px-4 py-3 font-medium text-surface-900 dark:text-white">
+                          {new Date(invoice.tanggal).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline" onClick={() => setDetailRiwayat(invoice)}>
+                          {invoice.nomor_invoice}
+                        </td>
+                        <td className="px-4 py-3 text-surface-700 dark:text-surface-300">
+                          {invoice.nama_pelanggan}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-bold text-success-600 dark:text-success-400">
+                          Rp {totalNominal.toLocaleString('id-ID')}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setDetailRiwayat(invoice)}
+                              className="px-3 py-1.5 bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-500/20 font-bold rounded-lg transition-colors cursor-pointer"
+                            >
+                              Detail
+                            </button>
+                            {invoice.nomor_invoice !== 'Tanpa Invoice (Lama)' && (
+                              <button
+                                onClick={() => handleDeleteRiwayat(invoice.nomor_invoice)}
+                                className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                title="Hapus dan Retur Stok"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB CONTENT: LABA RUGI ──────────────────────── */}
+      {activeTab === 'laba_rugi' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm p-6">
+            <h3 className="font-bold text-base text-surface-900 dark:text-white mb-6">Laporan Laba Rugi Penjualan</h3>
+            
+            {(() => {
+              const totalOmzet = penjualanList.reduce((sum, p) => sum + p.total_harga, 0);
+              const totalHPP = penjualanList.reduce((sum, p) => sum + ((p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil), 0);
+              const totalLaba = totalOmzet - totalHPP;
+              const labaMargin = totalOmzet > 0 ? (totalLaba / totalOmzet) * 100 : 0;
+
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl p-5 text-white shadow-lg shadow-indigo-500/20">
+                    <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Total Omzet</p>
+                    <p className="text-3xl font-black font-mono">Rp {totalOmzet.toLocaleString('id-ID')}</p>
+                    <p className="text-xs text-white/70 mt-2">Seluruh pendapatan penjualan</p>
+                  </div>
+                  <div className="bg-surface-50 dark:bg-surface-800 rounded-2xl p-5 border border-surface-200 dark:border-surface-700">
+                    <p className="text-surface-500 text-xs font-semibold uppercase tracking-wider mb-2">Total HPP (Modal)</p>
+                    <p className="text-3xl font-black font-mono text-surface-900 dark:text-white">Rp {totalHPP.toLocaleString('id-ID')}</p>
+                    <p className="text-xs text-surface-400 mt-2">Modal harga beli barang keluar</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-success-500 to-teal-500 rounded-2xl p-5 text-white shadow-lg shadow-success-500/20">
+                    <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Laba Bersih (Profit)</p>
+                    <p className="text-3xl font-black font-mono">Rp {totalLaba.toLocaleString('id-ID')}</p>
+                    <p className="text-xs text-white/90 mt-2 font-bold">Margin: {labaMargin.toFixed(1)}%</p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <h4 className="font-bold text-sm text-surface-900 dark:text-white mb-4">Rincian Laba Per Barang</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="bg-surface-50 dark:bg-surface-800/50 border-b border-surface-200 dark:border-surface-700 text-surface-500 uppercase tracking-wider font-semibold">
+                    <th className="px-4 py-3">Nama Barang</th>
+                    <th className="px-4 py-3 text-right">Terjual</th>
+                    <th className="px-4 py-3 text-right">Omzet</th>
+                    <th className="px-4 py-3 text-right">HPP</th>
+                    <th className="px-4 py-3 text-right">Profit</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+                  {Object.values(
+                    penjualanList.reduce((acc, p) => {
+                      if (!acc[p.barang_id]) {
+                        acc[p.barang_id] = { barang_id: p.barang_id, qty: 0, omzet: 0, hpp: 0 };
+                      }
+                      acc[p.barang_id].qty += p.jumlah_satuan_kecil;
+                      acc[p.barang_id].omzet += p.total_harga;
+                      acc[p.barang_id].hpp += (p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil;
+                      return acc;
+                    }, {} as Record<string, { barang_id: string; qty: number; omzet: number; hpp: number }>)
+                  )
+                  .sort((a, b) => (b.omzet - b.hpp) - (a.omzet - a.hpp))
+                  .map(stats => {
+                    const brg = barangList.find(b => b.id === stats.barang_id);
+                    const profit = stats.omzet - stats.hpp;
+                    return (
+                      <tr key={stats.barang_id} className="hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                        <td className="px-4 py-3 font-medium text-surface-900 dark:text-white">
+                          {brg?.nama_barang || 'Barang Terhapus'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium">
+                          {stats.qty} {brg?.satuan_kecil || 'Pcs'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-surface-600 dark:text-surface-400">
+                          Rp {stats.omzet.toLocaleString('id-ID')}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-surface-600 dark:text-surface-400">
+                          Rp {stats.hpp.toLocaleString('id-ID')}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-bold text-success-600 dark:text-success-400">
+                          Rp {profit.toLocaleString('id-ID')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── MODALS ── */}
       {showModalBeli && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -904,6 +1143,72 @@ export default function AdminTokoPage() {
         </div>
       )}
 
+      {/* MODAL: DETAIL RIWAYAT PENJUALAN */}
+      {detailRiwayat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDetailRiwayat(null)} />
+          <div className="relative w-full max-w-2xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-teal-500 to-emerald-500" />
+            <div className="p-6 flex-shrink-0 flex items-start justify-between border-b border-surface-100 dark:border-surface-800">
+              <div>
+                <h3 className="text-lg font-bold text-surface-900 dark:text-white mb-1">
+                  Detail Penjualan: <span className="text-teal-600 dark:text-teal-400">{detailRiwayat.nomor_invoice}</span>
+                </h3>
+                <p className="text-xs text-surface-500">
+                  {new Date(detailRiwayat.tanggal).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} • Kasir: {detailRiwayat.dijual_oleh}
+                </p>
+                <div className="mt-3 px-3 py-2 bg-surface-50 dark:bg-surface-800 rounded-xl inline-block">
+                  <span className="text-xs text-surface-500">Pelanggan:</span>
+                  <span className="ml-2 text-sm font-bold text-surface-900 dark:text-white">{detailRiwayat.nama_pelanggan}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setDetailRiwayat(null)}
+                className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-0 overflow-y-auto flex-1">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-surface-50 dark:bg-surface-800/50 sticky top-0 shadow-sm">
+                  <tr>
+                    <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider">Nama Barang</th>
+                    <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Qty</th>
+                    <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Harga Jual</th>
+                    <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+                  {detailRiwayat.items.map(p => {
+                    const brg = barangList.find(b => b.id === p.barang_id);
+                    return (
+                      <tr key={p.id} className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30">
+                        <td className="px-6 py-3 font-medium text-surface-900 dark:text-white">
+                          {brg?.nama_barang || 'Barang Terhapus'}
+                        </td>
+                        <td className="px-6 py-3 text-right font-medium text-teal-600 dark:text-teal-400">
+                          {p.jumlah_satuan_kecil} {brg?.satuan_kecil || 'Pcs'}
+                        </td>
+                        <td className="px-6 py-3 text-right font-mono text-surface-600 dark:text-surface-400">
+                          Rp {(p.harga_satuan || 0).toLocaleString('id-ID')}
+                        </td>
+                        <td className="px-6 py-3 text-right font-mono font-bold text-surface-900 dark:text-white">
+                          Rp {(p.total_harga || 0).toLocaleString('id-ID')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-4 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/50 flex justify-end">
+               <button onClick={() => setDetailRiwayat(null)} className="px-5 py-2.5 bg-surface-200 hover:bg-surface-300 dark:bg-surface-700 dark:hover:bg-surface-600 rounded-xl font-bold transition-colors cursor-pointer">Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

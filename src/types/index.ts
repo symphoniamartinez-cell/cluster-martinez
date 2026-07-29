@@ -167,10 +167,13 @@ export interface TokoPergerakanStok {
 
 export interface TokoPenjualan {
   id: string;
+  nomor_invoice: string;
   barang_id: string;
   jumlah_satuan_kecil: number;
   harga_satuan: number;
+  harga_modal_satuan: number;
   total_harga: number;
+  nama_pelanggan?: string;
   dijual_oleh?: string;
   created_at?: string;
 }

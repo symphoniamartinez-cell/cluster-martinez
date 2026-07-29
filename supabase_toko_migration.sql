@@ -34,9 +34,13 @@ CREATE TABLE IF NOT EXISTS public.toko_pergerakan_stok (
 -- 3. Tabel Penjualan (Kasir Etalase/Display)
 CREATE TABLE IF NOT EXISTS public.toko_penjualan (
   id TEXT PRIMARY KEY,
+  nomor_invoice TEXT NOT NULL,
   barang_id TEXT NOT NULL REFERENCES public.toko_barang(id) ON DELETE CASCADE,
   jumlah_satuan_kecil INTEGER NOT NULL DEFAULT 1,
+  harga_satuan INTEGER NOT NULL DEFAULT 0,
+  harga_modal_satuan INTEGER NOT NULL DEFAULT 0,
   total_harga INTEGER NOT NULL DEFAULT 0,
+  nama_pelanggan TEXT,
   dijual_oleh TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );

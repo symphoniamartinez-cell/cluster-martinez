@@ -25,6 +25,7 @@ export default function KasirPOSPage() {
   const [cart, setCart] = useState<PenjualanItem[]>([
     { barang_id: '', jumlah_satuan_kecil: 1 }
   ]);
+  const [namaPelanggan, setNamaPelanggan] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function KasirPOSPage() {
 
     setIsSubmitting(true);
     const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Kasir';
-    const res = await inputPenjualanBatch(validItems, user);
+    const res = await inputPenjualanBatch(validItems, user, namaPelanggan);
     
     if (res.success) {
       showToast('Transaksi berhasil dibayar & dicatat!');
@@ -94,6 +95,7 @@ export default function KasirPOSPage() {
       } else {
         setCart([]);
       }
+      setNamaPelanggan('');
       // Refresh stok local
       setBarangList(getTokoBarangLocal());
     } else {
@@ -137,6 +139,17 @@ export default function KasirPOSPage() {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Kiri: Daftar Keranjang */}
         <div className="flex-1 space-y-4">
+          <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm p-6">
+            <h3 className="font-bold text-sm text-surface-900 dark:text-white mb-3">Informasi Pelanggan (Opsional)</h3>
+            <input
+              type="text"
+              placeholder="Nama pelanggan (contoh: Bpk. Budi, Blok A2)"
+              value={namaPelanggan}
+              onChange={e => setNamaPelanggan(e.target.value)}
+              className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-success-500/50"
+            />
+          </div>
+
           <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6">
             <h3 className="font-bold text-sm text-surface-900 dark:text-white mb-4 flex items-center gap-2">
               Keranjang Belanja

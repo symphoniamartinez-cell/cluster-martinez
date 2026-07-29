@@ -294,11 +294,17 @@ export async function inputPenjualan(barangId: string, jumlahSatuanKecil: number
     const hargaSatuan = barang.harga_jual_satuan_kecil || 0;
     const totalHarga = jumlahSatuanKecil * hargaSatuan;
 
+    const qtyPerBesar = barang.qty_per_satuan_besar || 1;
+    const hargaBeliBesar = barang.harga_beli_satuan_besar || 0;
+    const hargaModalSatuan = Math.floor(hargaBeliBesar / qtyPerBesar);
+
     const penjualan: TokoPenjualan = {
       id: 'tpj-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+      nomor_invoice: 'INV-JUAL-' + Date.now(),
       barang_id: barangId,
       jumlah_satuan_kecil: jumlahSatuanKecil,
       harga_satuan: hargaSatuan,
+      harga_modal_satuan: hargaModalSatuan,
       total_harga: totalHarga,
       dijual_oleh: user,
       created_at: new Date().toISOString()
@@ -327,11 +333,12 @@ export interface PenjualanItem {
   jumlah_satuan_kecil: number;
 }
 
-export async function inputPenjualanBatch(items: PenjualanItem[], user: string) {
+export async function inputPenjualanBatch(items: PenjualanItem[], user: string, namaPelanggan?: string) {
   try {
     const barangListLocal = getTokoBarangLocal();
     const penjualanList: TokoPenjualan[] = [];
     const barangUpdates: Record<string, { stok_display: number }> = {};
+    const nomorInvoice = 'INV-JUAL-' + Date.now();
 
     // Validate all items first
     for (const item of items) {
@@ -346,14 +353,24 @@ export async function inputPenjualanBatch(items: PenjualanItem[], user: string) 
       }
 
       const hargaSatuan = barang.harga_jual_satuan_kecil || 0;
+      
+      // Calculate harga_modal_satuan based on master data
+      // For simplicity in this demo, harga modal = harga_beli_satuan_besar / qty_per_satuan_besar
+      const qtyPerBesar = barang.qty_per_satuan_besar || 1;
+      const hargaBeliBesar = barang.harga_beli_satuan_besar || 0;
+      const hargaModalSatuan = Math.floor(hargaBeliBesar / qtyPerBesar);
+
       const totalHarga = item.jumlah_satuan_kecil * hargaSatuan;
 
       penjualanList.push({
         id: 'tpj-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+        nomor_invoice: nomorInvoice,
         barang_id: item.barang_id,
         jumlah_satuan_kecil: item.jumlah_satuan_kecil,
         harga_satuan: hargaSatuan,
+        harga_modal_satuan: hargaModalSatuan,
         total_harga: totalHarga,
+        nama_pelanggan: namaPelanggan,
         dijual_oleh: user,
         created_at: new Date().toISOString()
       });
@@ -375,6 +392,145 @@ export async function inputPenjualanBatch(items: PenjualanItem[], user: string) 
           .update(updateData)
           .eq('id', bId);
         if (err2) throw err2;
+      }
+    }
+
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+// -------------------------------------------------------------
+// EDIT / DELETE PENJUALAN
+// -------------------------------------------------------------
+
+export async function deletePenjualanInvoice(nomorInvoice: string) {
+  try {
+    const allPenjualan = getTokoPenjualanLocal().filter(p => p.nomor_invoice === nomorInvoice);
+    if (allPenjualan.length === 0) throw new Error('Invoice tidak ditemukan');
+
+    const barangListLocal = getTokoBarangLocal();
+    const barangUpdates: Record<string, { stok_display: number }> = {};
+
+    // Revert stock
+    for (const p of allPenjualan) {
+      const barang = barangListLocal.find(b => b.id === p.barang_id);
+      if (barang) {
+        const currentStokDisplay = barangUpdates[p.barang_id]?.stok_display ?? (barang.stok_display || 0);
+        barangUpdates[p.barang_id] = {
+          stok_display: currentStokDisplay + p.jumlah_satuan_kecil
+        };
+      }
+    }
+
+    const client = createClient();
+    if (client) {
+      // 1. Delete rows
+      const { error: err1 } = await client.from('toko_penjualan').delete().eq('nomor_invoice', nomorInvoice);
+      if (err1) throw err1;
+
+      // 2. Update stock
+      for (const [bId, updateData] of Object.entries(barangUpdates)) {
+        const { error: err2 } = await client.from('toko_barang').update(updateData).eq('id', bId);
+        if (err2) throw err2;
+      }
+    }
+
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function editPenjualanInvoice(
+  nomorInvoice: string, 
+  newItems: PenjualanItem[], 
+  namaPelanggan: string,
+  user: string
+) {
+  try {
+    // Strategy: Delete old invoice, then create new invoice with same invoice number but new data
+    
+    // 1. Revert Old Stock First (in memory)
+    const allPenjualan = getTokoPenjualanLocal().filter(p => p.nomor_invoice === nomorInvoice);
+    if (allPenjualan.length === 0) throw new Error('Invoice tidak ditemukan');
+
+    const barangListLocal = getTokoBarangLocal();
+    const virtualBarangList = barangListLocal.map(b => ({ ...b })); // Deep copy for virtual stock calc
+
+    for (const p of allPenjualan) {
+      const brg = virtualBarangList.find(b => b.id === p.barang_id);
+      if (brg) {
+        brg.stok_display = (brg.stok_display || 0) + p.jumlah_satuan_kecil;
+      }
+    }
+
+    // 2. Validate New Stock against Virtual Stock
+    const penjualanList: TokoPenjualan[] = [];
+    const barangUpdates: Record<string, { stok_display: number }> = {};
+    const oldTimestamp = allPenjualan[0]?.created_at || new Date().toISOString();
+
+    for (const item of newItems) {
+      if (item.jumlah_satuan_kecil <= 0) continue;
+
+      const barang = virtualBarangList.find(b => b.id === item.barang_id);
+      if (!barang) throw new Error('Barang tidak ditemukan');
+
+      const currentStokDisplay = barangUpdates[item.barang_id]?.stok_display ?? (barang.stok_display || 0);
+      if (currentStokDisplay < item.jumlah_satuan_kecil) {
+        throw new Error(`Stok display ${barang.nama_barang} tidak cukup untuk perubahan ini. Sisa: ${currentStokDisplay}`);
+      }
+
+      const hargaSatuan = barang.harga_jual_satuan_kecil || 0;
+      const qtyPerBesar = barang.qty_per_satuan_besar || 1;
+      const hargaBeliBesar = barang.harga_beli_satuan_besar || 0;
+      const hargaModalSatuan = Math.floor(hargaBeliBesar / qtyPerBesar);
+      const totalHarga = item.jumlah_satuan_kecil * hargaSatuan;
+
+      penjualanList.push({
+        id: 'tpj-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+        nomor_invoice: nomorInvoice,
+        barang_id: item.barang_id,
+        jumlah_satuan_kecil: item.jumlah_satuan_kecil,
+        harga_satuan: hargaSatuan,
+        harga_modal_satuan: hargaModalSatuan,
+        total_harga: totalHarga,
+        nama_pelanggan: namaPelanggan,
+        dijual_oleh: user,
+        created_at: oldTimestamp // keep original timestamp
+      });
+
+      barangUpdates[item.barang_id] = {
+        stok_display: currentStokDisplay - item.jumlah_satuan_kecil
+      };
+    }
+
+    if (penjualanList.length === 0) throw new Error('Tidak ada barang valid untuk dijual');
+
+    // 3. Execute DB Operations
+    const client = createClient();
+    if (client) {
+      // a. Delete old items
+      const { error: err1 } = await client.from('toko_penjualan').delete().eq('nomor_invoice', nomorInvoice);
+      if (err1) throw err1;
+
+      // b. Insert new items
+      const { error: err2 } = await client.from('toko_penjualan').insert(penjualanList);
+      if (err2) throw err2;
+
+      // c. Update actual stock based on diff.
+      const allInvolvedIds = new Set([
+        ...allPenjualan.map(p => p.barang_id),
+        ...newItems.map(i => i.barang_id)
+      ]);
+
+      for (const bId of Array.from(allInvolvedIds)) {
+        const finalStok = barangUpdates[bId]?.stok_display ?? virtualBarangList.find(b=>b.id===bId)?.stok_display ?? 0;
+        const { error: err3 } = await client.from('toko_barang').update({ stok_display: finalStok }).eq('id', bId);
+        if (err3) throw err3;
       }
     }
 
