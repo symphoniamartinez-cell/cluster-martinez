@@ -214,7 +214,7 @@ export default function KasirTokoPage() {
       {/* TAB: RIWAYAT PENJUALAN */}
       {activeTab === 'riwayat' && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6">
+          <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-4 sm:p-6 w-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <h3 className="font-bold text-sm text-surface-900 dark:text-white">Riwayat Penjualan (Struk)</h3>
               <div className="relative w-full sm:w-64">
@@ -228,8 +228,8 @@ export default function KasirTokoPage() {
               </div>
             </div>
             
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
+            <div className="w-full overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+              <table className="w-full min-w-[500px] text-xs text-left">
                 <thead>
                   <tr className="bg-surface-50 dark:bg-surface-800/50 border-b border-surface-200 dark:border-surface-700 text-surface-500 uppercase tracking-wider font-semibold">
                     <th className="px-4 py-3">Tanggal / Waktu</th>
@@ -322,9 +322,10 @@ export default function KasirTokoPage() {
             </button>
           </div>
 
-          <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 overflow-hidden">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-surface-50 dark:bg-surface-800">
+          <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 overflow-hidden w-full">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[400px] text-left text-sm">
+                <thead className="bg-surface-50 dark:bg-surface-800">
                 <tr>
                   <th className="px-4 py-3 font-semibold text-surface-500">Barang (Ecer)</th>
                   <th className="px-4 py-3 font-semibold text-surface-500 text-center">Di Gudang</th>
@@ -348,7 +349,8 @@ export default function KasirTokoPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         </div>
       )}
