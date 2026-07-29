@@ -535,20 +535,18 @@ export default function WargaDashboardPage() {
                     {cleanNamaWarga}
                   </p>
                   
-                  <div className="mt-2 space-y-1">
-                    <div className="flex items-center text-xs text-white/90">
-                      <span className="w-20 text-white/70">No. Rumah</span>
-                      <span className="font-mono font-bold">: {nomorRumah}</span>
-                    </div>
-                    <div className="flex items-center text-xs text-white/90">
-                      <span className="w-20 text-white/70">Status</span>
-                      <span className="capitalize font-bold">: {statusHunian}</span>
-                    </div>
+                  <div className="mt-2 grid grid-cols-[65px_1fr] gap-y-1 text-xs text-white/90">
+                    <span className="text-white/70">No. Rumah</span>
+                    <span className="font-mono font-bold"><span className="mr-1.5">:</span>{nomorRumah}</span>
+                    
+                    <span className="text-white/70">Status</span>
+                    <span className="capitalize font-bold"><span className="mr-1.5">:</span>{statusHunian}</span>
+                    
                     {formattedTanggalMasuk && (
-                      <div className="flex items-center text-xs text-white/90">
-                        <span className="w-20 text-white/70">Sejak</span>
-                        <span className="font-bold">: {formattedTanggalMasuk}</span>
-                      </div>
+                      <>
+                        <span className="text-white/70">Sejak</span>
+                        <span className="font-bold"><span className="mr-1.5">:</span>{formattedTanggalMasuk}</span>
+                      </>
                     )}
                   </div>
                 </div>
