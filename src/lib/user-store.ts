@@ -7,6 +7,7 @@
 // ============================================================
 
 import type { UserAccount, UserRole } from '@/types';
+import { syncAdminUsersToCloud } from '@/lib/db-sync';
 
 export const DEFAULT_PASSWORD = 'Martinez.2021';
 const STORAGE_KEY_ADMIN_USERS = 'martinez_admin_users_v2';
@@ -65,6 +66,7 @@ export function saveAdminUsersToStorage(users: UserAccount[]) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_ADMIN_USERS, JSON.stringify(users));
+    syncAdminUsersToCloud(users);
   } catch (e) {
     console.error(e);
   }

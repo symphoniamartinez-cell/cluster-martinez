@@ -34,6 +34,7 @@ import {
   DEFAULT_PASSWORD,
 } from '@/lib/user-store';
 import { getBoothsFromStorage, getEventsFromStorage } from '@/lib/event-store';
+import { fetchAdminUsersFromCloud } from '@/lib/db-sync';
 import type { TenantBooth, EventAcara } from '@/types';
 
 const ROLE_BADGE_COLORS: Record<UserRole, string> = {
@@ -63,6 +64,7 @@ export default function UserManagementPage() {
   const [passwordTarget, setPasswordTarget] = useState<UserAccount | null>(null);
   const [newPassword, setNewPassword] = useState(DEFAULT_PASSWORD);
   const [showPassToggle, setShowPassToggle] = useState(false);
+  const [showAddPassToggle, setShowAddPassToggle] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -84,6 +86,13 @@ export default function UserManagementPage() {
     setUsers(getAdminUsersFromStorage());
     setBooths(getBoothsFromStorage());
     setEvents(getEventsFromStorage());
+    
+    // Sync users from cloud asynchronously
+    fetchAdminUsersFromCloud().then((cloudUsers) => {
+      if (cloudUsers) {
+        setUsers(cloudUsers);
+      }
+    });
   }, []);
 
   const showToast = (msg: string) => {
@@ -116,6 +125,7 @@ export default function UserManagementPage() {
       role: 'pengurus',
       password: DEFAULT_PASSWORD,
     });
+    setShowAddPassToggle(false);
     setShowAddEditModal(true);
   };
 
@@ -128,6 +138,7 @@ export default function UserManagementPage() {
       role: user.role,
       password: user.password,
     });
+    setShowAddPassToggle(false);
     setShowAddEditModal(true);
   };
 
@@ -486,7 +497,6 @@ export default function UserManagementPage() {
                   <th className="px-4 py-3">Event Acara</th>
                   <th className="px-4 py-3">Username Login</th>
                   <th className="px-4 py-3">Password</th>
-                  <th className="px-4 py-3">Status Akses Hari-H</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
@@ -513,21 +523,6 @@ export default function UserManagementPage() {
                       </td>
                       <td className="px-4 py-3 font-mono font-bold text-surface-900 dark:text-white">
                         {b.password || 'event123'}
-                      </td>
-                      <td className="px-4 py-3">
-                        {isTodayEvent ? (
-                          <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-success-500/10 text-success-600 dark:text-success-400 border border-success-500/20">
-                            🟢 AKTIF (HARI-H SEKARANG)
-                          </span>
-                        ) : isPastEvent ? (
-                          <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-danger-500/10 text-danger-500 border border-danger-500/20">
-                            🔴 KADALUARSA (HARI-H LEWAT)
-                          </span>
-                        ) : (
-                          <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-warning-500/10 text-warning-500 border border-warning-500/20">
-                            🟡 BELUM AKUN (BELUM HARI-H)
-                          </span>
-                        )}
                       </td>
                     </tr>
                   );
@@ -616,15 +611,24 @@ export default function UserManagementPage() {
                 <label className="block text-sm font-medium mb-1.5">
                   Password Login
                 </label>
-                <input
-                  type="text"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  placeholder="Masukkan password admin"
-                  className="w-full px-4 py-2.5 border border-surface-200 dark:border-surface-700 rounded-xl text-sm bg-white dark:bg-surface-800 font-mono font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type={showAddPassToggle ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    placeholder="Masukkan password admin"
+                    className="w-full pl-4 pr-10 py-2.5 border border-surface-200 dark:border-surface-700 rounded-xl text-sm bg-white dark:bg-surface-800 font-mono font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPassToggle(!showAddPassToggle)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-700 cursor-pointer"
+                  >
+                    {showAddPassToggle ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 

@@ -9,8 +9,9 @@
 // Super App Cluster Martinez
 // ============================================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { fetchAdminUsersFromCloud } from '@/lib/db-sync';
 import { authenticateBooth } from '@/lib/event-store';
 import {
   Home,
@@ -34,6 +35,7 @@ export default function LoginPage() {
   // Warga Main Form State
   const [nomorRumah, setNomorRumah] = useState('');
   const [kodeAktivasi, setKodeAktivasi] = useState('');
+  const [showWargaPass, setShowWargaPass] = useState(false);
   const [loadingWarga, setLoadingWarga] = useState(false);
   const [errorWarga, setErrorWarga] = useState('');
 
@@ -52,6 +54,11 @@ export default function LoginPage() {
   const [showBoothPass, setShowBoothPass] = useState(false);
   const [loadingBooth, setLoadingBooth] = useState(false);
   const [errorBooth, setErrorBooth] = useState('');
+
+  // ── INIT: Fetch Admin Users dari Cloud ──────────────────────
+  useEffect(() => {
+    fetchAdminUsersFromCloud();
+  }, []);
 
   // ── Warga Login Submit ─────────────────────────────────────
   const handleWargaSubmit = async (e: React.FormEvent) => {
@@ -231,13 +238,20 @@ export default function LoginPage() {
                 <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
                 <input
                   id="kode-aktivasi"
-                  type="text"
+                  type={showWargaPass ? 'text' : 'password'}
                   value={kodeAktivasi}
                   onChange={(e) => setKodeAktivasi(e.target.value)}
                   placeholder="Masukkan Password (contoh: MTZ-7K9P2)"
                   required
-                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-surface-400 placeholder:text-xs placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold tracking-wider text-sm"
+                  className="w-full pl-10 pr-12 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-surface-400 placeholder:text-xs placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold tracking-wider text-sm"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowWargaPass(!showWargaPass)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-surface-400 hover:text-white transition-colors"
+                >
+                  {showWargaPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
               <p className="text-[11px] text-surface-400 mt-1">
                 Password Warga didapatkan dari Pengurus / Ketua RT Anda.

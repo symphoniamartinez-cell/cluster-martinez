@@ -469,6 +469,64 @@ export async function fetchIuranConfigFromCloud(): Promise<any | null> {
   }
 }
 
+// ── 5. ADMIN USERS CLOUD SYNC ──────────────────────────────
+export async function syncAdminUsersToCloud(users: any[]) {
+  const client = createClient();
+  if (!client) {
+    dbLog('ADMIN_SYNC', '⚠️ Supabase client NULL — data hanya di localStorage');
+    return;
+  }
+
+  try {
+    const { error } = await client.from('app_config').upsert(
+      [
+        {
+          id: 'admin_users_v2',
+          data: users,
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      { onConflict: 'id' }
+    );
+    if (error) {
+      dbLog('ADMIN_SYNC', '❌ Admin sync error:', error.message);
+    } else {
+      dbLog('ADMIN_SYNC', '✅ Admin users synced to cloud', { count: users.length });
+    }
+  } catch (e: any) {
+    dbLog('ADMIN_SYNC', '❌ Exception:', e?.message);
+  }
+}
+
+export async function fetchAdminUsersFromCloud(): Promise<any[] | null> {
+  const client = createClient();
+  if (!client) {
+    dbLog('ADMIN_FETCH', '⚠️ Supabase client NULL — admin dari localStorage saja');
+    return null;
+  }
+
+  try {
+    const { data, error } = await client.from('app_config').select('*').eq('id', 'admin_users_v2').single();
+    if (error) {
+      dbLog('ADMIN_FETCH', '❌ Admin fetch error:', error.message);
+      return null;
+    }
+    if (data && data.data && Array.isArray(data.data)) {
+      dbLog('ADMIN_FETCH', '✅ Admin users fetched from cloud', { count: data.data.length });
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('martinez_admin_users_v2', JSON.stringify(data.data));
+        } catch (e) {}
+      }
+      return data.data;
+    }
+    dbLog('ADMIN_FETCH', '⚠️ Admin users data null/empty in cloud');
+    return null;
+  } catch (e: any) {
+    dbLog('ADMIN_FETCH', '❌ Exception:', e?.message);
+    return null;
+  }
+}
 export async function clearAllEventsAndKuponsCloud() {
   const client = createClient();
   if (!client) {
