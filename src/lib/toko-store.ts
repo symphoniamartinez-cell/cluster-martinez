@@ -317,9 +317,71 @@ export async function inputPenjualan(barangId: string, jumlahSatuanKecil: number
       if (err2) throw err2;
     }
 
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export interface PenjualanItem {
+  barang_id: string;
+  jumlah_satuan_kecil: number;
+}
+
+export async function inputPenjualanBatch(items: PenjualanItem[], user: string) {
+  try {
+    const barangListLocal = getTokoBarangLocal();
+    const penjualanList: TokoPenjualan[] = [];
+    const barangUpdates: Record<string, { stok_display: number }> = {};
+
+    // Validate all items first
+    for (const item of items) {
+      if (item.jumlah_satuan_kecil <= 0) continue;
+
+      const barang = barangListLocal.find(b => b.id === item.barang_id);
+      if (!barang) throw new Error('Barang tidak ditemukan');
+
+      const currentStokDisplay = barangUpdates[item.barang_id]?.stok_display ?? (barang.stok_display || 0);
+      if (currentStokDisplay < item.jumlah_satuan_kecil) {
+        throw new Error(`Stok display ${barang.nama_barang} tidak cukup. Sisa: ${currentStokDisplay}`);
+      }
+
+      const hargaSatuan = barang.harga_jual_satuan_kecil || 0;
+      const totalHarga = item.jumlah_satuan_kecil * hargaSatuan;
+
+      penjualanList.push({
+        id: 'tpj-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+        barang_id: item.barang_id,
+        jumlah_satuan_kecil: item.jumlah_satuan_kecil,
+        harga_satuan: hargaSatuan,
+        total_harga: totalHarga,
+        dijual_oleh: user,
+        created_at: new Date().toISOString()
+      });
+
+      barangUpdates[item.barang_id] = {
+        stok_display: currentStokDisplay - item.jumlah_satuan_kecil
+      };
+    }
+
+    if (penjualanList.length === 0) throw new Error('Tidak ada barang valid untuk dijual');
+
+    const client = createClient();
+    if (client) {
+      const { error: err1 } = await client.from('toko_penjualan').insert(penjualanList);
+      if (err1) throw err1;
+
+      for (const [bId, updateData] of Object.entries(barangUpdates)) {
+        const { error: err2 } = await client.from('toko_barang')
+          .update(updateData)
+          .eq('id', bId);
+        if (err2) throw err2;
+      }
+    }
+
     await syncTokoDataFromCloud();
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
   }
 }
+

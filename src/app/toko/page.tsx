@@ -13,6 +13,7 @@ import {
   Check,
   RefreshCw,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import type { TokoBarang, TokoPenjualan, TokoPergerakanStok } from '@/types';
 import {
   getTokoBarangLocal,
@@ -24,6 +25,7 @@ import {
 } from '@/lib/toko-store';
 
 export default function KasirTokoPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'kasir' | 'display'>('kasir');
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -31,9 +33,6 @@ export default function KasirTokoPage() {
   const [barangList, setBarangList] = useState<TokoBarang[]>([]);
   const [penjualanList, setPenjualanList] = useState<TokoPenjualan[]>([]);
   const [pergerakanList, setPergerakanList] = useState<TokoPergerakanStok[]>([]);
-
-  const [showModalJual, setShowModalJual] = useState(false);
-  const [jualForm, setJualForm] = useState({ barang_id: '', jumlah: 1 });
 
   const [showModalPindah, setShowModalPindah] = useState(false);
   const [pindahForm, setPindahForm] = useState({ barang_id: '', jumlah: 1 });
@@ -67,22 +66,6 @@ export default function KasirTokoPage() {
   }, []);
 
   // ── HANDLERS ──
-  const handleSimpanPenjualan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!jualForm.barang_id || jualForm.jumlah <= 0) return;
-
-    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Kasir';
-    const res = await inputPenjualan(jualForm.barang_id, jualForm.jumlah, user);
-
-    if (res.success) {
-      showToast('Penjualan berhasil dicatat!');
-      setShowModalJual(false);
-      loadData();
-    } else {
-      showToast(`Gagal: ${res.error}`);
-    }
-  };
-
   const handleSimpanPindah = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pindahForm.barang_id || pindahForm.jumlah <= 0) return;
@@ -173,13 +156,10 @@ export default function KasirTokoPage() {
               <p className="text-white/80 text-sm mt-1">Stok akan langsung berkurang dari Display.</p>
             </div>
             <button
-              onClick={() => {
-                setJualForm({ barang_id: barangList[0]?.id || '', jumlah: 1 });
-                setShowModalJual(true);
-              }}
+              onClick={() => router.push('/toko/kasir')}
               className="px-6 py-3 bg-white text-blue-600 font-bold rounded-2xl shadow-lg hover:bg-blue-50 transition-colors w-full sm:w-auto"
             >
-              + Catat Penjualan
+              Buka Mesin Kasir
             </button>
           </div>
 
@@ -264,56 +244,7 @@ export default function KasirTokoPage() {
         </div>
       )}
 
-      {/* MODAL JUAL */}
-      {showModalJual && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalJual(false)} />
-          <div className="relative w-full max-w-sm bg-white dark:bg-surface-900 rounded-3xl p-6 shadow-2xl animate-fade-in">
-            <h3 className="font-bold text-lg mb-4">Catat Penjualan</h3>
-            <form onSubmit={handleSimpanPenjualan} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold mb-1">Barang Terjual</label>
-                <select
-                  required
-                  value={jualForm.barang_id}
-                  onChange={e => setJualForm({ ...jualForm, barang_id: e.target.value })}
-                  className="w-full px-4 py-3 bg-surface-50 dark:bg-surface-800 rounded-xl"
-                >
-                  {barangList.map(b => (
-                    <option key={b.id} value={b.id}>{b.nama_barang} (Sisa: {b.stok_display} {b.satuan_kecil})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1">
-                  Jumlah Terjual ({barangList.find(b => b.id === jualForm.barang_id)?.satuan_kecil})
-                </label>
-                <input
-                  type="number"
-                  required min={1}
-                  value={jualForm.jumlah}
-                  onChange={e => setJualForm({ ...jualForm, jumlah: parseInt(e.target.value) || 1 })}
-                  className="w-full px-4 py-3 bg-surface-50 dark:bg-surface-800 rounded-xl text-lg font-bold"
-                />
-              </div>
-              {jualForm.barang_id && (
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-center">
-                  <p className="text-xs text-blue-600 dark:text-blue-400">Total Harga</p>
-                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                    Rp {((barangList.find(b => b.id === jualForm.barang_id)?.harga_jual_satuan_kecil || 0) * jualForm.jumlah).toLocaleString('id-ID')}
-                  </p>
-                </div>
-              )}
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModalJual(false)} className="flex-1 py-3 bg-surface-100 rounded-xl font-bold text-surface-600">Batal</button>
-                <button type="submit" className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Simpan</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL PINDAH */}
+      {/* MODAL PINDAH KE DISPLAY */}
       {showModalPindah && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalPindah(false)} />
