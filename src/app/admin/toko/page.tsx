@@ -18,10 +18,11 @@ import {
   Trash2,
   TrendingUp,
 } from 'lucide-react';
-import type { TokoBarang, TokoPergerakanStok } from '@/types';
+import type { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
 import {
   getTokoBarangLocal,
   getTokoPergerakanLocal,
+  getTokoPenjualanLocal,
   syncTokoDataFromCloud,
   deleteTokoBarang,
   addPembelianBatchGudang,
@@ -33,12 +34,13 @@ import {
 export default function AdminTokoPage() {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'master' | 'pembelian'>('master');
+  const [activeTab, setActiveTab] = useState<'master' | 'pembelian' | 'mutasi'>('master');
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [barangList, setBarangList] = useState<TokoBarang[]>([]);
   const [pergerakanList, setPergerakanList] = useState<TokoPergerakanStok[]>([]);
+  const [penjualanList, setPenjualanList] = useState<TokoPenjualan[]>([]);
 
   // ── MODAL STATES ──
   const [showModalBeli, setShowModalBeli] = useState(false);
@@ -71,6 +73,7 @@ export default function AdminTokoPage() {
   const loadData = () => {
     setBarangList(getTokoBarangLocal());
     setPergerakanList(getTokoPergerakanLocal());
+    setPenjualanList(getTokoPenjualanLocal());
   };
 
   const handleSyncData = async (showNotification = true) => {
@@ -220,6 +223,17 @@ export default function AdminTokoPage() {
         >
           <ShoppingCart className="w-4 h-4" />
           Restock Pembelian
+        </button>
+        <button
+          onClick={() => setActiveTab('mutasi')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            activeTab === 'mutasi'
+              ? 'bg-white dark:bg-surface-900 text-blue-600 dark:text-blue-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
+              : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+          }`}
+        >
+          <RefreshCw className="w-4 h-4" />
+          Riwayat Mutasi
         </button>
       </div>
 
@@ -433,6 +447,118 @@ export default function AdminTokoPage() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB CONTENT: MUTASI GUDANG ──────────────────────── */}
+      {activeTab === 'mutasi' && (
+        <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+            <div>
+              <h3 className="font-bold text-base text-surface-900 dark:text-white">Riwayat Seluruh Mutasi & Transaksi</h3>
+              <p className="text-xs text-surface-500 mt-1">Laporan gabungan pembelian barang masuk, mutasi ke display, stok keluar, dan penjualan kasir.</p>
+            </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="bg-surface-50 dark:bg-surface-800/50 border-b border-surface-200 dark:border-surface-700 text-surface-500 uppercase tracking-wider font-semibold">
+                  <th className="px-4 py-3 whitespace-nowrap">Waktu</th>
+                  <th className="px-4 py-3">Nama Barang</th>
+                  <th className="px-4 py-3">Jenis Mutasi</th>
+                  <th className="px-4 py-3 text-right">Qty</th>
+                  <th className="px-4 py-3">Referensi / Catatan</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Oleh</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+                {[
+                  ...pergerakanList.map(p => ({
+                    id: p.id,
+                    tanggal: p.created_at || new Date().toISOString(),
+                    barang_id: p.barang_id,
+                    jenis: p.jenis_pergerakan,
+                    qtyBesar: p.jumlah_satuan_besar || 0,
+                    qtyKecil: p.jumlah_satuan_kecil,
+                    catatan: p.nomor_invoice || p.catatan || '-',
+                    oleh: p.dibuat_oleh || 'System'
+                  })),
+                  ...penjualanList.map(p => ({
+                    id: p.id,
+                    tanggal: p.created_at || new Date().toISOString(),
+                    barang_id: p.barang_id,
+                    jenis: 'PENJUALAN',
+                    qtyBesar: 0,
+                    qtyKecil: p.jumlah_satuan_kecil,
+                    catatan: 'Transaksi Kasir',
+                    oleh: p.dijual_oleh || 'Kasir'
+                  }))
+                ]
+                .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+                .slice(0, 100)
+                .map((item, idx) => {
+                  const brg = barangList.find(b => b.id === item.barang_id);
+                  let jenisStyle = 'text-surface-500 bg-surface-100';
+                  let jenisLabel = item.jenis;
+                  let qtyStr = '';
+                  
+                  if (item.jenis === 'PEMBELIAN_GUDANG') {
+                    jenisStyle = 'text-purple-600 bg-purple-50 border-purple-200 dark:bg-purple-500/10 dark:border-purple-500/20';
+                    jenisLabel = 'BELI MASUK';
+                    qtyStr = `+${item.qtyBesar} ${brg?.satuan_besar || 'Dus'}`;
+                  } else if (item.jenis === 'STOK_KELUAR') {
+                    jenisStyle = 'text-red-600 bg-red-50 border-red-200 dark:bg-red-500/10 dark:border-red-500/20';
+                    jenisLabel = 'STOK KELUAR';
+                    qtyStr = `-${item.qtyBesar} ${brg?.satuan_besar || 'Dus'}`;
+                  } else if (item.jenis === 'PINDAH_DISPLAY') {
+                    jenisStyle = 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/20';
+                    jenisLabel = 'PINDAH DISPLAY';
+                    qtyStr = `(Mutasi) ${item.qtyKecil} ${brg?.satuan_kecil || 'Pcs'}`;
+                  } else if (item.jenis === 'PENJUALAN') {
+                    jenisStyle = 'text-success-600 bg-success-50 border-success-200 dark:bg-success-500/10 dark:border-success-500/20';
+                    jenisLabel = 'TERJUAL';
+                    qtyStr = `-${item.qtyKecil} ${brg?.satuan_kecil || 'Pcs'}`;
+                  }
+
+                  return (
+                    <tr key={`${item.id}-${idx}`} className="hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="font-bold text-surface-900 dark:text-white">
+                          {new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
+                        <div className="text-[10px] text-surface-400">
+                          {new Date(item.tanggal).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-surface-900 dark:text-white min-w-[150px]">
+                        {brg?.nama_barang || 'Barang Terhapus'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold border ${jenisStyle}`}>
+                          {jenisLabel}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono font-bold whitespace-nowrap">
+                        {qtyStr}
+                      </td>
+                      <td className="px-4 py-3 text-surface-600 dark:text-surface-400 font-medium">
+                        {item.catatan}
+                      </td>
+                      <td className="px-4 py-3 text-surface-500 whitespace-nowrap">
+                        {item.oleh}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {(pergerakanList.length === 0 && penjualanList.length === 0) && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat mutasi / transaksi.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

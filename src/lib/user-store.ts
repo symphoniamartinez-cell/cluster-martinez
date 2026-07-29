@@ -36,6 +36,14 @@ export const INITIAL_ADMIN_ACCOUNTS: UserAccount[] = [
     password: DEFAULT_PASSWORD,
     created_at: new Date().toISOString(),
   },
+  {
+    id: 'u-toko-001',
+    username: 'TOKOMARTINEZ',
+    nama: 'Toko Martinez (Penjaga)',
+    role: 'penjaga_ch',
+    password: 'Toko.123',
+    created_at: new Date().toISOString(),
+  },
 ];
 
 // Load Admin accounts from localStorage
