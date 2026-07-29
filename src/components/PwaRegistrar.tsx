@@ -13,10 +13,10 @@ export default function PwaRegistrar() {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   useEffect(() => {
-    // 1. Register Service Worker for PWA Offline Caching
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
       navigator.serviceWorker
-        .register('/sw.js')
+        .register('/sw.js', { scope: '/' })
         .then((reg) => {
           console.log('[PWA] ServiceWorker registered with scope:', reg.scope);
         })
@@ -25,7 +25,7 @@ export default function PwaRegistrar() {
         });
     }
 
-    // 2. Listen for BeforeInstallPrompt event
+    // Listen for BeforeInstallPrompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
