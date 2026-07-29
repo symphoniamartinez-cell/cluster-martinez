@@ -161,10 +161,17 @@ export default function KasirPOSPage() {
                       >
                         {barangList.map(b => (
                           <option key={b.id} value={b.id} disabled={(b.stok_display || 0) <= 0}>
-                            {b.nama_barang} (Sisa: {b.stok_display || 0} {b.satuan_kecil}) - Rp {(b.harga_jual_satuan_kecil || 0).toLocaleString('id-ID')}/{b.satuan_kecil}
+                            {b.nama_barang}
                           </option>
                         ))}
                       </select>
+                      {selectedBrg && (
+                        <div className="mt-1.5 text-[11px] text-surface-500 font-medium">
+                          Sisa Stok: <span className={((selectedBrg.stok_display || 0) > 0) ? "text-success-600 dark:text-success-400" : "text-red-500"}>{selectedBrg.stok_display || 0} {selectedBrg.satuan_kecil}</span> 
+                          <span className="mx-1.5">•</span> 
+                          Rp {(selectedBrg.harga_jual_satuan_kecil || 0).toLocaleString('id-ID')} / {selectedBrg.satuan_kecil}
+                        </div>
+                      )}
                     </div>
                     <div className="w-full sm:w-24">
                       <label className="block text-xs font-bold text-surface-500 mb-1.5">Qty</label>
@@ -214,10 +221,6 @@ export default function KasirPOSPage() {
             <h3 className="font-bold text-sm text-surface-900 dark:text-white mb-4">Total Tagihan</h3>
             
             <div className="space-y-3 mb-6">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-surface-500">Total Macam Item</span>
-                <span className="font-bold">{cart.length} macam</span>
-              </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-surface-500">Total Qty Brg</span>
                 <span className="font-bold">{totalItem} unit</span>
