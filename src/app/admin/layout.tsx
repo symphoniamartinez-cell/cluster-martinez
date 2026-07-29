@@ -42,11 +42,6 @@ const NAV_ITEMS = [
     icon: TableProperties,
   },
   {
-    label: 'Manajemen User',
-    href: '/admin/users',
-    icon: UserCog,
-  },
-  {
     label: 'Acara & Kupon',
     href: '/admin/events',
     icon: Ticket,
@@ -55,6 +50,11 @@ const NAV_ITEMS = [
     label: 'Toko Martinez',
     href: '/admin/toko',
     icon: Store,
+  },
+  {
+    label: 'Manajemen User',
+    href: '/admin/users',
+    icon: UserCog,
   },
   {
     label: 'Pengaturan',
