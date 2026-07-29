@@ -25,8 +25,9 @@ import {
   syncTokoDataFromCloud,
   deleteTokoBarang,
   addPembelianBatchGudang,
-  keluarkanGudang,
+  keluarkanBatchGudang,
   type PembelianItem,
+  type KeluarkanItem,
 } from '@/lib/toko-store';
 
 export default function AdminTokoPage() {
@@ -54,10 +55,12 @@ export default function AdminTokoPage() {
   });
 
   const [showModalKeluarkan, setShowModalKeluarkan] = useState(false);
-  const [keluarForm, setKeluarForm] = useState({
-    barang_id: '',
-    jumlah_satuan_besar: 1,
+  const [keluarForm, setKeluarForm] = useState<{
+    catatan: string;
+    items: KeluarkanItem[];
+  }>({
     catatan: '',
+    items: [],
   });
 
   const showToast = (msg: string) => {
@@ -122,24 +125,23 @@ export default function AdminTokoPage() {
     }
   };
 
-  const handleKeluarkanBarang = async (e: React.FormEvent) => {
+  const handleSimpanKeluarkan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!keluarForm.barang_id || keluarForm.jumlah_satuan_besar <= 0) return;
+    if (keluarForm.items.length === 0) return;
 
     const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
-    const res = await keluarkanGudang(
-      keluarForm.barang_id,
-      keluarForm.jumlah_satuan_besar,
+    const res = await keluarkanBatchGudang(
+      keluarForm.items,
       keluarForm.catatan,
       user
     );
 
     if (res.success) {
-      showToast('Barang berhasil dikeluarkan dari Gudang!');
+      showToast('Stok berhasil dikeluarkan dari Gudang!');
       setShowModalKeluarkan(false);
       loadData();
     } else {
-      showToast(`Gagal mengeluarkan barang: ${res.error}`);
+      showToast(`Gagal mengeluarkan stok: ${res.error}`);
     }
   };
 
@@ -319,7 +321,13 @@ export default function AdminTokoPage() {
             <div className="flex-shrink-0 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => {
-                  setKeluarForm({ barang_id: barangList[0]?.id || '', jumlah_satuan_besar: 1, catatan: '' });
+                  setKeluarForm({ 
+                    catatan: '',
+                    items: [{
+                      barang_id: barangList[0]?.id || '',
+                      jumlah_satuan_besar: 1
+                    }]
+                  });
                   setShowModalKeluarkan(true);
                 }}
                 className="px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl shadow-sm transition-all cursor-pointer whitespace-nowrap border border-white/20"
@@ -585,42 +593,12 @@ export default function AdminTokoPage() {
       {showModalKeluarkan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalKeluarkan(false)} />
-          <div className="relative w-full max-w-md bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden">
+          <div className="relative w-full max-w-3xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden max-h-[90vh] flex flex-col">
             <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-red-500 to-orange-500" />
-            <div className="p-6 text-xs">
+            <div className="p-6 text-xs flex-1 overflow-y-auto">
               <h3 className="text-base font-bold text-surface-900 dark:text-white mb-4">Keluarkan Stok dari Gudang</h3>
               
-              <form onSubmit={handleKeluarkanBarang} className="space-y-4">
-                <div>
-                  <label className="block font-semibold mb-1">Pilih Barang</label>
-                  <select
-                    required
-                    value={keluarForm.barang_id}
-                    onChange={e => setKeluarForm({ ...keluarForm, barang_id: e.target.value })}
-                    className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
-                  >
-                    <option value="">-- Pilih Barang --</option>
-                    {barangList.map(b => (
-                      <option key={b.id} value={b.id}>{b.nama_barang} (Sisa: {b.stok_gudang} {b.satuan_kecil})</option>
-                    ))}
-                  </select>
-                </div>
-                
-                {keluarForm.barang_id && (
-                  <div>
-                    <label className="block font-semibold mb-1">
-                      Jumlah Dikeluarkan ({barangList.find(b => b.id === keluarForm.barang_id)?.satuan_besar})
-                    </label>
-                    <input
-                      type="number"
-                      required min={1}
-                      value={keluarForm.jumlah_satuan_besar}
-                      onChange={e => setKeluarForm({ ...keluarForm, jumlah_satuan_besar: parseInt(e.target.value) || 1 })}
-                      className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
-                    />
-                  </div>
-                )}
-
+              <form onSubmit={handleSimpanKeluarkan} className="space-y-6">
                 <div>
                   <label className="block font-semibold mb-1">Catatan / Alasan</label>
                   <input
@@ -628,16 +606,90 @@ export default function AdminTokoPage() {
                     required
                     value={keluarForm.catatan}
                     onChange={e => setKeluarForm({ ...keluarForm, catatan: e.target.value })}
-                    placeholder="Sumbangan lomba agustusan..."
+                    placeholder="Sumbangan lomba agustusan, inventaris RT..."
                     className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
                   />
                 </div>
 
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm">Daftar Barang Keluar</h4>
+                    <button
+                      type="button"
+                      onClick={() => setKeluarForm(prev => ({
+                        ...prev,
+                        items: [...prev.items, { barang_id: barangList[0]?.id || '', jumlah_satuan_besar: 1 }]
+                      }))}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 font-bold rounded-lg hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      Tambah Baris
+                    </button>
+                  </div>
+                  
+                  {keluarForm.items.map((item, index) => (
+                    <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700">
+                      <div className="w-full sm:flex-1">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Barang</label>
+                        <select
+                          required
+                          value={item.barang_id}
+                          onChange={e => {
+                            const newItems = [...keluarForm.items];
+                            newItems[index] = { 
+                              ...newItems[index], 
+                              barang_id: e.target.value
+                            };
+                            setKeluarForm({ ...keluarForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        >
+                          <option value="">-- Pilih --</option>
+                          {barangList.map(b => (
+                            <option key={b.id} value={b.id}>{b.nama_barang} (Sisa: {b.stok_gudang} {b.satuan_kecil})</option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div className="w-full sm:w-32">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">
+                          Qty ({barangList.find(b => b.id === item.barang_id)?.satuan_besar || 'Besar'})
+                        </label>
+                        <input
+                          type="number"
+                          required min={1}
+                          value={item.jumlah_satuan_besar}
+                          onChange={e => {
+                            const newItems = [...keluarForm.items];
+                            newItems[index].jumlah_satuan_besar = parseInt(e.target.value) || 1;
+                            setKeluarForm({ ...keluarForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        />
+                      </div>
+
+                      <div className="sm:pt-5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = keluarForm.items.filter((_, i) => i !== index);
+                            setKeluarForm({ ...keluarForm, items: newItems });
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                          disabled={keluarForm.items.length === 1}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-surface-100 dark:border-surface-800">
-                  <button type="button" onClick={() => setShowModalKeluarkan(false)} className="px-4 py-2 bg-surface-100 dark:bg-surface-800 rounded-xl font-bold cursor-pointer">
+                  <button type="button" onClick={() => setShowModalKeluarkan(false)} className="px-5 py-2.5 bg-surface-100 dark:bg-surface-800 rounded-xl font-bold cursor-pointer">
                     Batal
                   </button>
-                  <button type="submit" className="px-5 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-bold cursor-pointer shadow-md hover:brightness-110">
+                  <button type="submit" className="px-6 py-2.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-bold cursor-pointer shadow-md hover:brightness-110">
                     Keluarkan Stok
                   </button>
                 </div>
