@@ -126,8 +126,8 @@ export default function BoothPortalPage() {
     <div className="min-h-screen bg-surface-900 text-white pb-12 flex flex-col justify-between">
       <div>
         {/* ── Top Header ─────────────────────────────────────── */}
-        <header className="bg-surface-800/80 backdrop-blur-xl border-b border-surface-700 sticky top-0 z-30">
-          <div className="max-w-md mx-auto px-4 py-3.5 flex items-center justify-between">
+        <header className="bg-surface-900 border-b border-surface-700 px-4 py-3 sticky top-0 z-10 shadow-lg">
+          <div className="max-w-md mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img
                 src="/logo.jpg"
@@ -154,9 +154,9 @@ export default function BoothPortalPage() {
           </div>
         </header>
 
-        <main className="max-w-md mx-auto px-4 py-6 space-y-6">
+        <main className="max-w-md mx-auto px-4 py-3 space-y-3">
           {/* ── METRIC SUMMARY BADGE ────────────────────────────── */}
-          <div className="bg-gradient-to-r from-surface-800 to-surface-800/60 p-4 rounded-3xl border border-surface-700 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-surface-800 to-surface-800/60 p-3 rounded-2xl border border-surface-700 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-success-500/10 text-success-400 flex items-center justify-center">
                 <Utensils className="w-4.5 h-4.5" />
@@ -181,7 +181,7 @@ export default function BoothPortalPage() {
           </div>
 
           {/* ── SCANNER INPUT FORM ────────────────────────────── */}
-          <div className="bg-surface-800 rounded-3xl p-6 border border-surface-700 shadow-xl space-y-4">
+          <div className="bg-surface-800 rounded-3xl p-4 border border-surface-700 shadow-xl space-y-3">
             <div className="flex items-center gap-2 pb-3 border-b border-surface-700">
               <QrCode className="w-4 h-4 text-accent-400" />
               <h2 className="text-xs font-bold uppercase tracking-wider text-surface-300">
@@ -196,23 +196,23 @@ export default function BoothPortalPage() {
                   type="text"
                   value={scanInput}
                   onChange={(e) => setScanInput(e.target.value)}
-                  placeholder="Tempelkan / Scan Kode QR..."
+                  placeholder="Ketik/Scan Kode QR..."
                   autoFocus
-                  className="w-full pl-4 pr-12 py-4 bg-surface-900 border-2 border-accent-500/50 focus:border-accent-400 rounded-2xl font-mono text-lg font-bold text-white placeholder:text-surface-500 focus:outline-none uppercase tracking-wider transition-all"
+                  className="w-full pl-4 pr-12 py-3 bg-surface-900 border-2 border-accent-500/50 focus:border-accent-400 rounded-2xl font-mono text-lg font-bold text-white placeholder:text-surface-500 placeholder:text-sm placeholder:font-sans placeholder:normal-case focus:outline-none uppercase tracking-wider transition-all"
                 />
-                <QrCode className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-accent-400 animate-pulse" />
+                <QrCode className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-accent-400 animate-pulse" />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-4 bg-gradient-to-r from-accent-500 to-primary-500 hover:from-accent-600 hover:to-primary-600 text-white font-bold text-base rounded-2xl shadow-lg shadow-accent-500/25 transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-3 bg-gradient-to-r from-accent-500 to-primary-500 hover:from-accent-600 hover:to-primary-600 text-white font-bold text-sm rounded-2xl shadow-lg shadow-accent-500/25 transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="w-5 h-5" />
                 VERIFIKASI & TUKAR KUPON
               </button>
             </form>
 
-            <div className="pt-4 border-t border-surface-700">
+            <div className="pt-3 border-t border-surface-700">
               <button
                 type="button"
                 onClick={() => setShowCamera(!showCamera)}
@@ -224,7 +224,7 @@ export default function BoothPortalPage() {
             </div>
             
             {showCamera && (
-              <div className="mt-4 rounded-2xl overflow-hidden shadow-2xl ring-2 ring-accent-500/50">
+              <div className="mt-3 rounded-2xl overflow-hidden shadow-2xl ring-2 ring-accent-500/50">
                 <Scanner
                   onScan={(detectedCodes) => {
                     if (detectedCodes.length > 0) {
