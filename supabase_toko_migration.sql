@@ -53,6 +53,10 @@ BEGIN
     ALTER TABLE public.toko_penjualan ADD COLUMN nomor_invoice TEXT NOT NULL DEFAULT 'INV-LAMA';
   END IF;
   
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='toko_penjualan' AND column_name='harga_satuan') THEN
+    ALTER TABLE public.toko_penjualan ADD COLUMN harga_satuan INTEGER NOT NULL DEFAULT 0;
+  END IF;
+  
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='toko_penjualan' AND column_name='harga_modal_satuan') THEN
     ALTER TABLE public.toko_penjualan ADD COLUMN harga_modal_satuan INTEGER NOT NULL DEFAULT 0;
   END IF;
