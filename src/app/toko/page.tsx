@@ -100,8 +100,9 @@ export default function KasirTokoPage() {
     if (confirm('Yakin ingin keluar/logout dari Dashboard Kasir?')) {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('demo_user');
+        document.cookie = 'demo_user=; path=/; max-age=0';
+        window.location.href = '/login';
       }
-      router.push('/login');
     }
   };
 

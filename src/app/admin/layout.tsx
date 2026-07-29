@@ -96,7 +96,7 @@ export default function AdminLayout({
   const handleLogout = () => {
     sessionStorage.removeItem('demo_user');
     document.cookie = 'demo_user=; path=/; max-age=0';
-    router.push('/login');
+    window.location.href = '/login';
   };
 
   return (

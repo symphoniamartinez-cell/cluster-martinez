@@ -17,6 +17,13 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   penjaga_ch: ['/toko'],
 };
 
+const getDefaultRoute = (role: string) => {
+  if (role === 'warga') return '/dashboard';
+  if (role === 'booth') return '/booth';
+  if (role === 'penjaga_ch') return '/toko';
+  return '/admin';
+};
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -49,8 +56,7 @@ export async function middleware(request: NextRequest) {
 
     if (pathname === '/login' || pathname === '/') {
       if (demoRole) {
-        const redirectTo = demoRole === 'warga' ? '/dashboard' : '/admin';
-        return NextResponse.redirect(new URL(redirectTo, request.url));
+        return NextResponse.redirect(new URL(getDefaultRoute(demoRole), request.url));
       }
       if (pathname === '/') {
         return NextResponse.redirect(new URL('/login', request.url));
@@ -68,8 +74,7 @@ export async function middleware(request: NextRequest) {
 
     const allowed = ROLE_ROUTES[activeRole] || [];
     if (!allowed.some((r) => pathname.startsWith(r))) {
-      const defaultRoute = activeRole === 'warga' ? '/dashboard' : '/admin';
-      return NextResponse.redirect(new URL(defaultRoute, request.url));
+      return NextResponse.redirect(new URL(getDefaultRoute(activeRole), request.url));
     }
 
     return supabaseResponse;
@@ -112,8 +117,7 @@ export async function middleware(request: NextRequest) {
         .single();
 
       const role = (profile?.role as UserRole) || 'warga';
-      const redirectTo = role === 'warga' ? '/dashboard' : '/admin';
-      return NextResponse.redirect(new URL(redirectTo, request.url));
+      return NextResponse.redirect(new URL(getDefaultRoute(role), request.url));
     }
 
     // If accessing "/" and not logged in, redirect to /login
@@ -146,8 +150,7 @@ export async function middleware(request: NextRequest) {
   const hasAccess = allowedRoutes.some((route) => pathname.startsWith(route));
 
     if (!hasAccess) {
-      const defaultRoute = role === 'warga' ? '/dashboard' : '/admin';
-      return NextResponse.redirect(new URL(defaultRoute, request.url));
+      return NextResponse.redirect(new URL(getDefaultRoute(role), request.url));
     }
   } catch (e) {
     console.error('Middleware Auth Error:', e);
