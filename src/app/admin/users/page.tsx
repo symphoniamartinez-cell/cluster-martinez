@@ -130,7 +130,7 @@ export default function UserManagementPage() {
       username: '',
       nama: '',
       role: 'pengurus',
-      password: DEFAULT_PASSWORD,
+      password: '',
     });
     setShowAddPassToggle(false);
     setShowAddEditModal(true);
@@ -158,8 +158,8 @@ export default function UserManagementPage() {
 
   // ── Save User (Add / Edit) ────────────────────────────────
   const handleSaveUser = () => {
-    if (!formData.username.trim() || !formData.nama.trim()) {
-      alert('Username dan Nama Pengguna wajib diisi!');
+    if (!formData.username.trim() || !formData.nama.trim() || !formData.password.trim()) {
+      alert('Username, Nama Pengguna, dan Password wajib diisi!');
       return;
     }
 
@@ -173,7 +173,7 @@ export default function UserManagementPage() {
               username: formData.username.trim().toUpperCase(),
               nama: formData.nama.trim(),
               role: formData.role,
-              password: formData.password || DEFAULT_PASSWORD,
+              password: formData.password.trim(),
             }
           : u
       );
@@ -183,7 +183,7 @@ export default function UserManagementPage() {
         username: formData.username.trim().toUpperCase(),
         nama: formData.nama.trim(),
         role: formData.role,
-        password: formData.password || DEFAULT_PASSWORD,
+        password: formData.password.trim(),
         created_at: new Date().toISOString(),
       };
       updatedList = [...users, newUser];
@@ -249,7 +249,7 @@ export default function UserManagementPage() {
               </span>
             </div>
             <p className="text-sm text-surface-700/60 dark:text-surface-200/50 mt-0.5">
-              Kelola akun & password untuk Superadmin, Pengurus, dan Bendahara (Default: <code className="font-mono text-amber-500">Martinez.2021</code>)
+              Kelola akun & password untuk Superadmin, Pengurus, dan Bendahara.
             </p>
           </div>
         </div>
