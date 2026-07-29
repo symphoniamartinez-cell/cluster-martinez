@@ -65,6 +65,13 @@ export default function UserManagementPage() {
   const [newPassword, setNewPassword] = useState(DEFAULT_PASSWORD);
   const [showPassToggle, setShowPassToggle] = useState(false);
   const [showAddPassToggle, setShowAddPassToggle] = useState(false);
+  
+  // State for toggling password visibility on table rows
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+
+  const togglePasswordVisibility = (id: string) => {
+    setVisiblePasswords(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Form State
   const [formData, setFormData] = useState({
@@ -417,7 +424,15 @@ export default function UserManagementPage() {
                     </td>
 
                     <td className="px-4 py-3.5 font-mono text-xs text-surface-600 dark:text-surface-300">
-                      {user.password || DEFAULT_PASSWORD}
+                      <div className="flex items-center justify-between gap-2">
+                        <span>{visiblePasswords[user.id] ? (user.password || DEFAULT_PASSWORD) : '••••••••'}</span>
+                        <button
+                          onClick={() => togglePasswordVisibility(user.id)}
+                          className="text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 transition-colors cursor-pointer p-1"
+                        >
+                          {visiblePasswords[user.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </td>
 
                     {canEdit && (
@@ -522,7 +537,15 @@ export default function UserManagementPage() {
                         {b.username}
                       </td>
                       <td className="px-4 py-3 font-mono font-bold text-surface-900 dark:text-white">
-                        {b.password || 'event123'}
+                        <div className="flex items-center gap-2">
+                          <span>{visiblePasswords[b.id] ? (b.password || 'event123') : '••••••••'}</span>
+                          <button
+                            onClick={() => togglePasswordVisibility(b.id)}
+                            className="text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 transition-colors cursor-pointer p-1"
+                          >
+                            {visiblePasswords[b.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

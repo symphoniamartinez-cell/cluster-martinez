@@ -478,14 +478,15 @@ export async function syncAdminUsersToCloud(users: any[]) {
   }
 
   try {
-    const { error } = await client.from('app_config').upsert(
-      [
-        {
-          id: 'admin_users_v2',
-          data: users,
-          updated_at: new Date().toISOString(),
-        },
-      ],
+    const { error } = await client.from('admin_users').upsert(
+      users.map(u => ({
+        id: u.id,
+        username: u.username,
+        nama: u.nama,
+        role: u.role,
+        password: u.password,
+        created_at: u.created_at || new Date().toISOString()
+      })),
       { onConflict: 'id' }
     );
     if (error) {
@@ -506,16 +507,11 @@ export async function fetchAdminUsersFromCloud(): Promise<any[] | null> {
   }
 
   try {
-    const { data, error } = await client.from('app_config').select('*').eq('id', 'admin_users_v2').single();
+    const { data, error } = await client.from('admin_users').select('*');
     if (error) {
       dbLog('ADMIN_FETCH', '❌ Admin fetch error:', error.message);
       return null;
     }
-    if (data && data.data && Array.isArray(data.data)) {
-      dbLog('ADMIN_FETCH', '✅ Admin users fetched from cloud', { count: data.data.length });
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('martinez_admin_users_v2', JSON.stringify(data.data));
         } catch (e) {}
       }
       return data.data;
