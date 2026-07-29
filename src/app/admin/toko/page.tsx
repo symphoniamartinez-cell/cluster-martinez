@@ -417,9 +417,9 @@ export default function AdminTokoPage() {
     setResetCountdown(5);
     const timer = setInterval(() => {
       setResetCountdown((prev) => {
-        if (prev <= 1) {
+        if (prev <= 2) {
           clearInterval(timer);
-          return 0;
+          return 1;
         }
         return prev - 1;
       });
@@ -432,6 +432,7 @@ export default function AdminTokoPage() {
     if (res.success) {
       showToast('Seluruh riwayat transaksi berhasil dihapus & stok di-reset ke 0!');
       loadData();
+      setResetCountdown(0);
     } else {
       showToast(`Gagal mereset data: ${res.error}`);
     }
@@ -1230,7 +1231,7 @@ export default function AdminTokoPage() {
               ) : (
                 <button
                   onClick={executeReset}
-                  disabled={isResetting || resetCountdown > 0}
+                  disabled={isResetting || resetCountdown > 1}
                   className={`px-6 py-3 font-bold rounded-xl shadow-lg transition-all ${
                     resetCountdown > 1 || isResetting
                       ? 'bg-surface-200 dark:bg-surface-800 text-surface-500 cursor-not-allowed'
