@@ -99,6 +99,9 @@ export default function AdminTokoPage() {
     }[];
   } | null>(null);
 
+  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
+  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
@@ -222,6 +225,16 @@ export default function AdminTokoPage() {
     setIsSyncing(false);
   };
 
+  const filteredPergerakanList = pergerakanList.filter(p => {
+    const d = new Date(p.created_at || new Date());
+    return (d.getMonth() + 1) === filterMonth && d.getFullYear() === filterYear;
+  });
+
+  const filteredPenjualanList = penjualanList.filter(p => {
+    const d = new Date(p.created_at || new Date());
+    return (d.getMonth() + 1) === filterMonth && d.getFullYear() === filterYear;
+  });
+
   return (
     <div className="space-y-6 max-w-[1300px] mx-auto animate-fade-in pb-12">
       {/* ── Toast Notification ───────────────────────────────── */}
@@ -274,9 +287,10 @@ export default function AdminTokoPage() {
         </div>
       </div>
 
-      {/* ── Tabs Navigation ──────────────────────────────────── */}
-      <div className="flex items-center gap-2 bg-surface-100/50 dark:bg-surface-800/50 p-1.5 rounded-2xl w-fit">
-        <button
+      {/* ── Tabs Navigation & Filters ──────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2 bg-surface-100/50 dark:bg-surface-800/50 p-1.5 rounded-2xl w-fit flex-wrap">
+          <button
           onClick={() => setActiveTab('master')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
             activeTab === 'master'
@@ -331,9 +345,33 @@ export default function AdminTokoPage() {
           <PieChart className="w-4 h-4" />
           Laba Rugi
         </button>
+        </div>
+
+        {activeTab !== 'master' && (
+          <div className="flex items-center gap-2">
+            <select 
+              value={filterMonth}
+              onChange={e => setFilterMonth(Number(e.target.value))}
+              className="px-4 py-2.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-xs font-bold shadow-sm outline-none cursor-pointer"
+            >
+              {Array.from({length: 12}, (_, i) => i + 1).map(m => (
+                <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('id-ID', { month: 'long' })}</option>
+              ))}
+            </select>
+            <select
+              value={filterYear}
+              onChange={e => setFilterYear(Number(e.target.value))}
+              className="px-4 py-2.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-xs font-bold shadow-sm outline-none cursor-pointer"
+            >
+              {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
-      {/* ── TAB CONTENT: MASTER BARANG ──────────────────────── */}
+      {/* ── TAB CONTENT: MASTER BARANG ───────────────────────── */}
       {activeTab === 'master' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -491,13 +529,13 @@ export default function AdminTokoPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
-                  {pergerakanList.filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG').length === 0 ? (
+                  {filteredPergerakanList.filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG').length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat pembelian.</td>
+                      <td colSpan={5} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat pembelian di bulan ini.</td>
                     </tr>
                   ) : (
                     Object.values(
-                      pergerakanList
+                      filteredPergerakanList
                         .filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG')
                         .reduce((acc, p) => {
                           const key = p.nomor_invoice || `legacy-${p.id}`;
@@ -578,7 +616,7 @@ export default function AdminTokoPage() {
               </thead>
               <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
                 {[
-                  ...pergerakanList.map(p => ({
+                  ...filteredPergerakanList.map(p => ({
                     id: p.id,
                     tanggal: p.created_at || new Date().toISOString(),
                     barang_id: p.barang_id,
@@ -588,7 +626,7 @@ export default function AdminTokoPage() {
                     catatan: p.nomor_invoice || p.catatan || '-',
                     oleh: p.dibuat_oleh || 'System'
                   })),
-                  ...penjualanList.map(p => ({
+                  ...filteredPenjualanList.map(p => ({
                     id: p.id,
                     tanggal: p.created_at || new Date().toISOString(),
                     barang_id: p.barang_id,
@@ -655,9 +693,9 @@ export default function AdminTokoPage() {
                     </tr>
                   );
                 })}
-                {(pergerakanList.length === 0 && penjualanList.length === 0) && (
+                {(filteredPergerakanList.length === 0 && filteredPenjualanList.length === 0) && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat mutasi / transaksi.</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat mutasi / transaksi di bulan ini.</td>
                   </tr>
                 )}
               </tbody>
@@ -697,13 +735,13 @@ export default function AdminTokoPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
-                {penjualanList.length === 0 ? (
+                {filteredPenjualanList.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat penjualan.</td>
+                    <td colSpan={5} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat penjualan di bulan ini.</td>
                   </tr>
                 ) : (
                   Object.values(
-                    penjualanList.reduce((acc, p) => {
+                    filteredPenjualanList.reduce((acc, p) => {
                       const key = p.nomor_invoice || `legacy-${p.id}`;
                       if (!acc[key]) {
                         acc[key] = {
@@ -794,8 +832,8 @@ export default function AdminTokoPage() {
             <h3 className="font-bold text-base text-surface-900 dark:text-white mb-6">Laporan Laba Rugi Penjualan</h3>
             
             {(() => {
-              const totalOmzet = penjualanList.reduce((sum, p) => sum + p.total_harga, 0);
-              const totalHPP = penjualanList.reduce((sum, p) => sum + ((p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil), 0);
+              const totalOmzet = filteredPenjualanList.reduce((sum, p) => sum + p.total_harga, 0);
+              const totalHPP = filteredPenjualanList.reduce((sum, p) => sum + ((p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil), 0);
               const totalLaba = totalOmzet - totalHPP;
               const labaMargin = totalOmzet > 0 ? (totalLaba / totalOmzet) * 100 : 0;
 
@@ -834,7 +872,7 @@ export default function AdminTokoPage() {
                 </thead>
                 <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
                   {Object.values(
-                    penjualanList.reduce((acc, p) => {
+                    filteredPenjualanList.reduce((acc, p) => {
                       if (!acc[p.barang_id]) {
                         acc[p.barang_id] = { barang_id: p.barang_id, qty: 0, omzet: 0, hpp: 0 };
                       }
