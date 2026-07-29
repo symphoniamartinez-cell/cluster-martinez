@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import * as XLSX from 'xlsx';
 import {
   Store,
   Package,
@@ -21,6 +22,9 @@ import {
   History,
   PieChart,
   Pencil,
+  Settings,
+  AlertTriangle,
+  Download,
 } from 'lucide-react';
 import type { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
 import {
@@ -33,6 +37,7 @@ import {
   keluarkanBatchGudang,
   deletePenjualanInvoice,
   editPenjualanInvoice,
+  resetSemuaDataToko,
   type PembelianItem,
   type KeluarkanItem,
 } from '@/lib/toko-store';
@@ -40,9 +45,10 @@ import {
 export default function AdminTokoPage() {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'master' | 'pembelian' | 'mutasi' | 'riwayat' | 'laba_rugi'>('master');
+  const [activeTab, setActiveTab] = useState<'master' | 'pembelian' | 'mutasi' | 'riwayat' | 'laba_rugi' | 'pengaturan'>('master');
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>('');
 
   const [barangList, setBarangList] = useState<TokoBarang[]>([]);
   const [pergerakanList, setPergerakanList] = useState<TokoPergerakanStok[]>([]);
@@ -128,6 +134,15 @@ export default function AdminTokoPage() {
   useEffect(() => {
     loadData();
     handleSyncData(false); // Initial background sync
+    
+    // Check user role
+    const sessionStr = sessionStorage.getItem('demo_user');
+    if (sessionStr) {
+      try {
+        const session = JSON.parse(sessionStr);
+        setUserRole(session.role || '');
+      } catch (e) {}
+    }
   }, []);
 
   // ── HANDLERS ──
@@ -223,6 +238,139 @@ export default function AdminTokoPage() {
       showToast(`Gagal mengedit invoice: ${res.error}`);
     }
     setIsSyncing(false);
+  };
+
+  const downloadExcel = (data: any[], filename: string) => {
+    if (data.length === 0) {
+      showToast('Tidak ada data untuk diexport');
+      return;
+    }
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+    XLSX.writeFile(workbook, `${filename}.xlsx`);
+  };
+
+  const exportPembelianToExcel = () => {
+    const data = filteredPergerakanList
+      .filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG')
+      .map(p => ({
+        'Tanggal': new Date(p.created_at || new Date()).toLocaleString('id-ID'),
+        'Nomor Invoice': p.nomor_invoice || 'Tanpa Invoice',
+        'Barang': barangList.find(b => b.id === p.barang_id)?.nama_barang || 'Unknown',
+        'Qty Masuk': `${p.jumlah_satuan_besar}`,
+        'Catatan': p.catatan || '',
+        'Dibuat Oleh': p.dibuat_oleh || 'System'
+      }));
+    downloadExcel(data, `Laporan_Pembelian_${filterMonth}_${filterYear}`);
+  };
+
+  const exportMutasiToExcel = () => {
+    const data = [
+      ...filteredPergerakanList.map(p => ({
+        'Waktu': new Date(p.created_at || new Date()).toLocaleString('id-ID'),
+        'Barang': barangList.find(b => b.id === p.barang_id)?.nama_barang || 'Unknown',
+        'Jenis': p.jenis_pergerakan,
+        'Qty': p.jenis_pergerakan === 'PEMBELIAN_GUDANG' 
+                ? `+${p.jumlah_satuan_besar}`
+                : p.jenis_pergerakan === 'STOK_KELUAR' 
+                  ? `-${p.jumlah_satuan_besar}` 
+                  : `(Mutasi) ${p.jumlah_satuan_kecil}`,
+        'Referensi': p.nomor_invoice || p.catatan || '-',
+        'Oleh': p.dibuat_oleh || 'System'
+      })),
+      ...filteredPenjualanList.map(p => ({
+        'Waktu': new Date(p.created_at || new Date()).toLocaleString('id-ID'),
+        'Barang': barangList.find(b => b.id === p.barang_id)?.nama_barang || 'Unknown',
+        'Jenis': 'TERJUAL',
+        'Qty': `-${p.jumlah_satuan_kecil}`,
+        'Referensi': p.nomor_invoice || 'Transaksi Kasir',
+        'Oleh': p.dijual_oleh || 'System'
+      }))
+    ].sort((a, b) => new Date(b.Waktu).getTime() - new Date(a.Waktu).getTime());
+    downloadExcel(data, `Laporan_Mutasi_${filterMonth}_${filterYear}`);
+  };
+
+  const exportPenjualanToExcel = () => {
+    const data = filteredPenjualanList.map(p => ({
+      'Waktu': new Date(p.created_at || new Date()).toLocaleString('id-ID'),
+      'Nomor Invoice': p.nomor_invoice,
+      'Pelanggan': p.nama_pelanggan || '-',
+      'Barang': barangList.find(b => b.id === p.barang_id)?.nama_barang || 'Unknown',
+      'Qty': p.jumlah_satuan_kecil,
+      'Harga Satuan': p.harga_satuan,
+      'Total Harga': p.total_harga,
+      'Kasir': p.dijual_oleh || 'System'
+    }));
+    downloadExcel(data, `Laporan_Penjualan_${filterMonth}_${filterYear}`);
+  };
+
+  const exportLabaRugiToExcel = () => {
+    const grouped = Object.values(
+      filteredPenjualanList.reduce((acc, p) => {
+        if (!acc[p.barang_id]) {
+          acc[p.barang_id] = { 
+            barang_id: p.barang_id, 
+            qty: 0, 
+            omzet: 0, 
+            hpp: 0 
+          };
+        }
+        acc[p.barang_id].qty += p.jumlah_satuan_kecil;
+        acc[p.barang_id].omzet += p.total_harga;
+        acc[p.barang_id].hpp += (p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil;
+        return acc;
+      }, {} as Record<string, any>)
+    );
+
+    const data = grouped.map(g => ({
+      'Barang': barangList.find(b => b.id === g.barang_id)?.nama_barang || 'Unknown',
+      'Terjual': g.qty,
+      'Omzet': g.omzet,
+      'HPP': g.hpp,
+      'Profit': g.omzet - g.hpp
+    }));
+    
+    const totalOmzet = grouped.reduce((sum, g) => sum + g.omzet, 0);
+    const totalHPP = grouped.reduce((sum, g) => sum + g.hpp, 0);
+    data.push({
+      'Barang': 'TOTAL KESELURUHAN',
+      'Terjual': grouped.reduce((sum, g) => sum + g.qty, 0),
+      'Omzet': totalOmzet,
+      'HPP': totalHPP,
+      'Profit': totalOmzet - totalHPP
+    });
+
+    downloadExcel(data, `Laporan_LabaRugi_${filterMonth}_${filterYear}`);
+  };
+
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetCountdown, setResetCountdown] = useState(0);
+
+  const startResetCountdown = () => {
+    if (resetCountdown > 0) return;
+    setResetCountdown(5);
+    const timer = setInterval(() => {
+      setResetCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const executeReset = async () => {
+    setIsResetting(true);
+    const res = await resetSemuaDataToko();
+    if (res.success) {
+      showToast('Seluruh riwayat transaksi berhasil dihapus & stok di-reset ke 0!');
+      loadData();
+    } else {
+      showToast(`Gagal mereset data: ${res.error}`);
+    }
+    setIsResetting(false);
   };
 
   const filteredPergerakanList = pergerakanList.filter(p => {
@@ -345,6 +493,19 @@ export default function AdminTokoPage() {
           <PieChart className="w-4 h-4" />
           Laba Rugi
         </button>
+        {userRole === 'superadmin' && (
+          <button
+            onClick={() => setActiveTab('pengaturan')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+              activeTab === 'pengaturan'
+                ? 'bg-danger-50 text-danger-600 dark:bg-danger-500/10 dark:text-danger-400 shadow-sm border border-danger-200/50 dark:border-danger-700/50'
+                : 'text-surface-500 hover:text-danger-600 dark:hover:text-danger-400'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            Pengaturan
+          </button>
+        )}
         </div>
 
         {activeTab !== 'master' && (
@@ -506,7 +667,15 @@ export default function AdminTokoPage() {
           <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <h3 className="font-bold text-sm text-surface-900 dark:text-white">Riwayat Pembelian Gudang Terakhir</h3>
-              <div className="relative w-full sm:w-64">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  onClick={exportPembelianToExcel}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold rounded-xl text-xs hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Excel
+                </button>
+                <div className="relative w-full sm:w-64">
                 <input
                   type="text"
                   placeholder="Cari Nomor Invoice..."
@@ -516,6 +685,7 @@ export default function AdminTokoPage() {
                 />
               </div>
             </div>
+          </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
@@ -600,6 +770,13 @@ export default function AdminTokoPage() {
               <h3 className="font-bold text-base text-surface-900 dark:text-white">Riwayat Seluruh Mutasi & Transaksi</h3>
               <p className="text-xs text-surface-500 mt-1">Laporan gabungan pembelian barang masuk, mutasi ke display, stok keluar, dan penjualan kasir.</p>
             </div>
+            <button
+              onClick={exportMutasiToExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold rounded-xl text-xs hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors w-full sm:w-auto justify-center"
+            >
+              <Download className="w-4 h-4" />
+              Export Excel
+            </button>
           </div>
           
           <div className="overflow-x-auto">
@@ -712,7 +889,15 @@ export default function AdminTokoPage() {
               <h3 className="font-bold text-base text-surface-900 dark:text-white">Riwayat Penjualan (Struk)</h3>
               <p className="text-xs text-surface-500 mt-1">Laporan penjualan kasir dengan nama pelanggan dan nomor nota.</p>
             </div>
-            <div className="relative w-full sm:w-64">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <button
+                onClick={exportPenjualanToExcel}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold rounded-xl text-xs hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Excel
+              </button>
+              <div className="relative w-full sm:w-64">
               <input
                 type="text"
                 placeholder="Cari Invoice / Pelanggan..."
@@ -722,6 +907,7 @@ export default function AdminTokoPage() {
               />
             </div>
           </div>
+        </div>
           
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
@@ -908,6 +1094,61 @@ export default function AdminTokoPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB CONTENT: PENGATURAN (DANGER ZONE) ──────────────── */}
+      {(activeTab === 'pengaturan' && userRole === 'superadmin') && (
+        <div className="bg-white dark:bg-surface-900 rounded-3xl border border-danger-200 dark:border-danger-800 shadow-sm p-6 sm:p-8 animate-fade-in">
+          <div className="flex items-center gap-3 mb-6 text-danger-600 dark:text-danger-400">
+            <AlertTriangle className="w-6 h-6" />
+            <h3 className="font-bold text-lg">Danger Zone</h3>
+          </div>
+          <div className="bg-danger-50 dark:bg-danger-500/10 border border-danger-200 dark:border-danger-700/50 rounded-2xl p-6">
+            <h4 className="font-bold text-danger-900 dark:text-danger-100 text-base mb-2">Reset Seluruh Data Toko</h4>
+            <p className="text-sm text-danger-800 dark:text-danger-200/80 mb-6 max-w-2xl leading-relaxed">
+              Tindakan ini akan <strong>menghapus seluruh riwayat mutasi dan transaksi penjualan</strong> secara permanen. 
+              Selain itu, seluruh <strong>stok Master Barang akan dikembalikan menjadi 0</strong>. 
+              Gunakan fitur ini hanya jika Anda ingin memulai dari awal (contoh: masa simulasi telah berakhir).
+            </p>
+
+            <div className="flex items-center gap-4">
+              {resetCountdown === 0 ? (
+                <button
+                  onClick={startResetCountdown}
+                  className="px-6 py-3 bg-danger-600 hover:bg-danger-700 text-white font-bold rounded-xl shadow-lg transition-colors cursor-pointer"
+                >
+                  Mulai Reset Data
+                </button>
+              ) : (
+                <button
+                  onClick={executeReset}
+                  disabled={isResetting || resetCountdown > 0}
+                  className={`px-6 py-3 font-bold rounded-xl shadow-lg transition-all ${
+                    resetCountdown > 1 || isResetting
+                      ? 'bg-surface-200 dark:bg-surface-800 text-surface-500 cursor-not-allowed'
+                      : 'bg-danger-600 hover:bg-danger-700 text-white cursor-pointer animate-pulse'
+                  }`}
+                >
+                  {isResetting ? (
+                    <span className="flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" /> Mereset...</span>
+                  ) : resetCountdown > 1 ? (
+                    `Konfirmasi dalam ${resetCountdown - 1} detik...`
+                  ) : (
+                    'Ya, Hapus Permanen Sekarang!'
+                  )}
+                </button>
+              )}
+              {resetCountdown > 0 && resetCountdown <= 5 && !isResetting && (
+                <button
+                  onClick={() => setResetCountdown(0)}
+                  className="px-4 py-3 text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  Batalkan
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -599,3 +599,30 @@ export async function editPenjualanInvoice(
   }
 }
 
+export async function resetSemuaDataToko() {
+  try {
+    const client = createClient();
+    if (!client) throw new Error('No Supabase Client');
+
+    // 1. Delete all transactions
+    // Note: Supabase free tier doesn't allow unqualified deletes without RLS or an explicit condition.
+    // Usually .neq('id', 'dummy') works as a workaround to delete all rows.
+    const { error: err1 } = await client.from('toko_penjualan').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (err1) throw err1;
+
+    const { error: err2 } = await client.from('toko_pergerakan_stok').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (err2) throw err2;
+
+    // 2. Reset all stock to 0 for master barang
+    const { error: err3 } = await client.from('toko_barang')
+      .update({ stok_gudang: 0, stok_display: 0 })
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+    if (err3) throw err3;
+
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error resetting toko data:', err);
+    return { success: false, error: err.message };
+  }
+}
