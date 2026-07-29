@@ -621,7 +621,7 @@ export default function WargaDashboardPage() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary-500" />
               <h2 className="text-sm font-bold uppercase tracking-wider text-surface-900 dark:text-white">
-                Metrik Iuran Rumah Saya
+                Data Iuran Saya
               </h2>
             </div>
 
