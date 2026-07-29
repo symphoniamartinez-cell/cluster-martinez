@@ -17,6 +17,7 @@ import {
   ShoppingCart,
   Trash2,
   TrendingUp,
+  X,
 } from 'lucide-react';
 import type { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
 import {
@@ -64,6 +65,15 @@ export default function AdminTokoPage() {
     catatan: '',
     items: [],
   });
+
+  const [searchInvoice, setSearchInvoice] = useState('');
+  const [detailInvoice, setDetailInvoice] = useState<{
+    nomor_invoice: string;
+    tanggal: string;
+    dibuat_oleh: string;
+    catatan: string;
+    items: TokoPergerakanStok[];
+  } | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -370,82 +380,89 @@ export default function AdminTokoPage() {
           </div>
 
           <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6">
-            <h3 className="font-bold text-sm text-surface-900 dark:text-white mb-4">Riwayat Pembelian Gudang Terakhir</h3>
-            <div className="space-y-4">
-              {pergerakanList.filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG').length === 0 ? (
-                <p className="text-xs text-surface-400">Belum ada riwayat pembelian.</p>
-              ) : (
-                Object.values(
-                  pergerakanList
-                    .filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG')
-                    .reduce((acc, p) => {
-                      // Gunakan nomor invoice sebagai key, fallback ke ID untuk legacy data
-                      const key = p.nomor_invoice || `legacy-${p.id}`;
-                      if (!acc[key]) {
-                        acc[key] = {
-                          nomor_invoice: p.nomor_invoice || 'Tanpa Invoice (Lama)',
-                          tanggal: p.created_at || new Date().toISOString(),
-                          dibuat_oleh: p.dibuat_oleh || 'System',
-                          catatan: p.catatan || '',
-                          items: []
-                        };
-                      }
-                      acc[key].items.push(p);
-                      return acc;
-                    }, {} as Record<string, { nomor_invoice: string; tanggal: string; dibuat_oleh: string; catatan: string; items: TokoPergerakanStok[] }>)
-                )
-                .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
-                .slice(0, 20)
-                .map((invoice, idx) => (
-                  <div key={idx} className="bg-surface-50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700 overflow-hidden">
-                    <div className="p-4 bg-surface-100/50 dark:bg-surface-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-200 dark:border-surface-700">
-                      <div>
-                        <h4 className="font-bold text-sm text-indigo-600 dark:text-indigo-400">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <h3 className="font-bold text-sm text-surface-900 dark:text-white">Riwayat Pembelian Gudang Terakhir</h3>
+              <div className="relative w-full sm:w-64">
+                <input
+                  type="text"
+                  placeholder="Cari Nomor Invoice..."
+                  value={searchInvoice}
+                  onChange={e => setSearchInvoice(e.target.value)}
+                  className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                />
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="bg-surface-50 dark:bg-surface-800/50 border-b border-surface-200 dark:border-surface-700 text-surface-500 uppercase tracking-wider font-semibold">
+                    <th className="px-4 py-3">Tanggal</th>
+                    <th className="px-4 py-3">Nomor Invoice</th>
+                    <th className="px-4 py-3 text-center">Macam Barang</th>
+                    <th className="px-4 py-3">Dibuat Oleh</th>
+                    <th className="px-4 py-3 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+                  {pergerakanList.filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG').length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat pembelian.</td>
+                    </tr>
+                  ) : (
+                    Object.values(
+                      pergerakanList
+                        .filter(p => p.jenis_pergerakan === 'PEMBELIAN_GUDANG')
+                        .reduce((acc, p) => {
+                          const key = p.nomor_invoice || `legacy-${p.id}`;
+                          if (!acc[key]) {
+                            acc[key] = {
+                              nomor_invoice: p.nomor_invoice || 'Tanpa Invoice (Lama)',
+                              tanggal: p.created_at || new Date().toISOString(),
+                              dibuat_oleh: p.dibuat_oleh || 'System',
+                              catatan: p.catatan || '',
+                              items: []
+                            };
+                          }
+                          acc[key].items.push(p);
+                          return acc;
+                        }, {} as Record<string, { nomor_invoice: string; tanggal: string; dibuat_oleh: string; catatan: string; items: TokoPergerakanStok[] }>)
+                    )
+                    .filter(invoice => 
+                      !searchInvoice || 
+                      invoice.nomor_invoice.toLowerCase().includes(searchInvoice.toLowerCase())
+                    )
+                    .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+                    .slice(0, 50)
+                    .map((invoice, idx) => (
+                      <tr key={idx} className="hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                        <td className="px-4 py-3 font-medium text-surface-900 dark:text-white">
+                          {new Date(invoice.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline" onClick={() => setDetailInvoice(invoice)}>
                           {invoice.nomor_invoice}
-                        </h4>
-                        <p className="text-[11px] text-surface-500 mt-0.5">
-                          {new Date(invoice.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • Oleh: {invoice.dibuat_oleh}
-                        </p>
-                        {invoice.catatan && (
-                          <p className="text-[11px] text-surface-500 italic mt-1">"{invoice.catatan}"</p>
-                        )}
-                      </div>
-                      <div className="text-right text-xs font-bold text-surface-700 dark:text-surface-300">
-                        {invoice.items.length} Macam Barang
-                      </div>
-                    </div>
-                    <div className="p-4 overflow-x-auto">
-                      <table className="w-full text-left border-collapse min-w-[500px]">
-                        <thead>
-                          <tr className="border-b border-surface-200 dark:border-surface-700">
-                            <th className="pb-2 text-[10px] font-bold text-surface-400 uppercase tracking-wider">Nama Barang</th>
-                            <th className="pb-2 text-[10px] font-bold text-surface-400 uppercase tracking-wider text-right">Qty</th>
-                            <th className="pb-2 text-[10px] font-bold text-surface-400 uppercase tracking-wider text-right">Harga Satuan (Besar)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-surface-100 dark:divide-surface-800/50">
-                          {invoice.items.map(p => {
-                            const brg = barangList.find(b => b.id === p.barang_id);
-                            return (
-                              <tr key={p.id}>
-                                <td className="py-2 text-xs font-medium text-surface-900 dark:text-white">
-                                  {brg?.nama_barang || 'Barang Terhapus'}
-                                </td>
-                                <td className="py-2 text-xs text-right font-medium text-indigo-600 dark:text-indigo-400">
-                                  +{p.jumlah_satuan_besar} {brg?.satuan_besar || 'Dus'}
-                                </td>
-                                <td className="py-2 text-xs text-right text-surface-600 dark:text-surface-400 font-mono">
-                                  Rp {(p.harga_beli_satuan_besar || 0).toLocaleString('id-ID')}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ))
-              )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="px-2 py-1 bg-surface-100 dark:bg-surface-800 rounded-lg text-[10px] font-bold">
+                            {invoice.items.length} Item
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-surface-500">
+                          {invoice.dibuat_oleh}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => setDetailInvoice(invoice)}
+                            className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 font-bold rounded-lg transition-colors"
+                          >
+                            Detail
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -824,6 +841,69 @@ export default function AdminTokoPage() {
           </div>
         </div>
       )}
+
+      {/* ── MODAL: DETAIL INVOICE PEMBELIAN ── */}
+      {detailInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDetailInvoice(null)} />
+          <div className="relative w-full max-w-2xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-indigo-500 to-purple-500" />
+            <div className="p-6 flex-shrink-0 flex items-start justify-between border-b border-surface-100 dark:border-surface-800">
+              <div>
+                <h3 className="text-lg font-bold text-surface-900 dark:text-white mb-1">
+                  Detail Invoice: <span className="text-indigo-600 dark:text-indigo-400">{detailInvoice.nomor_invoice}</span>
+                </h3>
+                <p className="text-xs text-surface-500">
+                  {new Date(detailInvoice.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • {detailInvoice.dibuat_oleh}
+                </p>
+                {detailInvoice.catatan && (
+                  <p className="text-xs text-surface-500 italic mt-2 bg-surface-50 dark:bg-surface-800 p-2 rounded-lg">"{detailInvoice.catatan}"</p>
+                )}
+              </div>
+              <button
+                onClick={() => setDetailInvoice(null)}
+                className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-0 overflow-y-auto flex-1">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-surface-50 dark:bg-surface-800/50 sticky top-0 shadow-sm">
+                  <tr>
+                    <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider">Nama Barang</th>
+                    <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Qty Beli</th>
+                    <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Harga Modal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+                  {detailInvoice.items.map(p => {
+                    const brg = barangList.find(b => b.id === p.barang_id);
+                    return (
+                      <tr key={p.id} className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30">
+                        <td className="px-6 py-3 font-medium text-surface-900 dark:text-white">
+                          {brg?.nama_barang || 'Barang Terhapus'}
+                        </td>
+                        <td className="px-6 py-3 text-right font-medium text-indigo-600 dark:text-indigo-400">
+                          +{p.jumlah_satuan_besar} {brg?.satuan_besar || 'Dus'}
+                        </td>
+                        <td className="px-6 py-3 text-right font-mono text-surface-600 dark:text-surface-400">
+                          Rp {(p.harga_beli_satuan_besar || 0).toLocaleString('id-ID')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-4 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/50 flex justify-end">
+               <button onClick={() => setDetailInvoice(null)} className="px-5 py-2.5 bg-surface-200 hover:bg-surface-300 dark:bg-surface-700 dark:hover:bg-surface-600 rounded-xl font-bold transition-colors">Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
