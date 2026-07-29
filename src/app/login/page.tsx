@@ -214,7 +214,7 @@ export default function LoginPage() {
                   onChange={(e) => setNomorRumah(e.target.value)}
                   placeholder="Contoh: MTNU3/2 atau MTNR/11"
                   required
-                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold"
+                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-surface-400 placeholder:text-xs placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold text-sm"
                 />
               </div>
             </div>
@@ -236,7 +236,7 @@ export default function LoginPage() {
                   onChange={(e) => setKodeAktivasi(e.target.value)}
                   placeholder="Masukkan Password (contoh: MTZ-7K9P2)"
                   required
-                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold tracking-wider"
+                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-surface-400 placeholder:text-xs placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all font-mono font-bold tracking-wider text-sm"
                 />
               </div>
               <p className="text-[11px] text-surface-400 mt-1">
@@ -339,9 +339,9 @@ export default function LoginPage() {
                     type="text"
                     value={adminUsername}
                     onChange={(e) => setAdminUsername(e.target.value)}
-                    placeholder="ADMIN / PENGURUS / BENDAHARA"
+                    placeholder="ADMIN / PENGURUS / BENDAHARA / TOKOMARTINEZ"
                     required
-                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 font-mono font-bold uppercase text-sm"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-500 placeholder:text-[10px] placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-amber-500/50 font-mono font-bold uppercase text-sm"
                   />
                 </div>
               </div>
@@ -427,7 +427,7 @@ export default function LoginPage() {
                     onChange={(e) => setBoothUsername(e.target.value)}
                     placeholder="Contoh: BOOTH_KULINER1"
                     required
-                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-accent-500/50 font-mono font-bold uppercase text-sm"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-surface-500 placeholder:text-xs placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-accent-500/50 font-mono font-bold tracking-wider text-sm"
                   />
                 </div>
               </div>
