@@ -82,13 +82,25 @@ export async function fetchIuranMatrixFromCloud(): Promise<IuranMatrixRow[] | nu
       return null;
     }
 
-    // Cross-reference RT & status_hunian with local/cloud rumah table if available
     let savedRumah: Rumah[] = [];
     if (typeof window !== 'undefined') {
       try {
         const raw = localStorage.getItem(STORAGE_KEY_RUMAH);
         if (raw) savedRumah = JSON.parse(raw);
       } catch (e) {}
+    }
+
+    if (savedRumah.length === 0) {
+      const { data: rData } = await client.from('rumah').select('*');
+      if (rData) {
+        savedRumah = rData.map((r: any) => ({
+          id: r.id,
+          nomor_rumah: r.nomor_rumah,
+          rt: r.rt || '01',
+          status_hunian: r.status_hunian || 'pemilik',
+          created_at: r.created_at
+        }));
+      }
     }
 
     const matrix: IuranMatrixRow[] = data.map((row) => {

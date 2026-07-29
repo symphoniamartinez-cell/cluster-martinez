@@ -45,6 +45,7 @@ import {
   deleteEvent,
   deleteKupon,
   syncEventDataFromCloud,
+  fetchAllEventsFromCloud,
 } from '@/lib/event-store';
 
 export default function AdminEventsPage() {
@@ -104,6 +105,14 @@ export default function AdminEventsPage() {
       setUserRole(u.role);
       setUserName(u.label);
     }
+    
+    // Fetch all events on mount so it's populated on new devices
+    fetchAllEventsFromCloud().then((res) => {
+      if (res.success && res.updated) {
+        loadData();
+      }
+    });
+
     loadData();
 
     window.addEventListener('focus', loadData);

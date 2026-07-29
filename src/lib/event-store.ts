@@ -144,6 +144,25 @@ async function upsertToCloud(events: EventAcara[], kupons: KuponAcara[], booths:
 }
 
 // ── Async Cloud Fetch Helper ───────────────────────────────
+export async function fetchAllEventsFromCloud() {
+  const client = createClient();
+  if (!client) return { success: false, error: 'Supabase client NULL' };
+
+  try {
+    const { data: events, error } = await client.from('events').select('*');
+    if (error) return { success: false, error: error.message };
+
+    if (events && events.length > 0) {
+      _saveEvents(events as EventAcara[]);
+      return { success: true, updated: true, events };
+    }
+    return { success: true, updated: false, events: [] };
+  } catch (err: any) {
+    console.error('Error fetching all events from cloud:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 export async function syncEventDataFromCloud(eventId: string) {
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase client NULL' };
