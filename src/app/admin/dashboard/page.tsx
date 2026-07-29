@@ -27,6 +27,7 @@ import type { IuranMatrixRow, Rumah, UserRole } from '@/types';
 import { BULAN_FULL } from '@/types';
 import { getMockIuranMatrix } from '@/lib/mock-data';
 import { getIuranConfigFromStorage, DEFAULT_IURAN_CONFIG, type IuranConfig } from '@/lib/config-store';
+import { fetchIuranMatrixFromCloud, fetchProfilesFromCloud } from '@/lib/db-sync';
 
 const STORAGE_KEY_IURAN = 'martinez_iuran_matrix_v2';
 const STORAGE_KEY_RUMAH = 'martinez_rumah_list_v3';
@@ -74,6 +75,13 @@ export default function AdminDashboardOverviewPage() {
       console.error(e);
       setIuranMatrix(getMockIuranMatrix(selectedTahun));
     }
+    
+    // Background cloud sync
+    Promise.all([fetchIuranMatrixFromCloud(), fetchProfilesFromCloud()]).then(([iuranRes, profilesRes]) => {
+      if (iuranRes) setIuranMatrix(iuranRes);
+      if (profilesRes) setRumahList(profilesRes.rumahList);
+    });
+
     setIsLoaded(true);
   }, [selectedTahun]);
 

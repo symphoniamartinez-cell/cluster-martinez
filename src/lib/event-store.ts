@@ -163,6 +163,25 @@ export async function fetchAllEventsFromCloud() {
   }
 }
 
+export async function fetchAllBoothsFromCloud() {
+  const client = createClient();
+  if (!client) return { success: false, error: 'Supabase client NULL' };
+
+  try {
+    const { data: booths, error } = await client.from('tenant_booths').select('*');
+    if (error) return { success: false, error: error.message };
+
+    if (booths && booths.length > 0) {
+      _saveBooths(booths as TenantBooth[]);
+      return { success: true, updated: true, booths };
+    }
+    return { success: true, updated: false, booths: [] };
+  } catch (err: any) {
+    console.error('Error fetching all booths from cloud:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 export async function syncEventDataFromCloud(eventId: string) {
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase client NULL' };

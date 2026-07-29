@@ -33,7 +33,7 @@ import {
   saveAdminUsersToStorage,
   DEFAULT_PASSWORD,
 } from '@/lib/user-store';
-import { getBoothsFromStorage, getEventsFromStorage } from '@/lib/event-store';
+import { getBoothsFromStorage, getEventsFromStorage, fetchAllBoothsFromCloud, fetchAllEventsFromCloud } from '@/lib/event-store';
 import { fetchAdminUsersFromCloud } from '@/lib/db-sync';
 import type { TenantBooth, EventAcara } from '@/types';
 
@@ -94,10 +94,20 @@ export default function UserManagementPage() {
     setBooths(getBoothsFromStorage());
     setEvents(getEventsFromStorage());
     
-    // Sync users from cloud asynchronously
+    // Sync from cloud asynchronously
     fetchAdminUsersFromCloud().then((cloudUsers) => {
       if (cloudUsers) {
         setUsers(cloudUsers);
+      }
+    });
+    fetchAllBoothsFromCloud().then((res) => {
+      if (res.booths && res.booths.length > 0) {
+        setBooths(res.booths);
+      }
+    });
+    fetchAllEventsFromCloud().then((res) => {
+      if (res.events && res.events.length > 0) {
+        setEvents(res.events);
       }
     });
   }, []);
