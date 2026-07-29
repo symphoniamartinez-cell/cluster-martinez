@@ -331,6 +331,7 @@ export async function inputPenjualan(barangId: string, jumlahSatuanKecil: number
 export interface PenjualanItem {
   barang_id: string;
   jumlah_satuan_kecil: number;
+  harga_satuan_custom?: number;
 }
 
 export async function inputPenjualanBatch(items: PenjualanItem[], user: string, namaPelanggan?: string) {
@@ -484,7 +485,7 @@ export async function editPenjualanInvoice(
         throw new Error(`Stok display ${barang.nama_barang} tidak cukup untuk perubahan ini. Sisa: ${currentStokDisplay}`);
       }
 
-      const hargaSatuan = barang.harga_jual_satuan_kecil || 0;
+      const hargaSatuan = item.harga_satuan_custom !== undefined ? item.harga_satuan_custom : (barang.harga_jual_satuan_kecil || 0);
       const qtyPerBesar = barang.qty_per_satuan_besar || 1;
       const hargaBeliBesar = barang.harga_beli_satuan_besar || 0;
       const hargaModalSatuan = Math.floor(hargaBeliBesar / qtyPerBesar);

@@ -20,6 +20,7 @@ import {
   X,
   History,
   PieChart,
+  Pencil,
 } from 'lucide-react';
 import type { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
 import {
@@ -31,6 +32,7 @@ import {
   addPembelianBatchGudang,
   keluarkanBatchGudang,
   deletePenjualanInvoice,
+  editPenjualanInvoice,
   type PembelianItem,
   type KeluarkanItem,
 } from '@/lib/toko-store';
@@ -85,6 +87,16 @@ export default function AdminTokoPage() {
     nama_pelanggan: string;
     dijual_oleh: string;
     items: TokoPenjualan[];
+  } | null>(null);
+
+  const [editRiwayat, setEditRiwayat] = useState<{
+    nomor_invoice: string;
+    nama_pelanggan: string;
+    items: {
+      barang_id: string;
+      jumlah_satuan_kecil: number;
+      harga_satuan_custom: number;
+    }[];
   } | null>(null);
 
   const showToast = (msg: string) => {
@@ -179,6 +191,33 @@ export default function AdminTokoPage() {
       loadData();
     } else {
       showToast(`Gagal menghapus: ${res.error}`);
+    }
+    setIsSyncing(false);
+  };
+
+  const handleSimpanEditRiwayat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editRiwayat) return;
+
+    setIsSyncing(true);
+    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
+    const res = await editPenjualanInvoice(
+      editRiwayat.nomor_invoice,
+      editRiwayat.items.map(i => ({ 
+        barang_id: i.barang_id, 
+        jumlah_satuan_kecil: i.jumlah_satuan_kecil, 
+        harga_satuan_custom: i.harga_satuan_custom 
+      })),
+      editRiwayat.nama_pelanggan,
+      user
+    );
+
+    if (res.success) {
+      showToast('Invoice penjualan berhasil diperbarui!');
+      setEditRiwayat(null);
+      loadData();
+    } else {
+      showToast(`Gagal mengedit invoice: ${res.error}`);
     }
     setIsSyncing(false);
   };
@@ -711,13 +750,30 @@ export default function AdminTokoPage() {
                               Detail
                             </button>
                             {invoice.nomor_invoice !== 'Tanpa Invoice (Lama)' && (
-                              <button
-                                onClick={() => handleDeleteRiwayat(invoice.nomor_invoice)}
-                                className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                                title="Hapus dan Retur Stok"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => setEditRiwayat({
+                                    nomor_invoice: invoice.nomor_invoice,
+                                    nama_pelanggan: invoice.nama_pelanggan || '',
+                                    items: invoice.items.map(i => ({
+                                      barang_id: i.barang_id,
+                                      jumlah_satuan_kecil: i.jumlah_satuan_kecil,
+                                      harga_satuan_custom: i.harga_satuan
+                                    }))
+                                  })}
+                                  className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors cursor-pointer"
+                                  title="Edit Invoice"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteRiwayat(invoice.nomor_invoice)}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                  title="Hapus dan Retur Stok"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -1206,6 +1262,97 @@ export default function AdminTokoPage() {
             <div className="p-4 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/50 flex justify-end">
                <button onClick={() => setDetailRiwayat(null)} className="px-5 py-2.5 bg-surface-200 hover:bg-surface-300 dark:bg-surface-700 dark:hover:bg-surface-600 rounded-xl font-bold transition-colors cursor-pointer">Tutup</button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: EDIT RIWAYAT PENJUALAN */}
+      {editRiwayat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setEditRiwayat(null)} />
+          <div className="relative w-full max-w-2xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-blue-500 to-indigo-500" />
+            
+            <form onSubmit={handleSimpanEditRiwayat} className="flex flex-col h-full overflow-hidden">
+              <div className="p-6 flex-shrink-0 flex items-start justify-between border-b border-surface-100 dark:border-surface-800">
+                <div>
+                  <h3 className="text-lg font-bold text-surface-900 dark:text-white mb-1">
+                    Edit Invoice: <span className="text-blue-600 dark:text-blue-400">{editRiwayat.nomor_invoice}</span>
+                  </h3>
+                  <div className="mt-3">
+                    <label className="block text-xs font-semibold text-surface-500 mb-1">Nama Pelanggan / Catatan</label>
+                    <input
+                      type="text"
+                      value={editRiwayat.nama_pelanggan}
+                      onChange={e => setEditRiwayat({ ...editRiwayat, nama_pelanggan: e.target.value })}
+                      className="w-full px-3 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditRiwayat(null)}
+                  className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-0 overflow-y-auto flex-1">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-surface-50 dark:bg-surface-800/50 sticky top-0 shadow-sm">
+                    <tr>
+                      <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider">Nama Barang</th>
+                      <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-center">Qty</th>
+                      <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Harga Jual / Pcs</th>
+                      <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+                    {editRiwayat.items.map((p, idx) => {
+                      const brg = barangList.find(b => b.id === p.barang_id);
+                      return (
+                        <tr key={idx} className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30">
+                          <td className="px-6 py-3 font-medium text-surface-900 dark:text-white">
+                            {brg?.nama_barang || 'Barang Terhapus'}
+                          </td>
+                          <td className="px-6 py-3 text-center font-medium text-blue-600 dark:text-blue-400">
+                            {p.jumlah_satuan_kecil} {brg?.satuan_kecil || 'Pcs'}
+                          </td>
+                          <td className="px-6 py-3 text-right">
+                            <div className="relative w-32 ml-auto">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-surface-400 font-bold">Rp</span>
+                              <input
+                                type="number"
+                                required min={0}
+                                value={p.harga_satuan_custom}
+                                onChange={e => {
+                                  const newItems = [...editRiwayat.items];
+                                  newItems[idx].harga_satuan_custom = parseInt(e.target.value) || 0;
+                                  setEditRiwayat({ ...editRiwayat, items: newItems });
+                                }}
+                                className="w-full pl-8 pr-2 py-1.5 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg font-mono text-right"
+                              />
+                            </div>
+                          </td>
+                          <td className="px-6 py-3 text-right font-mono font-bold text-surface-900 dark:text-white">
+                            Rp {(p.harga_satuan_custom * p.jumlah_satuan_kecil).toLocaleString('id-ID')}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="p-4 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/50 flex justify-end gap-3 flex-shrink-0">
+                <button type="button" onClick={() => setEditRiwayat(null)} className="px-5 py-2.5 bg-surface-200 hover:bg-surface-300 dark:bg-surface-700 dark:hover:bg-surface-600 rounded-xl font-bold transition-colors cursor-pointer">
+                  Batal
+                </button>
+                <button type="submit" disabled={isSyncing} className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-bold transition-all shadow-md hover:brightness-110 cursor-pointer disabled:opacity-50">
+                  {isSyncing ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
