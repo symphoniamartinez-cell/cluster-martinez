@@ -504,10 +504,10 @@ export default function AdminTokoPage() {
 
       {/* ── Tabs Navigation & Filters ──────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 bg-surface-100/50 dark:bg-surface-800/50 p-1.5 rounded-2xl w-fit flex-wrap">
+        <div className="flex items-center gap-2 bg-surface-100/50 dark:bg-surface-800/50 p-1.5 rounded-2xl w-full lg:w-fit overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('analisis')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
               activeTab === 'analisis'
                 ? 'bg-white dark:bg-surface-900 text-amber-600 dark:text-amber-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
                 : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
@@ -518,7 +518,7 @@ export default function AdminTokoPage() {
           </button>
           <button
           onClick={() => setActiveTab('master')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'master'
               ? 'bg-white dark:bg-surface-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
               : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
@@ -529,7 +529,7 @@ export default function AdminTokoPage() {
         </button>
         <button
           onClick={() => setActiveTab('pembelian')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'pembelian'
               ? 'bg-white dark:bg-surface-900 text-purple-600 dark:text-purple-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
               : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
@@ -540,7 +540,7 @@ export default function AdminTokoPage() {
         </button>
         <button
           onClick={() => setActiveTab('mutasi')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'mutasi'
               ? 'bg-white dark:bg-surface-900 text-blue-600 dark:text-blue-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
               : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
@@ -551,7 +551,7 @@ export default function AdminTokoPage() {
         </button>
         <button
           onClick={() => setActiveTab('riwayat')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'riwayat'
               ? 'bg-white dark:bg-surface-900 text-teal-600 dark:text-teal-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
               : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
@@ -562,7 +562,7 @@ export default function AdminTokoPage() {
         </button>
         <button
           onClick={() => setActiveTab('laba_rugi')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'laba_rugi'
               ? 'bg-white dark:bg-surface-900 text-rose-600 dark:text-rose-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
               : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
@@ -574,7 +574,7 @@ export default function AdminTokoPage() {
         {userRole === 'superadmin' && (
           <button
             onClick={() => setActiveTab('pengaturan')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
               activeTab === 'pengaturan'
                 ? 'bg-danger-50 text-danger-600 dark:bg-danger-500/10 dark:text-danger-400 shadow-sm border border-danger-200/50 dark:border-danger-700/50'
                 : 'text-surface-500 hover:text-danger-600 dark:hover:text-danger-400'
