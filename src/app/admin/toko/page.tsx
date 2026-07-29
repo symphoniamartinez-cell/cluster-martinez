@@ -38,6 +38,9 @@ import {
   deletePenjualanInvoice,
   editPenjualanInvoice,
   resetSemuaDataToko,
+  deleteMutasiStok,
+  deletePembelianInvoice,
+  editPembelianInvoice,
   type PembelianItem,
   type KeluarkanItem,
 } from '@/lib/toko-store';
@@ -57,6 +60,19 @@ export default function AdminTokoPage() {
   // ── MODAL STATES ──
   const [showModalBeli, setShowModalBeli] = useState(false);
   const [beliForm, setBeliForm] = useState<{
+    nomor_invoice: string;
+    tanggal: string;
+    catatan: string;
+    items: PembelianItem[];
+  }>({
+    nomor_invoice: '',
+    tanggal: new Date().toISOString().slice(0, 10),
+    catatan: '',
+    items: [],
+  });
+
+  const [showModalEditBeli, setShowModalEditBeli] = useState(false);
+  const [editBeliForm, setEditBeliForm] = useState<{
     nomor_invoice: string;
     tanggal: string;
     catatan: string;
@@ -236,6 +252,55 @@ export default function AdminTokoPage() {
       loadData();
     } else {
       showToast(`Gagal mengedit invoice: ${res.error}`);
+    }
+    setIsSyncing(false);
+  };
+
+  const handleDeletePembelian = async (nomorInvoice: string) => {
+    if (!confirm(`Hapus seluruh riwayat pembelian dengan Invoice ${nomorInvoice}? Ini akan mengurangi stok gudang sejumlah barang yang dihapus.`)) return;
+    setIsSyncing(true);
+    const res = await deletePembelianInvoice(nomorInvoice);
+    if (res.success) {
+      showToast('Riwayat pembelian berhasil dihapus!');
+      loadData();
+    } else {
+      showToast(`Gagal menghapus pembelian: ${res.error}`);
+    }
+    setIsSyncing(false);
+  };
+
+  const handleDeleteMutasi = async (id: string, jenis: string) => {
+    if (!confirm(`Undo riwayat mutasi ini? Stok barang akan dikembalikan ke asal.`)) return;
+    setIsSyncing(true);
+    const res = await deleteMutasiStok(id);
+    if (res.success) {
+      showToast('Riwayat mutasi berhasil di-undo!');
+      loadData();
+    } else {
+      showToast(`Gagal melakukan undo mutasi: ${res.error}`);
+    }
+    setIsSyncing(false);
+  };
+
+  const handleSimpanEditPembelian = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editBeliForm.items.length === 0) return;
+
+    setIsSyncing(true);
+    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
+    const res = await editPembelianInvoice(
+      editBeliForm.nomor_invoice,
+      editBeliForm.items,
+      editBeliForm.catatan,
+      user
+    );
+
+    if (res.success) {
+      showToast('Invoice pembelian berhasil diperbarui!');
+      setShowModalEditBeli(false);
+      loadData();
+    } else {
+      showToast(`Gagal mengedit pembelian: ${res.error}`);
     }
     setIsSyncing(false);
   };
@@ -745,12 +810,40 @@ export default function AdminTokoPage() {
                           {invoice.dibuat_oleh}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => setDetailInvoice(invoice)}
-                            className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 font-bold rounded-lg transition-colors"
-                          >
-                            Detail
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setDetailInvoice(invoice)}
+                              className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 font-bold rounded-lg transition-colors"
+                            >
+                              Detail
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditBeliForm({
+                                  nomor_invoice: invoice.nomor_invoice,
+                                  tanggal: invoice.tanggal.split('T')[0],
+                                  catatan: invoice.catatan,
+                                  items: invoice.items.map(i => ({
+                                    barang_id: i.barang_id,
+                                    jumlah_satuan_besar: i.jumlah_satuan_besar || 0,
+                                    harga_beli_satuan_besar: 0 // In old data, maybe we don't have this, but not strictly needed for stock update
+                                  }))
+                                });
+                                setShowModalEditBeli(true);
+                              }}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/20 rounded-lg transition-colors cursor-pointer"
+                              title="Edit Pembelian"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePembelian(invoice.nomor_invoice)}
+                              className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-500/20 rounded-lg transition-colors cursor-pointer"
+                              title="Hapus Pembelian (Kurangi Stok Gudang)"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -789,6 +882,7 @@ export default function AdminTokoPage() {
                   <th className="px-4 py-3 text-right">Qty</th>
                   <th className="px-4 py-3">Referensi / Catatan</th>
                   <th className="px-4 py-3 whitespace-nowrap">Oleh</th>
+                  <th className="px-4 py-3 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
@@ -867,12 +961,23 @@ export default function AdminTokoPage() {
                       <td className="px-4 py-3 text-surface-500 whitespace-nowrap">
                         {item.oleh}
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        {(item.jenis === 'STOK_KELUAR' || item.jenis === 'PINDAH_DISPLAY') && (
+                          <button
+                            onClick={() => handleDeleteMutasi(item.id, item.jenis)}
+                            className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-500/20 rounded-lg transition-colors cursor-pointer"
+                            title="Undo Mutasi"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
                 {(filteredPergerakanList.length === 0 && filteredPenjualanList.length === 0) && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat mutasi / transaksi di bulan ini.</td>
+                    <td colSpan={7} className="px-4 py-8 text-center text-surface-400">Belum ada riwayat mutasi / transaksi di bulan ini.</td>
                   </tr>
                 )}
               </tbody>
@@ -1299,6 +1404,124 @@ export default function AdminTokoPage() {
                   </button>
                   <button type="submit" className="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-bold cursor-pointer shadow-lg hover:brightness-110">
                     Simpan Pembelian
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL EDIT PEMBELIAN ── */}
+      {showModalEditBeli && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalEditBeli(false)} />
+          <div className="relative w-full max-w-4xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-blue-500 to-indigo-500" />
+            <div className="p-6 text-xs flex-1 overflow-y-auto">
+              <h3 className="text-base font-bold text-surface-900 dark:text-white mb-4 flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-blue-500" />
+                Edit Pembelian: {editBeliForm.nomor_invoice}
+              </h3>
+              
+              <form onSubmit={handleSimpanEditPembelian} className="space-y-6">
+                <div>
+                  <label className="block font-semibold mb-1">Catatan Tambahan</label>
+                  <input
+                    type="text"
+                    value={editBeliForm.catatan}
+                    onChange={e => setEditBeliForm({ ...editBeliForm, catatan: e.target.value })}
+                    placeholder="Beli dari Supplier A"
+                    className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm">Daftar Barang</h4>
+                    <button
+                      type="button"
+                      onClick={() => setEditBeliForm(prev => ({
+                        ...prev,
+                        items: [...prev.items, { barang_id: barangList[0]?.id || '', jumlah_satuan_besar: 1, harga_beli_satuan_besar: barangList[0]?.harga_beli_satuan_besar || 0 }]
+                      }))}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      Tambah Baris
+                    </button>
+                  </div>
+                  
+                  {editBeliForm.items.map((item, index) => (
+                    <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700">
+                      <div className="w-full sm:flex-1">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Barang</label>
+                        <select
+                          required
+                          value={item.barang_id}
+                          onChange={e => {
+                            const newItems = [...editBeliForm.items];
+                            const selectedBarang = barangList.find(b => b.id === e.target.value);
+                            newItems[index] = { 
+                              ...newItems[index], 
+                              barang_id: e.target.value,
+                              harga_beli_satuan_besar: selectedBarang?.harga_beli_satuan_besar || 0
+                            };
+                            setEditBeliForm({ ...editBeliForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        >
+                          <option value="">-- Pilih --</option>
+                          {barangList.map(b => (
+                            <option key={b.id} value={b.id}>{b.nama_barang}</option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div className="w-full sm:w-32">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">
+                          Qty ({barangList.find(b => b.id === item.barang_id)?.satuan_besar || 'Besar'})
+                        </label>
+                        <input
+                          type="number"
+                          required min={1}
+                          value={item.jumlah_satuan_besar}
+                          onChange={e => {
+                            const newItems = [...editBeliForm.items];
+                            newItems[index].jumlah_satuan_besar = parseInt(e.target.value) || 1;
+                            setEditBeliForm({ ...editBeliForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        />
+                      </div>
+
+                      <div className="w-full sm:w-48 hidden">
+                        {/* Not exactly needed to show harga_beli for edit since we don't retroactively adjust average price yet, but let's keep the structure for compatibility with items type */}
+                      </div>
+
+                      <div className="sm:pt-5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = editBeliForm.items.filter((_, i) => i !== index);
+                            setEditBeliForm({ ...editBeliForm, items: newItems });
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                          disabled={editBeliForm.items.length === 1}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-surface-100 dark:border-surface-800 mt-6">
+                  <button type="button" onClick={() => setShowModalEditBeli(false)} className="px-5 py-2.5 bg-surface-100 dark:bg-surface-800 rounded-xl font-bold cursor-pointer">
+                    Batal
+                  </button>
+                  <button type="submit" disabled={isSyncing} className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-bold cursor-pointer shadow-lg hover:brightness-110 disabled:opacity-50">
+                    {isSyncing ? 'Menyimpan...' : 'Simpan Perubahan'}
                   </button>
                 </div>
               </form>

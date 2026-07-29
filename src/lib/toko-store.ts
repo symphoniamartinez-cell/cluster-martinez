@@ -626,3 +626,155 @@ export async function resetSemuaDataToko() {
     return { success: false, error: err.message };
   }
 }
+
+// -------------------------------------------------------------
+// EDIT / UNDO MUTASI & PEMBELIAN
+// -------------------------------------------------------------
+export async function deleteMutasiStok(idPergerakan: string) {
+  try {
+    const client = createClient();
+    if (!client) throw new Error('No Supabase Client');
+
+    const pergerakan = getTokoPergerakanLocal().find(p => p.id === idPergerakan);
+    if (!pergerakan) throw new Error('Data mutasi tidak ditemukan');
+
+    const barang = getTokoBarangLocal().find(b => b.id === pergerakan.barang_id);
+    if (!barang) throw new Error('Barang tidak ditemukan');
+
+    let updateData: { stok_gudang?: number, stok_display?: number } = {};
+
+    if (pergerakan.jenis_pergerakan === 'STOK_KELUAR') {
+      updateData.stok_gudang = (barang.stok_gudang || 0) + pergerakan.jumlah_satuan_kecil;
+    } else if (pergerakan.jenis_pergerakan === 'PINDAH_DISPLAY') {
+      updateData.stok_gudang = (barang.stok_gudang || 0) + pergerakan.jumlah_satuan_kecil;
+      updateData.stok_display = (barang.stok_display || 0) - pergerakan.jumlah_satuan_kecil;
+    } else {
+      throw new Error('Jenis mutasi ini tidak bisa di-undo secara individu');
+    }
+
+    const { error: err1 } = await client.from('toko_pergerakan_stok').delete().eq('id', idPergerakan);
+    if (err1) throw err1;
+
+    const { error: err2 } = await client.from('toko_barang').update(updateData).eq('id', pergerakan.barang_id);
+    if (err2) throw err2;
+
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function deletePembelianInvoice(nomorInvoice: string) {
+  try {
+    const client = createClient();
+    if (!client) throw new Error('No Supabase Client');
+
+    const allPergerakan = getTokoPergerakanLocal().filter(p => p.nomor_invoice === nomorInvoice && p.jenis_pergerakan === 'PEMBELIAN_GUDANG');
+    if (allPergerakan.length === 0) throw new Error('Invoice pembelian tidak ditemukan');
+
+    const barangList = getTokoBarangLocal();
+    const barangUpdates: Record<string, { stok_gudang: number }> = {};
+
+    for (const p of allPergerakan) {
+      const b = barangList.find(x => x.id === p.barang_id);
+      if (b) {
+        const currentStok = barangUpdates[p.barang_id]?.stok_gudang ?? b.stok_gudang ?? 0;
+        barangUpdates[p.barang_id] = { stok_gudang: currentStok - p.jumlah_satuan_kecil };
+      }
+    }
+
+    const { error: err1 } = await client.from('toko_pergerakan_stok').delete().eq('nomor_invoice', nomorInvoice).eq('jenis_pergerakan', 'PEMBELIAN_GUDANG');
+    if (err1) throw err1;
+
+    for (const [bId, updateData] of Object.entries(barangUpdates)) {
+      const { error: err2 } = await client.from('toko_barang').update(updateData).eq('id', bId);
+      if (err2) throw err2;
+    }
+
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function editPembelianInvoice(
+  nomorInvoice: string,
+  newItems: PembelianItem[],
+  catatan: string,
+  user: string
+) {
+  try {
+    const client = createClient();
+    if (!client) throw new Error('No Supabase Client');
+
+    const oldPergerakan = getTokoPergerakanLocal().filter(p => p.nomor_invoice === nomorInvoice && p.jenis_pergerakan === 'PEMBELIAN_GUDANG');
+    if (oldPergerakan.length === 0) throw new Error('Invoice pembelian lama tidak ditemukan');
+
+    const oldDate = oldPergerakan[0].created_at;
+
+    const barangList = getTokoBarangLocal();
+    
+    // Simulate reversing old items
+    const virtualBarangList = barangList.map(b => ({ ...b }));
+    for (const p of oldPergerakan) {
+      const vb = virtualBarangList.find(x => x.id === p.barang_id);
+      if (vb) {
+        vb.stok_gudang = (vb.stok_gudang || 0) - p.jumlah_satuan_kecil;
+      }
+    }
+
+    // Process new items
+    const newPergerakan: TokoPergerakanStok[] = [];
+    const barangUpdates: Record<string, { stok_gudang: number }> = {};
+
+    for (const item of newItems) {
+      if (!item.barang_id || item.jumlah_satuan_besar <= 0) continue;
+      const b = virtualBarangList.find(x => x.id === item.barang_id);
+      if (!b) throw new Error(`Barang ID ${item.barang_id} tidak ditemukan`);
+
+      const qtySatuanKecil = item.jumlah_satuan_besar * (b.qty_per_satuan_besar || 1);
+      const currentStokGudang = barangUpdates[item.barang_id]?.stok_gudang ?? b.stok_gudang ?? 0;
+      
+      newPergerakan.push({
+        id: 'tps-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+        barang_id: item.barang_id,
+        jenis_pergerakan: 'PEMBELIAN_GUDANG',
+        jumlah_satuan_besar: item.jumlah_satuan_besar,
+        jumlah_satuan_kecil: qtySatuanKecil,
+        catatan,
+        nomor_invoice: nomorInvoice,
+        dibuat_oleh: user,
+        created_at: oldDate // keep original date
+      });
+
+      barangUpdates[item.barang_id] = { stok_gudang: currentStokGudang + qtySatuanKecil };
+    }
+
+    if (newPergerakan.length === 0) throw new Error('Tidak ada barang valid untuk diubah');
+
+    // Exec DB
+    const { error: err1 } = await client.from('toko_pergerakan_stok').delete().eq('nomor_invoice', nomorInvoice).eq('jenis_pergerakan', 'PEMBELIAN_GUDANG');
+    if (err1) throw err1;
+
+    const { error: err2 } = await client.from('toko_pergerakan_stok').insert(newPergerakan);
+    if (err2) throw err2;
+
+    const allInvolvedIds = new Set([
+      ...oldPergerakan.map(p => p.barang_id),
+      ...newItems.map(i => i.barang_id)
+    ]);
+
+    for (const bId of Array.from(allInvolvedIds)) {
+      const finalStok = barangUpdates[bId]?.stok_gudang ?? virtualBarangList.find(b=>b.id===bId)?.stok_gudang ?? 0;
+      const { error: err3 } = await client.from('toko_barang').update({ stok_gudang: finalStok }).eq('id', bId);
+      if (err3) throw err3;
+    }
+
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
