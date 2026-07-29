@@ -26,6 +26,7 @@ import {
   AlertTriangle,
   Download,
 } from 'lucide-react';
+import TokoAnalisisTab from '@/components/TokoAnalisisTab';
 import type { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
 import {
   getTokoBarangLocal,
@@ -48,7 +49,7 @@ import {
 export default function AdminTokoPage() {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'master' | 'pembelian' | 'mutasi' | 'riwayat' | 'laba_rugi' | 'pengaturan'>('master');
+  const [activeTab, setActiveTab] = useState<'analisis' | 'master' | 'pembelian' | 'mutasi' | 'riwayat' | 'laba_rugi' | 'pengaturan'>('analisis');
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('');
@@ -505,6 +506,17 @@ export default function AdminTokoPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2 bg-surface-100/50 dark:bg-surface-800/50 p-1.5 rounded-2xl w-fit flex-wrap">
           <button
+            onClick={() => setActiveTab('analisis')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+              activeTab === 'analisis'
+                ? 'bg-white dark:bg-surface-900 text-amber-600 dark:text-amber-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
+                : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            Analisis Barang
+          </button>
+          <button
           onClick={() => setActiveTab('master')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
             activeTab === 'master'
@@ -597,6 +609,16 @@ export default function AdminTokoPage() {
           </div>
         )}
       </div>
+
+      {/* 🟢 TAB CONTENT: ANALISIS 🟢 */}
+      {activeTab === 'analisis' && (
+        <TokoAnalisisTab 
+          penjualanList={filteredPenjualanList} 
+          barangList={barangList} 
+          filterMonth={filterMonth}
+          filterYear={filterYear}
+        />
+      )}
 
       {/* ── TAB CONTENT: MASTER BARANG ───────────────────────── */}
       {activeTab === 'master' && (

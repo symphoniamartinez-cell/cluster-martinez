@@ -1,0 +1,112 @@
+﻿import { useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import type { TokoPenjualan, TokoBarang } from '@/types';
+import { Package, TrendingUp } from 'lucide-react';
+
+interface Props {
+  penjualanList: TokoPenjualan[];
+  barangList: TokoBarang[];
+  filterMonth: number;
+  filterYear: number;
+}
+
+export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth, filterYear }: Props) {
+  // Aggregate logic
+  const { top5, allItems, daysInMonth } = useMemo(() => {
+    // Get number of days in the specified month
+    const daysInMonth = new Date(filterYear, filterMonth, 0).getDate();
+
+    const qtyMap: Record<string, number> = {};
+    penjualanList.forEach(p => {
+      qtyMap[p.barang_id] = (qtyMap[p.barang_id] || 0) + p.jumlah_satuan_kecil;
+    });
+
+    const items = Object.entries(qtyMap).map(([barang_id, qty]) => {
+      const b = barangList.find(x => x.id === barang_id);
+      return {
+        barang_id,
+        nama: b ? b.nama_barang : 'Unknown',
+        satuan_kecil: b ? b.satuan_kecil : 'Pcs',
+        qty,
+        runrate: qty / daysInMonth
+      };
+    }).sort((a, b) => b.qty - a.qty);
+
+    return { top5: items.slice(0, 5), allItems: items, daysInMonth };
+  }, [penjualanList, barangList, filterMonth, filterYear]);
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm p-6">
+        <h3 className="font-bold text-base text-surface-900 dark:text-white mb-6 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-amber-500" />
+          Analisis Penjualan & Runrate (Bulan {filterMonth} / {filterYear})
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8">
+          <div className="bg-surface-50 dark:bg-surface-800/50 p-4 rounded-2xl border border-surface-200/50 dark:border-surface-700/50 flex flex-col gap-1">
+            <span className="text-xs font-semibold text-surface-500">Total Barang Terjual</span>
+            <span className="text-2xl font-black text-surface-900 dark:text-white">{allItems.reduce((a,b)=>a+b.qty, 0)} Item</span>
+          </div>
+          <div className="bg-surface-50 dark:bg-surface-800/50 p-4 rounded-2xl border border-surface-200/50 dark:border-surface-700/50 flex flex-col gap-1">
+            <span className="text-xs font-semibold text-surface-500">Jumlah Hari Dianalisis</span>
+            <span className="text-2xl font-black text-surface-900 dark:text-white">{daysInMonth} Hari</span>
+          </div>
+        </div>
+
+        {top5.length > 0 ? (
+          <>
+            <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-4">Top 5 Barang Terlaris</h4>
+            <div className="w-full h-72 mb-8 bg-surface-50 dark:bg-surface-800/20 rounded-xl p-4 border border-surface-100 dark:border-surface-800">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={top5} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
+                  <XAxis dataKey="nama" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    cursor={{fill: 'transparent'}}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }} 
+                  />
+                  <Bar dataKey="qty" name="Kuantitas Terjual" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-4">Rincian Runrate Seluruh Barang</h4>
+            <div className="overflow-x-auto rounded-xl border border-surface-200 dark:border-surface-700">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-surface-50 dark:bg-surface-800 text-surface-500 font-semibold uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3">Nama Barang</th>
+                    <th className="px-4 py-3 text-right">Total Terjual</th>
+                    <th className="px-4 py-3 text-right">Runrate (per Hari)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+                  {allItems.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-surface-900 dark:text-white flex items-center gap-2">
+                        <Package className="w-3.5 h-3.5 text-surface-400" />
+                        {item.nama}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium">
+                        {item.qty} {item.satuan_kecil}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-amber-600 dark:text-amber-400 font-bold">
+                        {item.runrate.toFixed(2)} / hari
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <div className="py-12 text-center text-surface-500 border border-dashed border-surface-300 dark:border-surface-700 rounded-xl">
+            Belum ada data penjualan di bulan ini.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
