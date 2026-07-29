@@ -171,13 +171,6 @@ export default function BoothPortalPage() {
               </div>
             </div>
 
-            <button
-              onClick={() => inputRef.current?.focus()}
-              className="px-3 py-1.5 bg-accent-500/20 text-accent-300 rounded-xl text-xs font-bold border border-accent-500/30 flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Fokus Scan
-            </button>
           </div>
 
           {/* ── SCANNER INPUT FORM ────────────────────────────── */}
@@ -189,37 +182,14 @@ export default function BoothPortalPage() {
               </h2>
             </div>
 
-            <form onSubmit={handleScanSubmit} className="space-y-4">
-              <div className="relative">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={scanInput}
-                  onChange={(e) => setScanInput(e.target.value)}
-                  placeholder="Ketik/Scan Kode QR..."
-                  autoFocus
-                  className="w-full pl-4 pr-12 py-3 bg-surface-900 border-2 border-accent-500/50 focus:border-accent-400 rounded-2xl font-mono text-lg font-bold text-white placeholder:text-surface-500 placeholder:text-sm placeholder:font-sans placeholder:normal-case focus:outline-none uppercase tracking-wider transition-all"
-                />
-                <QrCode className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-accent-400 animate-pulse" />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 bg-gradient-to-r from-accent-500 to-primary-500 hover:from-accent-600 hover:to-primary-600 text-white font-bold text-sm rounded-2xl shadow-lg shadow-accent-500/25 transition-all cursor-pointer flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 className="w-5 h-5" />
-                VERIFIKASI & TUKAR KUPON
-              </button>
-            </form>
-
-            <div className="pt-3 border-t border-surface-700">
+            <div>
               <button
                 type="button"
                 onClick={() => setShowCamera(!showCamera)}
-                className="w-full py-3 bg-surface-700 hover:bg-surface-600 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-gradient-to-r from-accent-500 to-primary-500 hover:from-accent-600 hover:to-primary-600 text-white font-bold text-sm rounded-2xl shadow-lg shadow-accent-500/25 transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <QrCode className="w-5 h-5" />
-                {showCamera ? 'Tutup Kamera' : 'Buka Kamera HP'}
+                {showCamera ? 'Tutup Kamera' : 'Scan Kupon'}
               </button>
             </div>
             
@@ -242,6 +212,33 @@ export default function BoothPortalPage() {
                 />
               </div>
             )}
+
+            <div className="flex items-center gap-3 py-2 opacity-60">
+              <hr className="flex-1 border-surface-600"/>
+              <span className="text-[10px] font-bold text-surface-400 tracking-widest">ATAU INPUT MANUAL</span>
+              <hr className="flex-1 border-surface-600"/>
+            </div>
+
+            <form onSubmit={handleScanSubmit} className="space-y-4">
+              <div className="relative">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={scanInput}
+                  onChange={(e) => setScanInput(e.target.value)}
+                  placeholder="Ketik Kode QR..."
+                  className="w-full pl-4 pr-12 py-3 bg-surface-900 border-2 border-surface-700 focus:border-accent-500/50 rounded-2xl font-mono text-lg font-bold text-white placeholder:text-surface-500 placeholder:text-sm placeholder:font-sans placeholder:normal-case focus:outline-none uppercase tracking-wider transition-all"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-surface-700 hover:bg-surface-600 text-white font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                Verifikasi Manual
+              </button>
+            </form>
           </div>
 
           {/* ── SCAN RESULT FEEDBACK BANNER ────────────────────── */}
