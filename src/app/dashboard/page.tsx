@@ -491,7 +491,7 @@ export default function WargaDashboardPage() {
                 Cluster Martinez
               </h1>
               <p className="text-[11px] text-surface-700/50 dark:text-surface-200/40">
-                Portal Warga — {cleanNamaWarga} ({nomorRumah})
+                Portal Warga
               </p>
             </div>
           </div>
