@@ -220,7 +220,7 @@ export default function AdminDashboardOverviewPage() {
               onChange={(e) => setSelectedTahun(Number(e.target.value))}
               className="appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all cursor-pointer text-surface-900 dark:text-white"
             >
-              {[2024, 2025, 2026, 2027].map((y) => (
+              {Array.from({ length: 2100 - 2026 + 1 }, (_, i) => 2026 + i).map((y) => (
                 <option key={y} value={y}>
                   {y}
                 </option>
