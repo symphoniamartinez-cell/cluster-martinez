@@ -625,23 +625,12 @@ export default function WargaDashboardPage() {
               </h2>
             </div>
 
-            {/* Year Selector */}
-            <div className="flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-surface-400" />
-              <div className="relative">
-                <select
-                  value={tahun}
-                  onChange={(e) => setTahun(Number(e.target.value))}
-                  className="appearance-none pl-3 pr-8 py-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-xs font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 cursor-pointer text-surface-900 dark:text-white"
-                >
-                  {years.map((y) => (
-                    <option key={y} value={y}>
-                      Tahun {y}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400 pointer-events-none" />
-              </div>
+            {/* Year Badge */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-100 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
+              <CalendarDays className="w-3.5 h-3.5 text-surface-500" />
+              <span className="text-xs font-bold text-surface-700 dark:text-surface-300">
+                Tahun {tahun}
+              </span>
             </div>
           </div>
 
