@@ -11,16 +11,41 @@ interface Props {
 }
 
 export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth, filterYear }: Props) {
-  const { allItems, daysInMonth, totalOmset } = useMemo(() => {
-    // Get number of days in the specified month
+  const { allItems, activeDays, avgDailyOmset, totalTerjual } = useMemo(() => {
+    // 1. Calculate Active Days logic
+    const now = new Date();
+    const isCurrentMonth = now.getMonth() + 1 === filterMonth && now.getFullYear() === filterYear;
     const daysInMonth = new Date(filterYear, filterMonth, 0).getDate();
+    
+    let activeDays = isCurrentMonth ? now.getDate() : daysInMonth;
+
+    if (penjualanList.length > 0) {
+      const minTime = Math.min(...penjualanList.map(p => new Date(p.created_at || new Date()).getTime()));
+      const globalStartDate = new Date(minTime);
+      
+      if (globalStartDate.getMonth() + 1 === filterMonth && globalStartDate.getFullYear() === filterYear) {
+        // This is the first month the app was used!
+        const endDay = isCurrentMonth ? now.getDate() : daysInMonth;
+        activeDays = endDay - globalStartDate.getDate() + 1;
+      }
+    }
+    
+    activeDays = Math.max(1, activeDays);
+
+    // 2. Filter data by selected month & year
+    const filteredPenjualan = penjualanList.filter(p => {
+      const d = new Date(p.created_at || new Date());
+      return (d.getMonth() + 1) === filterMonth && d.getFullYear() === filterYear;
+    });
 
     const qtyMap: Record<string, number> = {};
     let totalOmset = 0;
+    let totalTerjual = 0;
 
-    penjualanList.forEach(p => {
+    filteredPenjualan.forEach(p => {
       qtyMap[p.barang_id] = (qtyMap[p.barang_id] || 0) + p.jumlah_satuan_kecil;
       totalOmset += p.total_harga || 0;
+      totalTerjual += p.jumlah_satuan_kecil;
     });
 
     const items = Object.entries(qtyMap).map(([barang_id, qty]) => {
@@ -30,11 +55,11 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
         nama: b ? b.nama_barang : 'Unknown',
         satuan_kecil: b ? b.satuan_kecil : 'Pcs',
         qty,
-        runrate: qty / daysInMonth
+        runrate: qty / activeDays
       };
     }).sort((a, b) => b.qty - a.qty);
 
-    return { allItems: items, daysInMonth, totalOmset };
+    return { allItems: items, activeDays, avgDailyOmset: totalOmset / activeDays, totalTerjual };
   }, [penjualanList, barangList, filterMonth, filterYear]);
 
   return (
@@ -48,12 +73,12 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8">
           <div className="bg-surface-50 dark:bg-surface-800/50 p-4 rounded-2xl border border-surface-200/50 dark:border-surface-700/50 flex flex-col gap-1">
             <span className="text-xs font-semibold text-surface-500">Total Barang Terjual</span>
-            <span className="text-2xl font-black text-surface-900 dark:text-white">{allItems.reduce((a,b)=>a+b.qty, 0)} Item</span>
+            <span className="text-2xl font-black text-surface-900 dark:text-white">{totalTerjual} Item</span>
           </div>
           <div className="bg-surface-50 dark:bg-surface-800/50 p-4 rounded-2xl border border-surface-200/50 dark:border-surface-700/50 flex flex-col gap-1">
-            <span className="text-xs font-semibold text-surface-500">Total Omset</span>
+            <span className="text-xs font-semibold text-surface-500">Rata-Rata Omset Harian</span>
             <span className="text-2xl font-black text-surface-900 dark:text-white">
-              Rp {totalOmset.toLocaleString('id-ID')}
+              Rp {Math.round(avgDailyOmset).toLocaleString('id-ID')}
             </span>
           </div>
         </div>
