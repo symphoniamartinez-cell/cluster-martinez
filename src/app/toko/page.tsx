@@ -16,6 +16,7 @@ import {
   X,
   PlusCircle,
   Trash2,
+  LogOut,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { TokoBarang, TokoPenjualan, TokoPergerakanStok } from '@/types';
@@ -95,6 +96,15 @@ export default function KasirTokoPage() {
     }
   };
 
+  const handleLogout = () => {
+    if (confirm('Yakin ingin keluar/logout dari Dashboard Kasir?')) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('demo_user');
+      }
+      router.push('/login');
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-[800px] mx-auto animate-fade-in pb-12 pt-4 px-4 sm:px-0">
       {toastMessage && (
@@ -120,18 +130,27 @@ export default function KasirTokoPage() {
           </div>
         </div>
 
-        <button
-          onClick={() => handleSyncData(true)}
-          disabled={isSyncing}
-          className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs rounded-xl shadow-sm transition-all border ${
-            isSyncing
-              ? 'bg-surface-100 dark:bg-surface-800 text-surface-400 border-surface-200 dark:border-surface-700'
-              : 'bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700 text-primary-600 dark:text-primary-400'
-          }`}
-        >
-          <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-          Sync
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-600 dark:text-red-400 font-semibold text-xs rounded-xl hover:bg-red-500/20 transition-all cursor-pointer mr-1"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+          <button
+            onClick={() => handleSyncData(true)}
+            disabled={isSyncing}
+            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs rounded-xl shadow-sm transition-all border ${
+              isSyncing
+                ? 'bg-surface-100 dark:bg-surface-800 text-surface-400 border-surface-200 dark:border-surface-700'
+                : 'bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700 text-primary-600 dark:text-primary-400'
+            }`}
+          >
+            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            Sync
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
