@@ -25,7 +25,6 @@ import {
   Settings,
   AlertTriangle,
   Download,
-  LogOut,
 } from 'lucide-react';
 import type { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
 import {
@@ -172,15 +171,6 @@ export default function AdminTokoPage() {
       } else {
         showToast(`Gagal menghapus: ${res.error}`);
       }
-    }
-  };
-
-  const handleLogout = () => {
-    if (confirm('Yakin ingin keluar/logout dari Dashboard Kasir?')) {
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('demo_user');
-      }
-      router.push('/login');
     }
   };
 
@@ -486,13 +476,6 @@ export default function AdminTokoPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-600 dark:text-red-400 font-semibold text-xs rounded-xl hover:bg-red-500/20 transition-all cursor-pointer mr-2"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </button>
           <button
             onClick={() => handleSyncData(true)}
             disabled={isSyncing}
