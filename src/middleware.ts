@@ -165,9 +165,9 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - favicon.ico, manifest.json, sw.js (PWA files)
      * - api (API routes — handle auth separately)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
