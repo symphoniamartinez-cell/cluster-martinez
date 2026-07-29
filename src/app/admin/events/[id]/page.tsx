@@ -524,7 +524,7 @@ export default function SingleEventDetailPage({
                 Kredensial Akun Login Tenant Booth Makanan Event {event.nama_event}
               </h3>
               <p className="text-xs text-surface-500">
-                Akun tenant booth aktif & dapat login kapan saja di halaman Login Tenant. Default password: <code>event123</code>.
+                Akun tenant booth aktif & dapat login kapan saja di halaman Login Tenant.
               </p>
             </div>
           </div>
