@@ -29,7 +29,6 @@ import { getMockIuranMatrix } from '@/lib/mock-data';
 import { getIuranConfigFromStorage, DEFAULT_IURAN_CONFIG, type IuranConfig } from '@/lib/config-store';
 import { fetchIuranMatrixFromCloud, fetchProfilesFromCloud } from '@/lib/db-sync';
 
-const STORAGE_KEY_IURAN = 'martinez_iuran_matrix_v2';
 const STORAGE_KEY_RUMAH = 'martinez_rumah_list_v3';
 
 export default function AdminDashboardOverviewPage() {
@@ -56,7 +55,7 @@ export default function AdminDashboardOverviewPage() {
     setIuranConfig(getIuranConfigFromStorage());
 
     try {
-      const savedIuran = localStorage.getItem(STORAGE_KEY_IURAN);
+      const savedIuran = localStorage.getItem(`martinez_iuran_matrix_${selectedTahun}`);
       const savedRumah = localStorage.getItem(STORAGE_KEY_RUMAH);
 
       let rList: Rumah[] = [];
@@ -77,7 +76,7 @@ export default function AdminDashboardOverviewPage() {
     }
     
     // Background cloud sync
-    Promise.all([fetchIuranMatrixFromCloud(), fetchProfilesFromCloud()]).then(([iuranRes, profilesRes]) => {
+    Promise.all([fetchIuranMatrixFromCloud(selectedTahun), fetchProfilesFromCloud()]).then(([iuranRes, profilesRes]) => {
       if (iuranRes) setIuranMatrix(iuranRes);
       if (profilesRes) setRumahList(profilesRes.rumahList);
     });

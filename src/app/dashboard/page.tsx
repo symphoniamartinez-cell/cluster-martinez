@@ -36,9 +36,6 @@ import { getIuranConfigFromStorage, type IuranConfig } from '@/lib/config-store'
 import { getKuponsForWarga } from '@/lib/event-store';
 import { createClient } from '@/lib/supabase/client';
 
-const STORAGE_KEY_IURAN = 'martinez_iuran_matrix_v2';
-
-// Helper to normalize house numbers for robust matching (e.g. "MTNR/11" === "mtnr / 11")
 const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 export default function WargaDashboardPage() {
@@ -119,7 +116,7 @@ export default function WargaDashboardPage() {
     });
 
     // ─── STEP 2: Load Iuran Matrix ───
-    fetchIuranMatrixFromCloud().then((cloudMatrix) => {
+    fetchIuranMatrixFromCloud(tahun).then((cloudMatrix) => {
       if (cloudMatrix && cloudMatrix.length > 0) {
         addDebug(`☁️ Cloud iuran matrix: ${cloudMatrix.length} rows`);
         const targetClean = cleanHouseNo(houseNo);
@@ -210,14 +207,14 @@ export default function WargaDashboardPage() {
 
     // ─── STEP 5: Fallback - also load from localStorage iuran matrix ───
     try {
-      const savedIuran = localStorage.getItem(STORAGE_KEY_IURAN);
+      const savedIuran = localStorage.getItem(`martinez_iuran_matrix_${tahun}`);
       let matrix: IuranMatrixRow[] = [];
 
       if (savedIuran) {
         matrix = JSON.parse(savedIuran);
       } else {
         matrix = getMockIuranMatrix(tahun);
-        localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(matrix));
+        localStorage.setItem(`martinez_iuran_matrix_${tahun}`, JSON.stringify(matrix));
       }
 
       const targetClean = cleanHouseNo(houseNo);

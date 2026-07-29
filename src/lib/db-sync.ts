@@ -8,7 +8,6 @@ import { createClient } from '@/lib/supabase/client';
 import type { IuranMatrixRow, Profile, Rumah, StatusIuran } from '@/types';
 import { BULAN_FULL } from '@/types';
 
-const STORAGE_KEY_IURAN = 'martinez_iuran_matrix_v2';
 const STORAGE_KEY_RUMAH = 'martinez_rumah_list_v3';
 const STORAGE_KEY_PROFILES = 'martinez_profiles_list_v3';
 
@@ -21,10 +20,10 @@ function dbLog(tag: string, msg: string, data?: any) {
 }
 
 // ── 1. IURAN MATRIX CLOUD SYNC ──────────────────────────────
-export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<{ success: boolean; error?: string }> {
+export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[], tahun: number): Promise<{ success: boolean; error?: string }> {
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(matrix));
+      localStorage.setItem(`martinez_iuran_matrix_${tahun}`, JSON.stringify(matrix));
     } catch (e) {}
   }
 
@@ -38,7 +37,7 @@ export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<
     const recordsToUpsert = matrix.map((row) => {
       const rec: Record<string, any> = {
         nomor_rumah: row.nomor_rumah,
-        tahun: 2026,
+        tahun: tahun,
         updated_at: new Date().toISOString(),
       };
       for (let m = 1; m <= 12; m++) {
@@ -64,7 +63,7 @@ export async function syncIuranMatrixToCloud(matrix: IuranMatrixRow[]): Promise<
   }
 }
 
-export async function fetchIuranMatrixFromCloud(): Promise<IuranMatrixRow[] | null> {
+export async function fetchIuranMatrixFromCloud(tahun: number): Promise<IuranMatrixRow[] | null> {
   const client = createClient();
   if (!client) {
     dbLog('IURAN_FETCH', '⚠️ Supabase client NULL — skip cloud fetch');
@@ -72,7 +71,7 @@ export async function fetchIuranMatrixFromCloud(): Promise<IuranMatrixRow[] | nu
   }
 
   try {
-    const { data, error } = await client.from('iuran_matrix').select('*');
+    const { data, error } = await client.from('iuran_matrix').select('*').eq('tahun', tahun);
     if (error) {
       dbLog('IURAN_FETCH', '❌ Query error:', error.message);
       return null;
@@ -119,9 +118,9 @@ export async function fetchIuranMatrixFromCloud(): Promise<IuranMatrixRow[] | nu
     });
 
     if (typeof window !== 'undefined' && matrix.length > 0) {
-      localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(matrix));
+      localStorage.setItem(`martinez_iuran_matrix_${tahun}`, JSON.stringify(matrix));
     }
-    dbLog('IURAN_FETCH', '✅ Berhasil fetch iuran matrix dari cloud', { rows: matrix.length });
+    dbLog('IURAN_FETCH', `✅ Berhasil fetch iuran matrix tahun ${tahun} dari cloud`, { rows: matrix.length });
     return matrix;
   } catch (e: any) {
     dbLog('IURAN_FETCH', '❌ Exception:', e?.message);
@@ -194,7 +193,7 @@ export async function syncProfilesToCloud(profiles: Profile[], rumahList: Rumah[
 export async function clearAllCloudData(): Promise<{ success: boolean; error?: string }> {
   if (typeof window !== 'undefined') {
     try {
-      localStorage.removeItem(STORAGE_KEY_IURAN);
+      for(let y=2024;y<=2030;y++){localStorage.removeItem(`martinez_iuran_matrix_${y}`);}
       localStorage.removeItem(STORAGE_KEY_RUMAH);
       localStorage.removeItem(STORAGE_KEY_PROFILES);
       localStorage.removeItem('martinez_events_v1');

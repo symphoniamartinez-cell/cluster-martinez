@@ -26,7 +26,6 @@ import { syncIuranMatrixToCloud, fetchIuranMatrixFromCloud } from '@/lib/db-sync
 import type { IuranMatrixRow, UserRole, StatusIuran, Rumah } from '@/types';
 import { BULAN_LABELS, BULAN_FULL } from '@/types';
 
-const STORAGE_KEY_IURAN = 'martinez_iuran_matrix_v2';
 const STORAGE_KEY_RUMAH = 'martinez_rumah_list_v3';
 
 export default function AdminDashboardPage() {
@@ -36,6 +35,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastUpdatedStr, setLastUpdatedStr] = useState<string>('');
+  const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,7 +61,7 @@ export default function AdminDashboardPage() {
   }, []);
 
   // Load user session & Iuran matrix from LocalStorage
-  const loadIuranData = useCallback(() => {
+  const loadIuranData = useCallback((tahun: number) => {
     setLoading(true);
     const stored = sessionStorage.getItem('demo_user');
     if (stored) {
@@ -74,7 +74,7 @@ export default function AdminDashboardPage() {
       const savedTime = localStorage.getItem('martinez_iuran_last_updated');
       if (savedTime) setLastUpdatedStr(savedTime);
 
-      const savedIuran = localStorage.getItem(STORAGE_KEY_IURAN);
+      const savedIuran = localStorage.getItem(`martinez_iuran_matrix_${tahun}`);
       if (savedIuran) {
         const matrix: IuranMatrixRow[] = JSON.parse(savedIuran);
         setData(matrix);
@@ -89,7 +89,7 @@ export default function AdminDashboardPage() {
           const newMatrix = currentRumahList.map((r, idx) => {
             const bulan: Record<number, StatusIuran> = {};
             for (let m = 1; m <= 12; m++) {
-              bulan[m] = (idx + m) % 3 === 0 ? 'belum_lunas' : 'lunas';
+              bulan[m] = 'belum_lunas'; // Reset to belum lunas for new years
             }
             return {
               rumah_id: r.id,
@@ -100,30 +100,30 @@ export default function AdminDashboardPage() {
             };
           });
           setData(newMatrix);
-          localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(newMatrix));
+          localStorage.setItem(`martinez_iuran_matrix_${tahun}`, JSON.stringify(newMatrix));
         } else {
-          const defaultMatrix = getMockIuranMatrix(new Date().getFullYear());
+          const defaultMatrix = getMockIuranMatrix(tahun);
           setData(defaultMatrix);
-          localStorage.setItem(STORAGE_KEY_IURAN, JSON.stringify(defaultMatrix));
+          localStorage.setItem(`martinez_iuran_matrix_${tahun}`, JSON.stringify(defaultMatrix));
         }
       }
 
       // Sync with Supabase Cloud Database if available
-      fetchIuranMatrixFromCloud().then((cloudMatrix) => {
+      fetchIuranMatrixFromCloud(tahun).then((cloudMatrix) => {
         if (cloudMatrix && cloudMatrix.length > 0) {
           setData(cloudMatrix);
         }
       });
     } catch (e) {
       console.error('Failed to load Iuran data:', e);
-      setData(getMockIuranMatrix(new Date().getFullYear()));
+      setData(getMockIuranMatrix(tahun));
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    loadIuranData();
-  }, [loadIuranData]);
+    loadIuranData(selectedTahun);
+  }, [loadIuranData, selectedTahun]);
 
   // Handle Superadmin / Bendahara toggling payment status
   const handleToggleIuran = useCallback(
@@ -138,7 +138,7 @@ export default function AdminDashboardPage() {
             : row
         );
 
-        syncIuranMatrixToCloud(updated);
+        syncIuranMatrixToCloud(updated, tahun);
         updateLastUpdatedTimestamp();
         return updated;
       });
@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
   );
 
   const handleRefresh = () => {
-    loadIuranData();
+    loadIuranData(selectedTahun);
   };
 
   // ── Download Excel Template for Data Iuran ─────────────────
@@ -309,7 +309,7 @@ export default function AdminDashboardPage() {
 
         setData(updatedMatrix);
         updateLastUpdatedTimestamp();
-        syncIuranMatrixToCloud(updatedMatrix).then((res) => {
+        syncIuranMatrixToCloud(updatedMatrix, selectedTahun).then((res) => {
           if (res.success) {
             showToast(
               `☁️ Sukses! ${rows.length} baris data iuran berhasil diunggah & tersimpan di Cloud Database Supabase (Tersedia Lintas Perangkat/Browser)!`
@@ -443,7 +443,7 @@ export default function AdminDashboardPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl lg:text-2xl font-bold text-surface-900 dark:text-white">
-                  Data Iuran Kluster
+                  Data Iuran Cluster
                 </h1>
                 {canEditIuran ? (
                   <span className="px-2.5 py-0.5 bg-success-500/10 text-success-600 dark:text-success-400 text-xs font-bold rounded-full">
@@ -549,6 +549,8 @@ export default function AdminDashboardPage() {
           <IuranTable
             data={data}
             userRole={userRole}
+            selectedTahun={selectedTahun}
+            onTahunChange={setSelectedTahun}
             onToggleIuran={handleToggleIuran}
           />
         </Suspense>

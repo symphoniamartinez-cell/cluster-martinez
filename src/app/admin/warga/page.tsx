@@ -589,7 +589,8 @@ export default function AdminWargaPage() {
 
         // Auto pre-populate Iuran Matrix for all uploaded houses with default 'belum_lunas'
         try {
-          const savedIuran = localStorage.getItem('martinez_iuran_matrix_v2');
+          const currentYear = new Date().getFullYear();
+          const savedIuran = localStorage.getItem(`martinez_iuran_matrix_${currentYear}`);
           let currentMatrix: IuranMatrixRow[] = [];
           if (savedIuran) {
             currentMatrix = JSON.parse(savedIuran);
@@ -623,8 +624,8 @@ export default function AdminWargaPage() {
             }
           });
 
-          localStorage.setItem('martinez_iuran_matrix_v2', JSON.stringify(newMatrix));
-          syncIuranMatrixToCloud(newMatrix);
+          localStorage.setItem(`martinez_iuran_matrix_${currentYear}`, JSON.stringify(newMatrix));
+          syncIuranMatrixToCloud(newMatrix, currentYear);
         } catch (e) {}
 
         syncProfilesToCloud(updatedProfilesList, updatedRumahList).then((res) => {

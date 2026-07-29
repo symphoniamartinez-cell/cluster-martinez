@@ -24,6 +24,8 @@ import { BULAN_LABELS } from '@/types';
 interface IuranTableProps {
   data: IuranMatrixRow[];
   userRole: UserRole;
+  selectedTahun: number;
+  onTahunChange: (tahun: number) => void;
   onToggleIuran?: (
     rumahId: string,
     bulan: number,
@@ -74,10 +76,11 @@ const BLOCKS_LIST = [
 export default function IuranTable({
   data,
   userRole,
+  selectedTahun,
+  onTahunChange,
   onToggleIuran,
 }: IuranTableProps) {
   const searchParams = useSearchParams();
-  const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear());
   const [selectedBlock, setSelectedBlock] = useState<string>('all');
   const [selectedRt, setSelectedRt] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -215,7 +218,7 @@ export default function IuranTable({
           <div className="relative">
             <select
               value={selectedTahun}
-              onChange={(e) => setSelectedTahun(Number(e.target.value))}
+              onChange={(e) => onTahunChange(Number(e.target.value))}
               className="appearance-none pl-4 pr-10 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all cursor-pointer text-surface-900 dark:text-white"
             >
               {years.map((y) => (
