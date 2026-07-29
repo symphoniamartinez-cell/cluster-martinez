@@ -512,11 +512,16 @@ export async function fetchAdminUsersFromCloud(): Promise<any[] | null> {
       dbLog('ADMIN_FETCH', '❌ Admin fetch error:', error.message);
       return null;
     }
+    if (data && Array.isArray(data) && data.length > 0) {
+      dbLog('ADMIN_FETCH', '✅ Admin users fetched from cloud', { count: data.length });
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('martinez_admin_users_v2', JSON.stringify(data));
         } catch (e) {}
       }
-      return data.data;
+      return data;
     }
-    dbLog('ADMIN_FETCH', '⚠️ Admin users data null/empty in cloud');
+    dbLog('ADMIN_FETCH', '⚠️ Admin users kosong di cloud');
     return null;
   } catch (e: any) {
     dbLog('ADMIN_FETCH', '❌ Exception:', e?.message);
