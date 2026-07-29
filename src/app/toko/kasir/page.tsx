@@ -164,13 +164,13 @@ export default function KasirPOSPage() {
                 const subtotal = item.jumlah_satuan_kecil * (selectedBrg?.harga_jual_satuan_kecil || 0);
                 
                 return (
-                  <div key={index} className="flex flex-col sm:flex-row sm:items-end gap-3 p-4 bg-surface-50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700">
+                  <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-3 p-4 bg-surface-50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700">
                     <div className="flex-1">
                       <label className="block text-xs font-bold text-surface-500 mb-1.5">Barang</label>
                       <select
                         value={item.barang_id}
                         onChange={e => handleItemChange(index, 'barang_id', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-success-500/50"
+                        className="w-full px-3 py-2.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-success-500/50 h-[42px]"
                       >
                         {barangList.map(b => (
                           <option key={b.id} value={b.id} disabled={(b.stok_display || 0) <= 0}>
@@ -179,14 +179,14 @@ export default function KasirPOSPage() {
                         ))}
                       </select>
                       {selectedBrg && (
-                        <div className="mt-1.5 text-[11px] text-surface-500 font-medium">
+                        <div className="mt-2 text-[11px] text-surface-500 font-medium">
                           Sisa Stok: <span className={((selectedBrg.stok_display || 0) > 0) ? "text-success-600 dark:text-success-400" : "text-red-500"}>{selectedBrg.stok_display || 0} {selectedBrg.satuan_kecil}</span> 
                           <span className="mx-1.5">•</span> 
                           Rp {(selectedBrg.harga_jual_satuan_kecil || 0).toLocaleString('id-ID')} / {selectedBrg.satuan_kecil}
                         </div>
                       )}
                     </div>
-                    <div className="w-full sm:w-24">
+                    <div className="w-full sm:w-28">
                       <label className="block text-xs font-bold text-surface-500 mb-1.5">Qty</label>
                       <div className="relative">
                         <input
@@ -194,25 +194,34 @@ export default function KasirPOSPage() {
                           min="1"
                           value={item.jumlah_satuan_kecil || ''}
                           onChange={e => handleItemChange(index, 'jumlah_satuan_kecil', parseInt(e.target.value) || 0)}
-                          className="w-full px-3 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-success-500/50"
+                          className="w-full pl-3 pr-10 py-2.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-success-500/50 h-[42px]"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-surface-400">
-                          {selectedBrg?.satuan_kecil}
+                          {selectedBrg?.satuan_kecil || 'Pcs'}
                         </span>
                       </div>
                     </div>
-                    <div className="w-full sm:w-32">
+                    <div className="w-full sm:w-36">
                       <label className="block text-xs font-bold text-surface-500 mb-1.5">Subtotal</label>
-                      <div className="px-3 py-2 bg-surface-100 dark:bg-surface-800 rounded-xl text-sm font-mono font-bold text-surface-900 dark:text-white border border-transparent">
-                        Rp {subtotal.toLocaleString('id-ID')}
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-surface-500 font-bold">Rp</span>
+                        <input
+                          type="text"
+                          readOnly
+                          value={subtotal.toLocaleString('id-ID')}
+                          className="w-full pl-9 pr-3 py-2.5 bg-surface-100/50 dark:bg-surface-800 border border-transparent rounded-xl text-sm font-mono font-bold text-surface-900 dark:text-white focus:outline-none h-[42px]"
+                        />
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleRemoveRow(index)}
-                      className="w-full sm:w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 rounded-xl transition-colors mt-2 sm:mt-0 flex-shrink-0 cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="w-full sm:w-10">
+                      <label className="hidden sm:block text-xs mb-1.5 opacity-0">X</label>
+                      <button
+                        onClick={() => handleRemoveRow(index)}
+                        className="w-full sm:w-10 h-[42px] flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 rounded-xl transition-colors flex-shrink-0 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}

@@ -51,6 +51,17 @@ CREATE TABLE IF NOT EXISTS public.toko_penjualan (
 -- ALTER TABLE public.toko_penjualan ENABLE ROW LEVEL SECURITY;
 
 -- Jika tidak menggunakan auth yang kompleks, kita bypass (allow all) saja:
+DROP POLICY IF EXISTS "Allow all actions for toko_barang" ON public.toko_barang;
 CREATE POLICY "Allow all actions for toko_barang" ON public.toko_barang FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow all actions for toko_pergerakan_stok" ON public.toko_pergerakan_stok;
 CREATE POLICY "Allow all actions for toko_pergerakan_stok" ON public.toko_pergerakan_stok FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow all actions for toko_penjualan" ON public.toko_penjualan;
 CREATE POLICY "Allow all actions for toko_penjualan" ON public.toko_penjualan FOR ALL USING (true);
+
+-- === PENTING: RELOAD SCHEMA CACHE ===
+-- Jika Anda baru saja menambahkan kolom baru (seperti harga_modal_satuan),
+-- Supabase seringkali belum menyadarinya dan menyebabkan error (schema cache).
+-- Jalankan perintah di bawah ini untuk me-refresh cache Supabase:
+NOTIFY pgrst, 'reload schema';
