@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { TokoPenjualan, TokoBarang } from '@/types';
 import { Package, TrendingUp } from 'lucide-react';
@@ -11,14 +11,16 @@ interface Props {
 }
 
 export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth, filterYear }: Props) {
-  // Aggregate logic
-  const { top5, allItems, daysInMonth } = useMemo(() => {
+  const { allItems, daysInMonth, totalOmset } = useMemo(() => {
     // Get number of days in the specified month
     const daysInMonth = new Date(filterYear, filterMonth, 0).getDate();
 
     const qtyMap: Record<string, number> = {};
+    let totalOmset = 0;
+
     penjualanList.forEach(p => {
       qtyMap[p.barang_id] = (qtyMap[p.barang_id] || 0) + p.jumlah_satuan_kecil;
+      totalOmset += p.total_harga || 0;
     });
 
     const items = Object.entries(qtyMap).map(([barang_id, qty]) => {
@@ -32,7 +34,7 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
       };
     }).sort((a, b) => b.qty - a.qty);
 
-    return { top5: items.slice(0, 5), allItems: items, daysInMonth };
+    return { allItems: items, daysInMonth, totalOmset };
   }, [penjualanList, barangList, filterMonth, filterYear]);
 
   return (
@@ -49,17 +51,20 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
             <span className="text-2xl font-black text-surface-900 dark:text-white">{allItems.reduce((a,b)=>a+b.qty, 0)} Item</span>
           </div>
           <div className="bg-surface-50 dark:bg-surface-800/50 p-4 rounded-2xl border border-surface-200/50 dark:border-surface-700/50 flex flex-col gap-1">
-            <span className="text-xs font-semibold text-surface-500">Jumlah Hari Dianalisis</span>
-            <span className="text-2xl font-black text-surface-900 dark:text-white">{daysInMonth} Hari</span>
+            <span className="text-xs font-semibold text-surface-500">Total Omset</span>
+            <span className="text-2xl font-black text-surface-900 dark:text-white">
+              Rp {totalOmset.toLocaleString('id-ID')}
+            </span>
           </div>
         </div>
 
-        {top5.length > 0 ? (
+        {allItems.length > 0 ? (
           <>
-            <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-4">Top 5 Barang Terlaris</h4>
-            <div className="w-full h-72 mb-8 bg-surface-50 dark:bg-surface-800/20 rounded-xl p-4 border border-surface-100 dark:border-surface-800">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={top5} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+            <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-4">Grafik Penjualan Seluruh Barang</h4>
+            <div className="w-full h-72 mb-8 bg-surface-50 dark:bg-surface-800/20 rounded-xl p-4 border border-surface-100 dark:border-surface-800 overflow-x-auto no-scrollbar">
+              <div style={{ minWidth: `${Math.max(allItems.length * 80, 100)}%`, height: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={allItems} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
                   <XAxis dataKey="nama" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
@@ -70,6 +75,7 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
                   <Bar dataKey="qty" name="Kuantitas Terjual" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={40} />
                 </BarChart>
               </ResponsiveContainer>
+              </div>
             </div>
             
             <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-4">Rincian Runrate Seluruh Barang</h4>
