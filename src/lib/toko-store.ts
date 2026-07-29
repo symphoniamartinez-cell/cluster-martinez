@@ -282,6 +282,63 @@ export async function pindahKeDisplay(barangId: string, jumlahSatuanKecil: numbe
   }
 }
 
+export async function pindahKeDisplayBatch(items: { barang_id: string; jumlah_satuan_kecil: number }[], user: string) {
+  try {
+    const client = createClient();
+    const localBarang = getTokoBarangLocal();
+
+    const pergerakanList: TokoPergerakanStok[] = [];
+    const barangUpdates: Record<string, { stok_gudang: number; stok_display: number }> = {};
+
+    for (const item of items) {
+      if (!item.barang_id || item.jumlah_satuan_kecil <= 0) continue;
+      
+      const barang = localBarang.find(b => b.id === item.barang_id);
+      if (!barang) throw new Error(`Barang ID ${item.barang_id} tidak ditemukan`);
+
+      const currentStokGudang = barangUpdates[item.barang_id]?.stok_gudang ?? (barang.stok_gudang || 0);
+      const currentStokDisplay = barangUpdates[item.barang_id]?.stok_display ?? (barang.stok_display || 0);
+
+      if (currentStokGudang < item.jumlah_satuan_kecil) {
+        throw new Error(`Stok gudang ${barang.nama_barang} tidak cukup. Sisa: ${currentStokGudang}`);
+      }
+
+      pergerakanList.push({
+        id: 'tps-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+        barang_id: item.barang_id,
+        jenis_pergerakan: 'PINDAH_DISPLAY',
+        jumlah_satuan_besar: 0,
+        jumlah_satuan_kecil: item.jumlah_satuan_kecil,
+        catatan: 'Pindah ke etalase/kulkas',
+        dibuat_oleh: user,
+        created_at: new Date().toISOString()
+      });
+
+      barangUpdates[item.barang_id] = {
+        stok_gudang: currentStokGudang - item.jumlah_satuan_kecil,
+        stok_display: currentStokDisplay + item.jumlah_satuan_kecil
+      };
+    }
+
+    if (pergerakanList.length === 0) throw new Error('Tidak ada barang valid untuk dipindah');
+
+    if (client) {
+      const { error: err1 } = await client.from('toko_pergerakan_stok').insert(pergerakanList);
+      if (err1) throw err1;
+
+      for (const [bId, updateData] of Object.entries(barangUpdates)) {
+        const { error: err2 } = await client.from('toko_barang').update(updateData).eq('id', bId);
+        if (err2) throw err2;
+      }
+    }
+
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function inputPenjualan(barangId: string, jumlahSatuanKecil: number, user: string) {
   try {
     const barang = getTokoBarangLocal().find(b => b.id === barangId);

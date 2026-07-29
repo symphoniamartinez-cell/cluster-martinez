@@ -14,6 +14,8 @@ import {
   RefreshCw,
   History,
   X,
+  PlusCircle,
+  Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { TokoBarang, TokoPenjualan, TokoPergerakanStok } from '@/types';
@@ -22,7 +24,7 @@ import {
   getTokoPenjualanLocal,
   getTokoPergerakanLocal,
   syncTokoDataFromCloud,
-  pindahKeDisplay,
+  pindahKeDisplayBatch,
   inputPenjualan,
 } from '@/lib/toko-store';
 
@@ -37,7 +39,7 @@ export default function KasirTokoPage() {
   const [pergerakanList, setPergerakanList] = useState<TokoPergerakanStok[]>([]);
 
   const [showModalPindah, setShowModalPindah] = useState(false);
-  const [pindahForm, setPindahForm] = useState({ barang_id: '', jumlah: 1 });
+  const [pindahForm, setPindahForm] = useState<{ items: { barang_id: string; jumlah_satuan_kecil: number }[] }>({ items: [] });
 
   const [searchRiwayat, setSearchRiwayat] = useState('');
   const [detailInvoice, setDetailInvoice] = useState<{
@@ -79,10 +81,10 @@ export default function KasirTokoPage() {
   // ── HANDLERS ──
   const handleSimpanPindah = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pindahForm.barang_id || pindahForm.jumlah <= 0) return;
+    if (pindahForm.items.length === 0) return;
 
     const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Kasir';
-    const res = await pindahKeDisplay(pindahForm.barang_id, pindahForm.jumlah, user);
+    const res = await pindahKeDisplayBatch(pindahForm.items, user);
 
     if (res.success) {
       showToast('Berhasil pindah barang ke Display!');
@@ -290,7 +292,7 @@ export default function KasirTokoPage() {
             </div>
             <button
               onClick={() => {
-                setPindahForm({ barang_id: barangList[0]?.id || '', jumlah: 1 });
+                setPindahForm({ items: [{ barang_id: barangList[0]?.id || '', jumlah_satuan_kecil: 1 }] });
                 setShowModalPindah(true);
               }}
               className="px-6 py-3 bg-white text-cyan-600 font-bold rounded-2xl shadow-lg hover:bg-cyan-50 transition-colors w-full sm:w-auto"
@@ -334,39 +336,96 @@ export default function KasirTokoPage() {
       {showModalPindah && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalPindah(false)} />
-          <div className="relative w-full max-w-sm bg-white dark:bg-surface-900 rounded-3xl p-6 shadow-2xl animate-fade-in">
-            <h3 className="font-bold text-lg mb-4">Ambil dari Gudang ke Display</h3>
-            <form onSubmit={handleSimpanPindah} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold mb-1">Pilih Barang</label>
-                <select
-                  required
-                  value={pindahForm.barang_id}
-                  onChange={e => setPindahForm({ ...pindahForm, barang_id: e.target.value })}
-                  className="w-full px-4 py-3 bg-surface-50 dark:bg-surface-800 rounded-xl"
-                >
-                  {barangList.map(b => (
-                    <option key={b.id} value={b.id}>{b.nama_barang} (Gudang: {b.stok_gudang} {b.satuan_kecil})</option>
+          <div className="relative w-full max-w-2xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl animate-fade-in overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-cyan-500 to-blue-500" />
+            <div className="p-6 flex-1 overflow-y-auto">
+              <h3 className="font-bold text-lg mb-4">Ambil dari Gudang ke Display</h3>
+              <form onSubmit={handleSimpanPindah} className="space-y-6">
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm">Daftar Barang</h4>
+                    <button
+                      type="button"
+                      onClick={() => setPindahForm(prev => ({
+                        ...prev,
+                        items: [...prev.items, { barang_id: barangList[0]?.id || '', jumlah_satuan_kecil: 1 }]
+                      }))}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-500/20 transition-colors"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      Tambah Baris
+                    </button>
+                  </div>
+                  
+                  {pindahForm.items.map((item, index) => (
+                    <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700">
+                      <div className="w-full sm:flex-1">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Barang</label>
+                        <select
+                          required
+                          value={item.barang_id}
+                          onChange={e => {
+                            const newItems = [...pindahForm.items];
+                            newItems[index] = { 
+                              ...newItems[index], 
+                              barang_id: e.target.value
+                            };
+                            setPindahForm({ ...pindahForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        >
+                          <option value="">-- Pilih --</option>
+                          {barangList.map(b => (
+                            <option key={b.id} value={b.id}>{b.nama_barang} (Gudang: {b.stok_gudang} {b.satuan_kecil})</option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div className="w-full sm:w-32">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">
+                          Qty ({barangList.find(b => b.id === item.barang_id)?.satuan_kecil || 'Pcs'})
+                        </label>
+                        <input
+                          type="number"
+                          required min={1}
+                          value={item.jumlah_satuan_kecil}
+                          onChange={e => {
+                            const newItems = [...pindahForm.items];
+                            newItems[index].jumlah_satuan_kecil = parseInt(e.target.value) || 1;
+                            setPindahForm({ ...pindahForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        />
+                      </div>
+
+                      <div className="sm:pt-5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = pindahForm.items.filter((_, i) => i !== index);
+                            setPindahForm({ ...pindahForm, items: newItems });
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                          disabled={pindahForm.items.length === 1}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1">
-                  Jumlah Pindah ({barangList.find(b => b.id === pindahForm.barang_id)?.satuan_kecil})
-                </label>
-                <input
-                  type="number"
-                  required min={1}
-                  value={pindahForm.jumlah}
-                  onChange={e => setPindahForm({ ...pindahForm, jumlah: parseInt(e.target.value) || 1 })}
-                  className="w-full px-4 py-3 bg-surface-50 dark:bg-surface-800 rounded-xl text-lg font-bold"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModalPindah(false)} className="flex-1 py-3 bg-surface-100 rounded-xl font-bold text-surface-600">Batal</button>
-                <button type="submit" className="flex-1 py-3 bg-cyan-600 text-white rounded-xl font-bold">Pindahkan</button>
-              </div>
-            </form>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-surface-100 dark:border-surface-800">
+                  <button type="button" onClick={() => setShowModalPindah(false)} className="px-5 py-2.5 bg-surface-100 dark:bg-surface-800 rounded-xl font-bold cursor-pointer">
+                    Batal
+                  </button>
+                  <button type="submit" className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold transition-all shadow-md cursor-pointer">
+                    Pindahkan Stok
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
