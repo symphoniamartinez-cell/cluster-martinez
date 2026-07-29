@@ -57,6 +57,7 @@ export default function WargaDashboardPage() {
   const [showDebug, setShowDebug] = useState(false);
   const [debugLines, setDebugLines] = useState<string[]>([]);
   const [eventMap, setEventMap] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<'iuran' | 'kupon'>('iuran');
 
   const [config, setConfig] = useState<IuranConfig>({
     nominal_per_bulan: 50000,
@@ -576,9 +577,35 @@ export default function WargaDashboardPage() {
           </div>
         </div>
 
+        {/* ── TABS NAVIGATION ────────────────────────── */}
+        <div className="flex p-1 bg-surface-200/50 dark:bg-surface-800/50 rounded-2xl">
+          <button
+            onClick={() => setActiveTab('iuran')}
+            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
+              activeTab === 'iuran'
+                ? 'bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+            }`}
+          >
+            Data Iuran
+          </button>
+          <button
+            onClick={() => setActiveTab('kupon')}
+            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
+              activeTab === 'kupon'
+                ? 'bg-white dark:bg-surface-700 text-accent-600 dark:text-accent-400 shadow-sm'
+                : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+            }`}
+          >
+            Kupon Acara
+          </button>
+        </div>
+
         {/* ── SECTION 2: METRIC CARDS DATA IURAN WARGA ────────── */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
+        {activeTab === 'iuran' && (
+          <div className="space-y-6 animate-fade-in">
+            <div>
+              <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary-500" />
               <h2 className="text-sm font-bold uppercase tracking-wider text-surface-900 dark:text-white">
@@ -606,40 +633,40 @@ export default function WargaDashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {/* Card 1: Total Terbayar */}
-            <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-4 shadow-sm">
+            <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-3 sm:p-4 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-surface-500">
-                  Total Terbayar ({tahun})
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-surface-500 leading-tight">
+                  Total<br className="sm:hidden" />Terbayar
                 </span>
-                <div className="w-8 h-8 rounded-xl bg-success-500/10 flex items-center justify-center">
-                  <Wallet className="w-4 h-4 text-success-500" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-success-500/10 flex items-center justify-center flex-shrink-0">
+                  <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-success-500" />
                 </div>
               </div>
-              <p className="text-xl font-bold font-mono text-success-600 dark:text-success-400">
+              <p className="text-base sm:text-xl font-bold font-mono text-success-600 dark:text-success-400 truncate">
                 {formatRupiah(nominalTerbayarTotal)}
               </p>
-              <p className="text-xs text-surface-500 mt-1 font-medium">
-                {totalLunasCount} dari 12 bulan lunas
+              <p className="text-[10px] sm:text-xs text-surface-500 mt-1 font-medium">
+                {totalLunasCount} dr 12 bln
               </p>
             </div>
 
             {/* Card 2: Sisa Tunggakan */}
-            <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-4 shadow-sm">
+            <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-3 sm:p-4 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-surface-500">
-                  Sisa Tunggakan ({tahun})
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-surface-500 leading-tight">
+                  Sisa<br className="sm:hidden" />Tunggakan
                 </span>
-                <div className="w-8 h-8 rounded-xl bg-danger-500/10 flex items-center justify-center">
-                  <Coins className="w-4 h-4 text-danger-500" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-danger-500/10 flex items-center justify-center flex-shrink-0">
+                  <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-danger-500" />
                 </div>
               </div>
-              <p className="text-xl font-bold font-mono text-danger-600 dark:text-danger-400">
+              <p className="text-base sm:text-xl font-bold font-mono text-danger-600 dark:text-danger-400 truncate">
                 {formatRupiah(nominalTunggakanTotal)}
               </p>
-              <p className="text-xs text-surface-500 mt-1 font-medium">
-                {totalBelumCount} bulan belum terbayar
+              <p className="text-[10px] sm:text-xs text-surface-500 mt-1 font-medium">
+                {totalBelumCount} bln blm byr
               </p>
             </div>
           </div>
@@ -711,8 +738,11 @@ export default function WargaDashboardPage() {
             })}
           </div>
         </div>
+        </div>
+        )}
 
         {/* ── SECTION 4: KUPON ACARA KUSTER ────────────────────── */}
+        {activeTab === 'kupon' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden animate-fade-in">
           <div className="px-5 py-4 border-b border-surface-200 dark:border-surface-800">
             <div className="flex items-center justify-between">
@@ -792,6 +822,7 @@ export default function WargaDashboardPage() {
             )}
           </div>
         </div>
+        )}
       </main>
 
       {/* ── MODAL CARA BAYAR / TRANSFER REKENING ───────────────── */}
