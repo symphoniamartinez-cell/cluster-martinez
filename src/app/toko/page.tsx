@@ -106,7 +106,7 @@ export default function KasirTokoPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[800px] mx-auto animate-fade-in pb-12 pt-4 px-4 sm:px-0">
+    <div className="space-y-6 w-full min-w-0 max-w-[800px] mx-auto animate-fade-in pb-12 pt-4 px-4 sm:px-0">
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 flex items-center gap-2.5 px-5 py-3.5 bg-surface-900 text-white rounded-2xl shadow-2xl border border-white/10 animate-fade-in text-sm font-medium">
           <Check className="w-4 h-4 text-success-400 flex-shrink-0" />
