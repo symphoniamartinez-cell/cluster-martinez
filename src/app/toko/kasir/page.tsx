@@ -229,7 +229,7 @@ export default function KasirPOSPage() {
 
             <button
               onClick={handleAddRow}
-              className="mt-4 flex items-center gap-2 px-4 py-2.5 bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 font-bold rounded-xl text-xs hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors cursor-pointer"
+              className="mt-4 flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-3 border-2 border-dashed border-blue-500/40 text-blue-600 dark:text-blue-400 font-bold rounded-xl text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
               Tambah Baris Barang
