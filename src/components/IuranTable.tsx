@@ -114,8 +114,9 @@ export default function IuranTable({
 
   // Generate year options
   const years = useMemo(() => {
-    const current = new Date().getFullYear();
-    return Array.from({ length: 5 }, (_, i) => current - 2 + i);
+    const startYear = 2026;
+    const endYear = 2100;
+    return Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
   }, []);
 
   // Always display all 12 months (Jan - Des)

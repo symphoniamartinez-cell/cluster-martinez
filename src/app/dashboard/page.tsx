@@ -443,8 +443,9 @@ export default function WargaDashboardPage() {
   const nominalTunggakanTotal = totalBelumCount * config.nominal_per_bulan;
 
   const years = useMemo(() => {
-    const current = new Date().getFullYear();
-    return Array.from({ length: 3 }, (_, i) => current - 1 + i);
+    const startYear = 2026;
+    const endYear = 2100;
+    return Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
   }, []);
 
   const formatRupiah = (amount: number) => {
@@ -630,7 +631,7 @@ export default function WargaDashboardPage() {
                 onChange={(e) => setTahun(Number(e.target.value))}
                 className="appearance-none bg-transparent text-xs font-bold text-surface-700 dark:text-surface-300 pr-5 py-1 focus:outline-none cursor-pointer z-10"
               >
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
+                {years.map(y => (
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>
