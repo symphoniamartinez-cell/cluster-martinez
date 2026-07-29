@@ -39,7 +39,7 @@ import { createClient } from '@/lib/supabase/client';
 const STORAGE_KEY_IURAN = 'martinez_iuran_matrix_v2';
 
 // Helper to normalize house numbers for robust matching (e.g. "MTNR/11" === "mtnr / 11")
-const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[\s\-_]/g, '');
+const cleanHouseNo = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 export default function WargaDashboardPage() {
   const [tahun, setTahun] = useState(new Date().getFullYear());
