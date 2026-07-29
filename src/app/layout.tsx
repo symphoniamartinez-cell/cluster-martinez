@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Cluster Martinez",
+    title: "MartinezApp",
   },
   icons: {
     icon: "/icons/icon-192.png",

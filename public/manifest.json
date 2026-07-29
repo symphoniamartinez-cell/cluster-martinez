@@ -1,6 +1,6 @@
 {
   "name": "Super App Cluster Martinez",
-  "short_name": "Cluster Martinez",
+  "short_name": "MartinezApp",
   "description": "Aplikasi Super Manajemen Warga, Iuran Bulanan, & Acara Kluster Martinez",
   "start_url": "/login",
   "id": "/",
