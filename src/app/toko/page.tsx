@@ -117,8 +117,8 @@ export default function KasirTokoPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/20">
-            <Store className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white shadow-lg border border-surface-200 overflow-hidden">
+            <img src="/logo.jpg" alt="Logo Toko" className="w-full h-full object-contain p-1" />
           </div>
           <div>
             <h1 className="text-xl lg:text-2xl font-bold text-surface-900 dark:text-white">
@@ -154,39 +154,39 @@ export default function KasirTokoPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 bg-surface-100/50 dark:bg-surface-800/50 p-1.5 rounded-2xl w-full sm:w-fit overflow-x-auto">
+      <div className="flex items-center bg-surface-100/50 dark:bg-surface-800/50 p-1 rounded-xl w-full">
         <button
           onClick={() => setActiveTab('kasir')}
-          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
+          className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:px-4 rounded-lg font-bold text-[10px] sm:text-sm transition-all text-center leading-tight ${
             activeTab === 'kasir'
               ? 'bg-white dark:bg-surface-900 text-blue-600 dark:text-blue-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
               : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
           }`}
         >
-          <ShoppingCart className="w-4 h-4" />
-          Kasir Penjualan
+          <ShoppingCart className="w-4 h-4 sm:w-4 sm:h-4 mb-0.5 sm:mb-0 mx-auto sm:mx-0" />
+          <span>POS Kasir</span>
         </button>
         <button
           onClick={() => setActiveTab('display')}
-          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
+          className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:px-4 rounded-lg font-bold text-[10px] sm:text-sm transition-all text-center leading-tight ${
             activeTab === 'display'
               ? 'bg-white dark:bg-surface-900 text-cyan-600 dark:text-cyan-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
               : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
           }`}
         >
-          <ArrowRightLeft className="w-4 h-4" />
-          Isi Etalase
+          <ArrowRightLeft className="w-4 h-4 sm:w-4 sm:h-4 mb-0.5 sm:mb-0 mx-auto sm:mx-0" />
+          <span>Isi Etalase</span>
         </button>
         <button
           onClick={() => setActiveTab('riwayat')}
-          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
+          className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:px-4 rounded-lg font-bold text-[10px] sm:text-sm transition-all text-center leading-tight ${
             activeTab === 'riwayat'
               ? 'bg-white dark:bg-surface-900 text-purple-600 dark:text-purple-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
               : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
           }`}
         >
-          <History className="w-4 h-4" />
-          Riwayat Penjualan
+          <History className="w-4 h-4 sm:w-4 sm:h-4 mb-0.5 sm:mb-0 mx-auto sm:mx-0" />
+          <span>Riwayat Jual</span>
         </button>
       </div>
 
