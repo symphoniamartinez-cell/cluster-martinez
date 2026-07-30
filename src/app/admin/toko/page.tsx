@@ -1546,39 +1546,69 @@ export default function AdminTokoPage() {
                   <tr>
                     <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider">Nama Barang</th>
                     <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Qty Beli</th>
-                    <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Harga Modal</th>
+                    <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Harga Satuan</th>
+                    <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
                   {detailInvoice.items.map(p => {
                     const brg = barangList.find(b => b.id === p.barang_id);
+                    const isKecil = p.jumlah_satuan_besar === 0;
+                    const qtyPerBesar = brg?.qty_per_satuan_besar || 1;
+                    const hargaBeliBesar = p.harga_beli_satuan_besar || 0;
+                    const hargaBeliPerUnit = isKecil ? Math.round(hargaBeliBesar / qtyPerBesar) : hargaBeliBesar;
+                    const qty = isKecil ? p.jumlah_satuan_kecil : p.jumlah_satuan_besar;
+                    const unitLabel = isKecil ? (brg?.satuan_kecil || 'Pcs') : (brg?.satuan_besar || 'Dus');
+                    const totalPerItem = qty * hargaBeliPerUnit;
+
                     return (
                       <tr key={p.id} className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30">
-                                <td className="px-4 py-3">
-                                  <div className="font-semibold">{brg?.nama_barang || 'Unknown'}</div>
-                                  <div className="text-surface-500">
-                                    {p.jumlah_satuan_besar > 0 ? (
-                                      <>
-                                        {p.jumlah_satuan_besar} {brg?.satuan_besar || 'Dus'}
-                                        {p.jumlah_satuan_kecil > 0 && ` (${p.jumlah_satuan_kecil} ${brg?.satuan_kecil || 'Pcs'})`}
-                                      </>
-                                    ) : (
-                                      <>
-                                        {p.jumlah_satuan_kecil} {brg?.satuan_kecil || 'Pcs'}
-                                      </>
-                                    )}
-                                  </div>
-                                </td>
+                        <td className="px-4 py-3">
+                          <div className="font-semibold">{brg?.nama_barang || 'Unknown'}</div>
+                          <div className="text-surface-500">
+                            {p.jumlah_satuan_besar > 0 ? (
+                              <>
+                                {p.jumlah_satuan_besar} {brg?.satuan_besar || 'Dus'}
+                                {p.jumlah_satuan_kecil > 0 && ` (${p.jumlah_satuan_kecil} ${brg?.satuan_kecil || 'Pcs'})`}
+                              </>
+                            ) : (
+                              <>
+                                {p.jumlah_satuan_kecil} {brg?.satuan_kecil || 'Pcs'}
+                              </>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-6 py-3 text-right font-medium text-indigo-600 dark:text-indigo-400">
-                          +{p.jumlah_satuan_besar} {brg?.satuan_besar || 'Dus'}
+                          +{qty} {unitLabel}
                         </td>
                         <td className="px-6 py-3 text-right font-mono text-surface-600 dark:text-surface-400">
-                          Rp {(p.harga_beli_satuan_besar || 0).toLocaleString('id-ID')}
+                          Rp {hargaBeliPerUnit.toLocaleString('id-ID')}
+                        </td>
+                        <td className="px-6 py-3 text-right font-mono font-bold text-surface-900 dark:text-white">
+                          Rp {totalPerItem.toLocaleString('id-ID')}
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
+                <tfoot className="bg-surface-50 dark:bg-surface-800/80 sticky bottom-0 border-t border-surface-200 dark:border-surface-700">
+                  <tr>
+                    <td colSpan={3} className="px-6 py-4 text-right font-bold text-surface-900 dark:text-white uppercase tracking-wider text-xs">
+                      Grand Total Pembelian
+                    </td>
+                    <td className="px-6 py-4 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400 text-sm">
+                      Rp {detailInvoice.items.reduce((sum, p) => {
+                        const brg = barangList.find(b => b.id === p.barang_id);
+                        const isKecil = p.jumlah_satuan_besar === 0;
+                        const qtyPerBesar = brg?.qty_per_satuan_besar || 1;
+                        const hargaBeliBesar = p.harga_beli_satuan_besar || 0;
+                        const hargaBeliPerUnit = isKecil ? Math.round(hargaBeliBesar / qtyPerBesar) : hargaBeliBesar;
+                        const qty = isKecil ? p.jumlah_satuan_kecil : p.jumlah_satuan_besar;
+                        return sum + (qty * hargaBeliPerUnit);
+                      }, 0).toLocaleString('id-ID')}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
             <div className="p-4 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/50 flex justify-end">
