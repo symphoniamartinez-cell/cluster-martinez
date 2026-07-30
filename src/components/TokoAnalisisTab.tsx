@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { TokoPenjualan, TokoBarang } from '@/types';
 import { Package, TrendingUp } from 'lucide-react';
 
@@ -125,24 +125,6 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
               </div>
             </div>
 
-            <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-4">Grafik Penjualan Seluruh Barang</h4>
-            <div className="w-full h-72 mb-8 bg-surface-50 dark:bg-surface-800/20 rounded-xl p-4 border border-surface-100 dark:border-surface-800 overflow-x-auto no-scrollbar">
-              <div style={{ minWidth: `${Math.max(allItems.length * 80, 100)}%`, height: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={allItems} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
-                  <XAxis dataKey="nama" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    cursor={{fill: 'transparent'}}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }} 
-                  />
-                  <Bar dataKey="qty" name="Kuantitas Terjual" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-              </div>
-            </div>
-            
             <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-4">Rincian Runrate Seluruh Barang</h4>
             <div className="overflow-x-auto rounded-xl border border-surface-200 dark:border-surface-700">
               <table className="w-full text-xs text-left">
