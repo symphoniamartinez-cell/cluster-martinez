@@ -98,3 +98,11 @@ CREATE TABLE IF NOT EXISTS public.toko_payment_harian (
 DROP POLICY IF EXISTS "Allow all actions for toko_payment_harian" ON public.toko_payment_harian;
 CREATE POLICY "Allow all actions for toko_payment_harian" ON public.toko_payment_harian FOR ALL USING (true);
 
+
+-- ==========================================
+-- Update Tabel Payment Harian
+-- ==========================================
+ALTER TABLE public.toko_payment_harian 
+ADD COLUMN IF NOT EXISTS dikonfirmasi_oleh TEXT,
+ADD COLUMN IF NOT EXISTS dikonfirmasi_pada TIMESTAMP WITH TIME ZONE;
+

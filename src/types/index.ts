@@ -244,5 +244,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 export interface TokoPaymentHarian {
   tanggal: string;
   payment_diterima: number;
+  dikonfirmasi_oleh?: string;
+  dikonfirmasi_pada?: string;
 }
 

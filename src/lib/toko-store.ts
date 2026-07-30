@@ -79,11 +79,17 @@ export async function saveTokoBarang(barang: TokoBarang) {
   }
 }
 
-export async function saveTokoPaymentHarian(tanggal: string, payment_diterima: number) {
+export async function saveTokoPaymentHarian(tanggal: string, payment_diterima: number, user: string) {
   try {
     const client = createClient();
     if (client) {
-      const { error } = await client.from('toko_payment_harian').upsert({ tanggal, payment_diterima }, { onConflict: 'tanggal' });
+      const payload = {
+        tanggal,
+        payment_diterima,
+        dikonfirmasi_oleh: user,
+        dikonfirmasi_pada: new Date().toISOString()
+      };
+      const { error } = await client.from('toko_payment_harian').upsert(payload, { onConflict: 'tanggal' });
       if (error) throw error;
     }
     await syncTokoDataFromCloud();

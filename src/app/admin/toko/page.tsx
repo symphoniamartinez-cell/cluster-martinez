@@ -24,6 +24,7 @@ import {
   Pencil,
   Settings,
   AlertTriangle,
+  AlertCircle,
   Download,
   ChevronDown,
 } from 'lucide-react';
@@ -135,7 +136,8 @@ export default function AdminTokoPage() {
     if (isNaN(amount)) return showToast('Nominal tidak valid!');
     
     setIsSyncing(true);
-    const res = await saveTokoPaymentHarian(tanggal, amount);
+    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
+    const res = await saveTokoPaymentHarian(tanggal, amount, user);
     if (res.success) {
       showToast(`Payment untuk ${tanggal} berhasil disimpan!`);
       loadData();
@@ -1169,23 +1171,39 @@ export default function AdminTokoPage() {
                                   Rp {stats.omset.toLocaleString('id-ID')}
                                 </td>
                                 <td className="px-4 py-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className="relative">
-                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 font-mono">Rp</span>
-                                      <input 
-                                        type="number"
-                                        value={paymentInputs[stats.tanggal] !== undefined ? paymentInputs[stats.tanggal] : ''}
-                                        onChange={e => setPaymentInputs(prev => ({ ...prev, [stats.tanggal]: e.target.value }))}
-                                        className="w-32 pl-9 pr-3 py-1.5 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg font-mono text-xs"
-                                        placeholder="0"
-                                      />
+                                  <div className="flex flex-col gap-1.5">
+                                    <div className="flex items-center gap-2">
+                                      <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 font-mono">Rp</span>
+                                        <input 
+                                          type="number"
+                                          value={paymentInputs[stats.tanggal] !== undefined ? paymentInputs[stats.tanggal] : ''}
+                                          onChange={e => setPaymentInputs(prev => ({ ...prev, [stats.tanggal]: e.target.value }))}
+                                          className="w-32 pl-9 pr-3 py-1.5 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg font-mono text-xs"
+                                          placeholder="0"
+                                        />
+                                      </div>
+                                      <button 
+                                        onClick={() => handleKonfirmasiPayment(stats.tanggal)}
+                                        className="px-3 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors cursor-pointer"
+                                      >
+                                        {paymentList.find(x => x.tanggal === stats.tanggal)?.dikonfirmasi_oleh ? 'Update' : 'Konfirmasi'}
+                                      </button>
                                     </div>
-                                    <button 
-                                      onClick={() => handleKonfirmasiPayment(stats.tanggal)}
-                                      className="px-3 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors cursor-pointer"
-                                    >
-                                      Konfirmasi
-                                    </button>
+                                    {paymentList.find(x => x.tanggal === stats.tanggal)?.dikonfirmasi_oleh ? (() => {
+                                      const p = paymentList.find(x => x.tanggal === stats.tanggal)!;
+                                      return (
+                                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                          <Check className="w-3 h-3 flex-shrink-0" />
+                                          <span>Oleh {p.dikonfirmasi_oleh} pada {p.dikonfirmasi_pada ? new Date(p.dikonfirmasi_pada).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' }) : '-'}</span>
+                                        </div>
+                                      );
+                                    })() : (
+                                      <div className="text-[10px] text-amber-500 font-medium flex items-center gap-1">
+                                        <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                                        <span>Belum dikonfirmasi</span>
+                                      </div>
+                                    )}
                                   </div>
                                 </td>
                                 <td className={`px-4 py-3 text-right font-mono font-bold ${currentSelisih < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
