@@ -22,18 +22,13 @@ export default function KasirPOSPage() {
   const [barangList, setBarangList] = useState<TokoBarang[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
-  const [cart, setCart] = useState<PenjualanItem[]>([
-    { barang_id: '', jumlah_satuan_kecil: 1 }
-  ]);
+  const [cart, setCart] = useState<PenjualanItem[]>([]);
   const [namaPelanggan, setNamaPelanggan] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const list = getTokoBarangLocal();
     setBarangList(list);
-    if (list.length > 0) {
-      setCart([{ barang_id: list[0].id, jumlah_satuan_kecil: 1 }]);
-    }
   }, []);
 
   const showToast = (msg: string) => {
@@ -90,14 +85,16 @@ export default function KasirPOSPage() {
     if (res.success) {
       showToast('Transaksi berhasil dibayar & dicatat!');
       // Reset form
-      if (barangList.length > 0) {
-        setCart([{ barang_id: barangList[0].id, jumlah_satuan_kecil: 1 }]);
-      } else {
-        setCart([]);
-      }
+      setCart([]);
       setNamaPelanggan('');
       // Refresh stok local
       setBarangList(getTokoBarangLocal());
+      
+      // Redirect to riwayat tab
+      sessionStorage.setItem('toko_active_tab', 'riwayat');
+      setTimeout(() => {
+        router.push('/toko');
+      }, 800);
     } else {
       alert(`Gagal memproses transaksi: ${res.error}`);
     }
@@ -269,7 +266,7 @@ export default function KasirPOSPage() {
               ) : (
                 <>
                   <Check className="w-5 h-5" />
-                  BAYAR SEKARANG
+                  INPUT PENJUALAN
                 </>
               )}
             </button>

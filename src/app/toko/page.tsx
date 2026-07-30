@@ -77,6 +77,12 @@ export default function KasirTokoPage() {
   useEffect(() => {
     loadData();
     handleSyncData(false);
+    
+    const savedTab = sessionStorage.getItem('toko_active_tab') as 'kasir' | 'display' | 'riwayat';
+    if (savedTab) {
+      setActiveTab(savedTab);
+      sessionStorage.removeItem('toko_active_tab');
+    }
   }, []);
 
   // ── HANDLERS ──
