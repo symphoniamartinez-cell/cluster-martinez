@@ -13,6 +13,7 @@ import {
   getTokoPergerakanLocal,
   editPembelianInvoice,
   syncTokoDataFromCloud,
+  getClientUserName,
   type PembelianItem
 } from '@/lib/toko-store';
 
@@ -39,14 +40,7 @@ export default function EditPembelianPage({ params }: { params: Promise<{ nomor_
   });
 
   useEffect(() => {
-    let name = 'Unknown';
-    try {
-      const sessionData = JSON.parse(sessionStorage.getItem('demo_user') || '{}');
-      name = sessionData.label || localStorage.getItem('martinez_role') || 'Unknown';
-    } catch (e) {
-      name = localStorage.getItem('martinez_role') || 'Unknown';
-    }
-    setUserRole(name);
+    setUserRole(getClientUserName());
 
     const loadData = async () => {
       // Fetch latest from cloud to ensure local storage is up to date

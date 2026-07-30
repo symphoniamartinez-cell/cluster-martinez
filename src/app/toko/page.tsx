@@ -27,6 +27,7 @@ import {
   syncTokoDataFromCloud,
   pindahKeDisplayBatch,
   inputPenjualan,
+  getClientUserName
 } from '@/lib/toko-store';
 
 export default function KasirTokoPage() {
@@ -90,7 +91,7 @@ export default function KasirTokoPage() {
     e.preventDefault();
     if (pindahForm.items.length === 0) return;
 
-    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Kasir';
+    const user = getClientUserName('Kasir');
     const res = await pindahKeDisplayBatch(pindahForm.items, user);
 
     if (res.success) {
@@ -330,8 +331,9 @@ export default function KasirTokoPage() {
           </div>
 
           <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 overflow-hidden w-full">
-            <div className="w-full overflow-x-auto">
-              <table className="w-full min-w-[400px] text-left text-sm">
+            {/* DESKTOP VIEW */}
+            <div className="hidden sm:block w-full overflow-x-auto">
+              <table className="w-full text-left text-sm">
                 <thead className="bg-surface-50 dark:bg-surface-800">
                 <tr>
                   <th className="px-4 py-3 font-semibold text-surface-500">Barang (Ecer)</th>
@@ -344,12 +346,12 @@ export default function KasirTokoPage() {
                   <tr key={b.id}>
                     <td className="px-4 py-3 font-bold">{b.nama_barang}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="bg-surface-100 dark:bg-surface-800 px-2 py-1 rounded-lg text-surface-600 font-mono text-xs">
+                      <span className="bg-surface-100 dark:bg-surface-800 px-3 py-1 rounded-lg text-surface-600 font-mono text-xs whitespace-nowrap">
                         {b.stok_gudang} {b.satuan_kecil}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className="bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 px-2 py-1 rounded-lg font-mono text-xs font-bold">
+                      <span className="bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 px-3 py-1 rounded-lg font-mono text-xs font-bold whitespace-nowrap">
                         {b.stok_display} {b.satuan_kecil}
                       </span>
                     </td>
@@ -357,6 +359,29 @@ export default function KasirTokoPage() {
                 ))}
               </tbody>
               </table>
+            </div>
+
+            {/* MOBILE VIEW */}
+            <div className="sm:hidden flex flex-col divide-y divide-surface-100 dark:divide-surface-800">
+              {barangList.map(b => (
+                <div key={b.id} className="p-4 flex flex-col gap-3">
+                  <div className="font-bold text-sm text-surface-900 dark:text-white">{b.nama_barang}</div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 flex flex-col gap-1">
+                      <span className="text-[10px] text-surface-500 uppercase font-semibold">Di Gudang</span>
+                      <div className="bg-surface-50 dark:bg-surface-800/50 border border-surface-200 dark:border-surface-700 px-3 py-2 rounded-xl text-surface-600 dark:text-surface-300 font-mono text-xs font-bold text-center">
+                        {b.stok_gudang} <span className="font-sans font-normal">{b.satuan_kecil}</span>
+                      </div>
+                    </div>
+                    <div className="flex-1 flex flex-col gap-1">
+                      <span className="text-[10px] text-cyan-600 dark:text-cyan-400 uppercase font-semibold">Di Display</span>
+                      <div className="bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800/50 text-cyan-600 dark:text-cyan-400 px-3 py-2 rounded-xl font-mono text-xs font-bold text-center shadow-sm">
+                        {b.stok_display} <span className="font-sans font-normal">{b.satuan_kecil}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

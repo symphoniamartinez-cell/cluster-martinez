@@ -47,6 +47,7 @@ import {
   deleteMutasiStok,
   deletePembelianInvoice,
   editPembelianInvoice,
+  getClientUserName,
   type PembelianItem,
   type KeluarkanItem,
 } from '@/lib/toko-store';
@@ -136,7 +137,7 @@ export default function AdminTokoPage() {
     if (isNaN(amount)) return showToast('Nominal tidak valid!');
     
     setIsSyncing(true);
-    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
+    const user = getClientUserName('Admin');
     const res = await saveTokoPaymentHarian(tanggal, amount, user);
     if (res.success) {
       showToast(`Payment untuk ${tanggal} berhasil disimpan!`);
@@ -191,7 +192,7 @@ export default function AdminTokoPage() {
     e.preventDefault();
     if (keluarForm.items.length === 0) return;
 
-    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
+    const user = getClientUserName('Admin');
     const res = await keluarkanBatchGudang(
       keluarForm.items,
       keluarForm.catatan,
@@ -211,7 +212,7 @@ export default function AdminTokoPage() {
     e.preventDefault();
     if (pindahForm.items.length === 0) return;
 
-    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
+    const user = getClientUserName('Admin');
     const res = await pindahKeDisplayBatch(pindahForm.items, user);
 
     if (res.success) {
@@ -241,7 +242,7 @@ export default function AdminTokoPage() {
     if (!editRiwayat) return;
 
     setIsSyncing(true);
-    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
+    const user = getClientUserName('Admin');
     const res = await editPenjualanInvoice(
       editRiwayat.nomor_invoice,
       editRiwayat.items.map(i => ({ 

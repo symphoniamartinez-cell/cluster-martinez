@@ -848,3 +848,25 @@ export async function editPembelianInvoice(
     return { success: false, error: err.message };
   }
 }
+
+export function getClientUserName(fallback: string = 'Unknown'): string {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const sessionData = JSON.parse(sessionStorage.getItem('demo_user') || '{}');
+    if (sessionData.label) return sessionData.label;
+  } catch {}
+  try {
+    const cookies = document.cookie.split(';');
+    const demoUserCookie = cookies.find(c => c.trim().startsWith('demo_user='));
+    if (demoUserCookie) {
+      const cookieValue = demoUserCookie.split('=')[1];
+      const sessionData = JSON.parse(decodeURIComponent(cookieValue));
+      if (sessionData.label) return sessionData.label;
+    }
+  } catch {}
+  try {
+    const role = localStorage.getItem('martinez_role');
+    if (role) return role;
+  } catch {}
+  return fallback;
+}

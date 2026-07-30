@@ -14,6 +14,7 @@ import type { TokoBarang } from '@/types';
 import {
   getTokoBarangLocal,
   inputPenjualanBatch,
+  getClientUserName,
   type PenjualanItem
 } from '@/lib/toko-store';
 
@@ -79,7 +80,7 @@ export default function KasirPOSPage() {
     }
 
     setIsSubmitting(true);
-    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Kasir';
+    const user = getClientUserName('Kasir');
     const res = await inputPenjualanBatch(validItems, user, namaPelanggan);
     
     if (res.success) {

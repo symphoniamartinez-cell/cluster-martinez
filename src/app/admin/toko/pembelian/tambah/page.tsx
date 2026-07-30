@@ -12,6 +12,7 @@ import type { TokoBarang } from '@/types';
 import {
   getTokoBarangLocal,
   addPembelianBatchGudang,
+  getClientUserName,
   type PembelianItem
 } from '@/lib/toko-store';
 
@@ -22,14 +23,7 @@ export default function InputPembelianPage() {
   const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
-    let name = 'Unknown';
-    try {
-      const sessionData = JSON.parse(sessionStorage.getItem('demo_user') || '{}');
-      name = sessionData.label || localStorage.getItem('martinez_role') || 'Unknown';
-    } catch (e) {
-      name = localStorage.getItem('martinez_role') || 'Unknown';
-    }
-    setUserRole(name);
+    setUserRole(getClientUserName());
     setBarangList(getTokoBarangLocal());
   }, []);
 
