@@ -723,6 +723,25 @@ export default function AdminEventsPage() {
                           {countScannedForBooth || b.total_scanned || 0} Scanned
                         </span>
                       </div>
+                      
+                      {/* Tampilkan Akses Scan Kupon */}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {b.allowed_categories && b.allowed_categories.length > 0 ? (
+                          b.allowed_categories.map((catId) => {
+                            const ev = events.find((e) => e.id === b.event_id);
+                            const cat = ev?.rules?.categories?.find((c) => c.id === catId);
+                            return (
+                              <span key={catId} className="px-1.5 py-0.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-md text-[9px] font-bold border border-primary-500/20">
+                                {cat ? cat.nama_kategori : 'Kupon Valid'}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span className="px-1.5 py-0.5 bg-surface-100 dark:bg-surface-800 text-surface-500 rounded-md text-[9px] font-bold border border-surface-200 dark:border-surface-700">
+                            Semua Akses (Tidak Dibatasi)
+                          </span>
+                        )}
+                      </div>
 
                       <div className="pt-2 border-t border-surface-200 dark:border-surface-700 space-y-1 font-mono">
                         <div className="flex justify-between">

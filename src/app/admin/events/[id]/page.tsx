@@ -276,7 +276,7 @@ export default function SingleEventDetailPage({
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-500 hover:to-accent-500 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all"
           >
             <Plus className="w-4 h-4" />
-            + Kupon Manual Lapangan
+            Kupon Manual Lapangan
           </button>
 
           {(userRole === 'superadmin' || userRole === 'pengurus') && (
@@ -583,8 +583,24 @@ export default function SingleEventDetailPage({
                     </div>
 
                     <div className="flex items-center justify-between pt-1">
-                      <span className="px-2 py-0.5 bg-success-500/10 text-success-600 dark:text-success-400 font-bold rounded text-[10px] uppercase">
-                        🟢 AKTIF (AKSES DIBUKA)
+                      <div className="flex flex-wrap gap-1">
+                        {b.allowed_categories && b.allowed_categories.length > 0 ? (
+                          b.allowed_categories.map((catId) => {
+                            const cat = event?.rules?.categories?.find((c) => c.id === catId);
+                            return (
+                              <span key={catId} className="px-1.5 py-0.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-md text-[9px] font-bold border border-primary-500/20">
+                                {cat ? cat.nama_kategori : 'Kupon Valid'}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span className="px-1.5 py-0.5 bg-surface-100 dark:bg-surface-800 text-surface-500 rounded-md text-[9px] font-bold border border-surface-200 dark:border-surface-700">
+                            Semua Akses (Tidak Dibatasi)
+                          </span>
+                        )}
+                      </div>
+                      <span className="px-2 py-0.5 bg-success-500/10 text-success-600 dark:text-success-400 font-bold rounded text-[10px] uppercase ml-2">
+                        🟢 AKTIF
                       </span>
                     </div>
                   </div>
