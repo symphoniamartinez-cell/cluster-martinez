@@ -17,9 +17,12 @@ import {
   PlusCircle,
   Trash2,
   LogOut,
+  AlertTriangle,
+  KeyRound,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { TokoBarang, TokoPenjualan, TokoPergerakanStok } from '@/types';
+import GantiPasswordModal from '@/components/GantiPasswordModal';
 import {
   getTokoBarangLocal,
   getTokoPenjualanLocal,
@@ -35,6 +38,8 @@ export default function KasirTokoPage() {
   const [activeTab, setActiveTab] = useState<'kasir' | 'display' | 'riwayat'>('kasir');
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [usernameKey, setUsernameKey] = useState('');
 
   const [barangList, setBarangList] = useState<TokoBarang[]>([]);
   const [penjualanList, setPenjualanList] = useState<TokoPenjualan[]>([]);
@@ -83,6 +88,12 @@ export default function KasirTokoPage() {
     if (savedTab) {
       setActiveTab(savedTab);
       sessionStorage.removeItem('toko_active_tab');
+    }
+
+    const storedUser = sessionStorage.getItem('demo_user');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setUsernameKey(user.nomor || user.label);
     }
   }, []);
 
@@ -140,9 +151,17 @@ export default function KasirTokoPage() {
 
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <button
+            onClick={() => setShowPasswordModal(true)}
+            title="Ganti Password"
+            className="flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2.5 bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 rounded-xl hover:bg-surface-200 dark:hover:bg-surface-700 transition-all cursor-pointer border border-surface-200 dark:border-surface-700"
+          >
+            <KeyRound className="w-4 h-4" />
+            <span className="hidden sm:inline font-semibold text-xs ml-2">Sandi</span>
+          </button>
+          <button
             onClick={handleLogout}
             title="Logout"
-            className="flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-500/20 transition-all cursor-pointer"
+            className="flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-500/20 transition-all cursor-pointer border border-transparent"
           >
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline font-semibold text-xs ml-2">Logout</span>
@@ -551,6 +570,11 @@ export default function KasirTokoPage() {
         </div>
       )}
 
+      <GantiPasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        username={usernameKey}
+      />
     </div>
   );
 }

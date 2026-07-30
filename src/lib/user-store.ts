@@ -74,6 +74,37 @@ export function saveAdminUsersToStorage(users: UserAccount[]) {
 
 import { getBoothsFromStorage, getEventsFromStorage } from '@/lib/event-store';
 
+// Update Admin Password
+export function updateAdminPassword(
+  username: string,
+  oldPasswordInput: string,
+  newPasswordInput: string
+): { success: boolean; error?: string } {
+  const users = getAdminUsersFromStorage();
+  const cleanUsername = username.trim().toUpperCase();
+
+  const userIndex = users.findIndex(
+    (u) => u.username.trim().toUpperCase() === cleanUsername
+  );
+
+  if (userIndex === -1) {
+    return { success: false, error: 'User tidak ditemukan.' };
+  }
+
+  if (users[userIndex].password !== oldPasswordInput) {
+    return { success: false, error: 'Password lama salah.' };
+  }
+
+  if (newPasswordInput.length < 6) {
+    return { success: false, error: 'Password baru minimal 6 karakter.' };
+  }
+
+  users[userIndex].password = newPasswordInput;
+  saveAdminUsersToStorage(users);
+
+  return { success: true };
+}
+
 // Authenticate Admin or Tenant Booth Account
 export function authenticateAdmin(
   inputUsername: string,

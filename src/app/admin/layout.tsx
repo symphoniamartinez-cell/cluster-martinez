@@ -21,9 +21,11 @@ import {
   Settings,
   Ticket,
   Store,
+  KeyRound,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 import { ROLE_LABELS } from '@/types';
+import GantiPasswordModal from '@/components/GantiPasswordModal';
 
 const NAV_ITEMS = [
   {
@@ -82,6 +84,8 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('superadmin');
   const [userName, setUserName] = useState('Admin');
+  const [usernameKey, setUsernameKey] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     // Read demo session
@@ -90,6 +94,7 @@ export default function AdminLayout({
       const user = JSON.parse(stored);
       setUserRole(user.role);
       setUserName(user.label);
+      setUsernameKey(user.nomor || user.label);
     }
   }, []);
 
@@ -141,7 +146,7 @@ export default function AdminLayout({
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {NAV_ITEMS.filter((item) => {
-            if (userRole === 'bendahara' && item.href === '/admin/users') {
+            if ((userRole === 'bendahara' || userRole === 'pengurus') && item.href === '/admin/users') {
               return false;
             }
             return true;
@@ -199,13 +204,22 @@ export default function AdminLayout({
               </span>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-surface-200/60 hover:text-white hover:bg-white/5 rounded-xl transition-all cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            Keluar
-          </button>
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-surface-200/60 hover:text-white hover:bg-white/5 rounded-xl transition-all cursor-pointer"
+            >
+              <KeyRound className="w-4 h-4" />
+              Ganti Password
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-danger-400 hover:text-danger-300 hover:bg-danger-500/10 rounded-xl transition-all cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              Keluar
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -230,6 +244,12 @@ export default function AdminLayout({
           {children}
         </main>
       </div>
+
+      <GantiPasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        username={usernameKey}
+      />
     </div>
   );
 }

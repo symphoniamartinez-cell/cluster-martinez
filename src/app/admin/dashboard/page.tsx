@@ -266,7 +266,7 @@ export default function AdminDashboardOverviewPage() {
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="w-4 h-4 text-primary-500" />
           <h2 className="text-base font-bold text-surface-900 dark:text-white uppercase tracking-wider text-xs">
-            Data Keseluruhan Kluster ({currentMonthName} {selectedTahun})
+            Data Keseluruhan Cluster ({currentMonthName} {selectedTahun})
           </h2>
         </div>
 
