@@ -65,20 +65,7 @@ export default function AdminTokoPage() {
   const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
   const [paymentInputs, setPaymentInputs] = useState<Record<string, string>>({});
 
-  // â”€â”€ MODAL STATES â”€â”€
-
-  const [showModalEditBeli, setShowModalEditBeli] = useState(false);
-  const [editBeliForm, setEditBeliForm] = useState<{
-    nomor_invoice: string;
-    tanggal: string;
-    catatan: string;
-    items: PembelianItem[];
-  }>({
-    nomor_invoice: '',
-    tanggal: new Date().toISOString().slice(0, 10),
-    catatan: '',
-    items: [],
-  });
+  // ── MODAL STATES ──
 
   const [showModalKeluarkan, setShowModalKeluarkan] = useState(false);
   const [keluarForm, setKeluarForm] = useState<{
@@ -281,28 +268,6 @@ export default function AdminTokoPage() {
     setIsSyncing(false);
   };
 
-  const handleSimpanEditPembelian = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editBeliForm.items.length === 0) return;
-
-    setIsSyncing(true);
-    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
-    const res = await editPembelianInvoice(
-      editBeliForm.nomor_invoice,
-      editBeliForm.items,
-      editBeliForm.catatan,
-      user
-    );
-
-    if (res.success) {
-      showToast('Invoice pembelian berhasil diperbarui!');
-      setShowModalEditBeli(false);
-      loadData();
-    } else {
-      showToast(`Gagal mengedit pembelian: ${res.error}`);
-    }
-    setIsSyncing(false);
-  };
 
   const downloadExcel = (data: any[], filename: string) => {
     if (data.length === 0) {
@@ -788,25 +753,7 @@ export default function AdminTokoPage() {
                               Detail
                             </button>
                             <button
-                              onClick={() => {
-                                setEditBeliForm({
-                                  nomor_invoice: invoice.nomor_invoice,
-                                  tanggal: invoice.tanggal.split('T')[0],
-                                  catatan: invoice.catatan,
-                                  items: invoice.items.map(p => {
-                                    const isKecil = p.jumlah_satuan_besar === 0;
-                                    const b = barangList.find(x => x.id === p.barang_id);
-                                    const qtyPerBesar = b?.qty_per_satuan_besar || 1;
-                                    return {
-                                      barang_id: p.barang_id,
-                                      tipe_satuan: isKecil ? 'kecil' : 'besar',
-                                      jumlah: isKecil ? p.jumlah_satuan_kecil : p.jumlah_satuan_besar,
-                                      harga_beli_per_unit: isKecil ? ((p.harga_beli_satuan_besar || 0) / qtyPerBesar) : (p.harga_beli_satuan_besar || 0)
-                                    };
-                                  })
-                                });
-                                setShowModalEditBeli(true);
-                              }}
+                              onClick={() => router.push('/admin/toko/pembelian/edit/' + invoice.nomor_invoice)}
                               className="p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/20 rounded-lg transition-colors cursor-pointer"
                               title="Edit Pembelian"
                             >
@@ -1333,132 +1280,7 @@ export default function AdminTokoPage() {
       {/* Ã¢â€â‚¬Ã¢â€â‚¬ MODALS Ã¢â€â‚¬Ã¢â€â‚¬ */}
 
       {/* Ã¢â€â‚¬Ã¢â€â‚¬ MODAL EDIT PEMBELIAN Ã¢â€â‚¬Ã¢â€â‚¬ */}
-      {showModalEditBeli && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalEditBeli(false)} />
-          <div className="relative w-full max-w-4xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-blue-500 to-indigo-500" />
-            <div className="p-6 text-xs flex-1 overflow-y-auto">
-              <h3 className="text-base font-bold text-surface-900 dark:text-white mb-4 flex items-center gap-2">
-                <Pencil className="w-5 h-5 text-blue-500" />
-                Edit Pembelian: {editBeliForm.nomor_invoice}
-              </h3>
-              
-              <form onSubmit={handleSimpanEditPembelian} className="space-y-6">
-                <div>
-                  <label className="block font-semibold mb-1">Catatan Tambahan</label>
-                  <input
-                    type="text"
-                    value={editBeliForm.catatan}
-                    onChange={e => setEditBeliForm({ ...editBeliForm, catatan: e.target.value })}
-                    placeholder="Beli dari Supplier A"
-                    className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
-                  />
-                </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-sm">Daftar Barang</h4>
-                    <button
-                      type="button"
-                      onClick={() => setEditBeliForm(prev => ({
-                        ...prev,
-                        items: [...prev.items, { barang_id: barangList[0]?.id || '', tipe_satuan: 'besar', jumlah: 1, harga_beli_per_unit: barangList[0]?.harga_beli_satuan_besar || 0 }]
-                      }))}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
-                    >
-                      <PlusCircle className="w-4 h-4" />
-                      Tambah Baris
-                    </button>
-                  </div>
-                  
-                  {editBeliForm.items.map((item, index) => (
-                    <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700">
-                      <div className="w-full sm:flex-1">
-                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Barang</label>
-                        <select
-                          required
-                          value={item.barang_id}
-                          onChange={e => {
-                            const newItems = [...editBeliForm.items];
-                            newItems[index] = { 
-                              ...newItems[index], 
-                              barang_id: e.target.value
-                            };
-                            setEditBeliForm({ ...editBeliForm, items: newItems });
-                          }}
-                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
-                        >
-                          <option value="">-- Pilih --</option>
-                          {barangList.map(b => (
-                            <option key={b.id} value={b.id}>{b.nama_barang}</option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="w-full sm:w-32">
-                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">
-                          Qty
-                        </label>
-                        <input
-                          type="number"
-                          required min={1}
-                          value={item.jumlah}
-                          onChange={e => {
-                            const newItems = [...editBeliForm.items];
-                            newItems[index].jumlah = parseInt(e.target.value) || 1;
-                            setEditBeliForm({ ...editBeliForm, items: newItems });
-                          }}
-                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
-                        />
-                      </div>
-                      
-                      <div className="w-full sm:w-32">
-                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Satuan</label>
-                        <select
-                          value={item.tipe_satuan}
-                          onChange={e => {
-                             const newItems = [...editBeliForm.items];
-                             newItems[index].tipe_satuan = e.target.value as 'besar' | 'kecil';
-                             setEditBeliForm({ ...editBeliForm, items: newItems });
-                          }}
-                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
-                        >
-                           <option value="besar">Besar</option>
-                           <option value="kecil">Kecil</option>
-                        </select>
-                      </div>
-
-                      <div className="sm:pt-5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newItems = editBeliForm.items.filter((_, i) => i !== index);
-                            setEditBeliForm({ ...editBeliForm, items: newItems });
-                          }}
-                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                          disabled={editBeliForm.items.length === 1}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-surface-100 dark:border-surface-800 mt-6">
-                  <button type="button" onClick={() => setShowModalEditBeli(false)} className="px-5 py-2.5 bg-surface-100 dark:bg-surface-800 rounded-xl font-bold cursor-pointer">
-                    Batal
-                  </button>
-                  <button type="submit" disabled={isSyncing} className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-bold cursor-pointer shadow-lg hover:brightness-110 disabled:opacity-50">
-                    {isSyncing ? 'Menyimpan...' : 'Simpan Perubahan'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showModalKeluarkan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
