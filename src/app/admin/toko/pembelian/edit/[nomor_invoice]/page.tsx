@@ -38,8 +38,14 @@ export default function EditPembelianPage({ params }: { params: { nomor_invoice:
   });
 
   useEffect(() => {
-    const role = localStorage.getItem('martinez_role') || 'Unknown';
-    setUserRole(role);
+    let name = 'Unknown';
+    try {
+      const sessionData = JSON.parse(sessionStorage.getItem('demo_user') || '{}');
+      name = sessionData.label || localStorage.getItem('martinez_role') || 'Unknown';
+    } catch (e) {
+      name = localStorage.getItem('martinez_role') || 'Unknown';
+    }
+    setUserRole(name);
 
     const loadData = async () => {
       // Fetch latest from cloud to ensure local storage is up to date
@@ -280,7 +286,14 @@ export default function EditPembelianPage({ params }: { params: { nomor_invoice:
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-surface-100 dark:border-surface-800">
+          <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center gap-4 pt-6 border-t border-surface-100 dark:border-surface-800">
+            <div className="bg-surface-50 dark:bg-surface-800 px-6 py-4 rounded-2xl border border-surface-200 dark:border-surface-700 w-full sm:w-auto">
+              <p className="text-surface-500 text-xs font-semibold uppercase tracking-wider mb-1">Total Pembelian</p>
+              <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                Rp {beliForm.items.reduce((sum, item) => sum + (item.jumlah * item.harga_beli_per_unit), 0).toLocaleString('id-ID')}
+              </p>
+            </div>
+            <div className="flex gap-3 w-full sm:w-auto">
             <button 
               type="button" 
               onClick={() => router.back()} 
@@ -295,6 +308,7 @@ export default function EditPembelianPage({ params }: { params: { nomor_invoice:
             >
               {isSyncing ? 'Menyimpan...' : 'Simpan Perubahan'}
             </button>
+            </div>
           </div>
         </form>
       </div>
