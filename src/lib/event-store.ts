@@ -439,6 +439,39 @@ export async function scanAndUseKuponByBooth(
     requestBooth = allBooths.find(
       (b) => (boothId && b.id === boothId) || (boothId && b.username === boothId) || (boothNama && b.nama_booth === boothNama)
     );
+    
+    // Fallback: Fetch booth from cloud if not found locally
+    if (!requestBooth) {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const client = createClient();
+        if (client) {
+          let query = client.from('tenant_booths').select('*');
+          if (boothId && boothId.startsWith('t-')) {
+             query = query.eq('id', boothId);
+          } else if (boothId) {
+             query = query.eq('username', boothId);
+          } else if (boothNama) {
+             query = query.eq('nama_booth', boothNama);
+          }
+          const { data } = await query.limit(1).single();
+          if (data) {
+            requestBooth = data as TenantBooth;
+            allBooths.push(requestBooth);
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching booth from cloud:', e);
+      }
+    }
+  }
+
+  // Force reject if booth was not found at all
+  if ((boothId || boothNama) && !requestBooth) {
+    return {
+      success: false,
+      message: `GAGAL: Booth tidak ditemukan di sistem. Harap login ulang.`,
+    };
   }
 
   // Validate booth event matches kupon event
@@ -600,4 +633,19 @@ export async function authenticateBooth(username: string, password: string): Pro
     }
     return { success: true, booth };
   }
+}
+export async function updateBoothCategories(boothId: string, allowedCategories: string[]): Promise<boolean> {
+  const booths = getBoothsFromStorage();
+  const index = booths.findIndex(b => b.id === boothId);
+  if (index !== -1) {
+    booths[index].allowed_categories = allowedCategories;
+    _saveBooths(booths);
+    
+    const client = createClient();
+    if (client) {
+      await client.from('tenant_booths').update({ allowed_categories: allowedCategories }).eq('id', boothId);
+    }
+    return true;
+  }
+  return false;
 }

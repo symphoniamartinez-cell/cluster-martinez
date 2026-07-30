@@ -46,6 +46,7 @@ import {
   deleteKupon,
   syncEventDataFromCloud,
   fetchAllEventsFromCloud,
+  updateBoothCategories,
 } from '@/lib/event-store';
 
 export default function AdminEventsPage() {
@@ -78,6 +79,34 @@ export default function AdminEventsPage() {
   // Pagination State
   const [kuponCurrentPage, setKuponCurrentPage] = useState(1);
   const [kuponPageSize, setKuponPageSize] = useState(50);
+
+  // Booth Edit State
+  const [editingBoothId, setEditingBoothId] = useState<string | null>(null);
+  const [editBoothCategories, setEditBoothCategories] = useState<string[]>([]);
+  const [isSavingBooth, setIsSavingBooth] = useState(false);
+
+  const handleEditBoothClick = (booth: TenantBooth) => {
+    setEditingBoothId(booth.id);
+    setEditBoothCategories(booth.allowed_categories || []);
+  };
+
+  const handleSaveBoothCategories = async () => {
+    if (!editingBoothId) return;
+    if (editBoothCategories.length === 0) {
+      alert("Harap pilih minimal 1 kategori untuk booth ini.");
+      return;
+    }
+    setIsSavingBooth(true);
+    const success = await updateBoothCategories(editingBoothId, editBoothCategories);
+    setIsSavingBooth(false);
+    if (success) {
+      setEditingBoothId(null);
+      loadData();
+      showToast("Kategori kupon booth berhasil diperbarui!");
+    } else {
+      alert("Gagal menyimpan kategori booth.");
+    }
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -725,21 +754,69 @@ export default function AdminEventsPage() {
                       </div>
                       
                       {/* Tampilkan Akses Scan Kupon */}
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {b.allowed_categories && b.allowed_categories.length > 0 ? (
-                          b.allowed_categories.map((catId) => {
-                            const ev = events.find((e) => e.id === b.event_id);
-                            const cat = ev?.rules?.categories?.find((c) => c.id === catId);
-                            return (
-                              <span key={catId} className="px-1.5 py-0.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-md text-[9px] font-bold border border-primary-500/20">
-                                {cat ? cat.nama_kategori : 'Kupon Valid'}
-                              </span>
-                            );
-                          })
+                      <div className="flex flex-col gap-2 mt-1">
+                        {editingBoothId === b.id ? (
+                          <div className="space-y-2 mt-2 w-full">
+                            <span className="text-[10px] text-surface-500 font-semibold block mb-1">Pilih Kategori Kupon:</span>
+                            {events.find((e) => e.id === b.event_id)?.rules?.categories?.map((cat) => (
+                              <label key={cat.id} className="flex items-center gap-2 text-xs">
+                                <input
+                                  type="checkbox"
+                                  checked={editBoothCategories.includes(cat.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditBoothCategories((prev) => [...prev, cat.id]);
+                                    } else {
+                                      setEditBoothCategories((prev) => prev.filter((id) => id !== cat.id));
+                                    }
+                                  }}
+                                  className="w-3.5 h-3.5 text-primary-500 rounded border-surface-300 focus:ring-primary-500"
+                                />
+                                {cat.nama_kategori}
+                              </label>
+                            ))}
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={handleSaveBoothCategories}
+                                disabled={isSavingBooth}
+                                className="px-3 py-1 bg-primary-600 hover:bg-primary-500 text-white rounded text-xs font-bold transition-colors disabled:opacity-50"
+                              >
+                                {isSavingBooth ? 'Menyimpan...' : 'Simpan'}
+                              </button>
+                              <button
+                                onClick={() => setEditingBoothId(null)}
+                                className="px-3 py-1 bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 text-surface-700 dark:text-surface-200 rounded text-xs font-bold transition-colors"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          </div>
                         ) : (
-                          <span className="px-1.5 py-0.5 bg-surface-100 dark:bg-surface-800 text-surface-500 rounded-md text-[9px] font-bold border border-surface-200 dark:border-surface-700">
-                            Semua Akses (Tidak Dibatasi)
-                          </span>
+                          <div className="flex items-center justify-between w-full pt-1">
+                            <div className="flex flex-wrap gap-1">
+                              {b.allowed_categories && b.allowed_categories.length > 0 ? (
+                                b.allowed_categories.map((catId) => {
+                                  const ev = events.find((e) => e.id === b.event_id);
+                                  const cat = ev?.rules?.categories?.find((c) => c.id === catId);
+                                  return (
+                                    <span key={catId} className="px-1.5 py-0.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-md text-[9px] font-bold border border-primary-500/20">
+                                      {cat ? cat.nama_kategori : 'Kupon Valid'}
+                                    </span>
+                                  );
+                                })
+                              ) : (
+                                <span className="px-1.5 py-0.5 bg-surface-100 dark:bg-surface-800 text-surface-500 rounded-md text-[9px] font-bold border border-surface-200 dark:border-surface-700">
+                                  Semua Akses (Tidak Dibatasi)
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleEditBoothClick(b)}
+                              className="px-2 py-0.5 bg-accent-500/10 text-accent-600 dark:text-accent-400 font-bold rounded text-[10px] uppercase cursor-pointer hover:bg-accent-500/20"
+                            >
+                              Edit Akses
+                            </button>
+                          </div>
                         )}
                       </div>
 
