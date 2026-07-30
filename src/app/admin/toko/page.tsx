@@ -573,8 +573,8 @@ export default function AdminTokoPage() {
                   <th className="px-5 py-4">Nama Barang</th>
                   <th className="px-5 py-4">Satuan Beli (Gudang)</th>
                   <th className="px-5 py-4">Satuan Jual (Display)</th>
-                  <th className="px-5 py-4">Harga Beli / Besar</th>
-                  <th className="px-5 py-4">Harga Jual / Kecil</th>
+                  <th className="px-5 py-4">Harga Beli</th>
+                  <th className="px-5 py-4">Harga Jual</th>
                   <th className="px-5 py-4">Stok Gudang</th>
                   <th className="px-5 py-4">Stok Display</th>
                   <th className="px-5 py-4 text-right">Aksi</th>
@@ -601,7 +601,7 @@ export default function AdminTokoPage() {
                         {b.satuan_kecil}
                       </td>
                       <td className="px-5 py-3 font-mono text-surface-600 dark:text-surface-300">
-                        Rp {b.harga_beli_satuan_besar.toLocaleString('id-ID')}
+                        Rp {Math.round(b.harga_beli_satuan_besar / (b.qty_per_satuan_besar || 1)).toLocaleString('id-ID')}
                       </td>
                       <td className="px-5 py-3 font-mono text-surface-600 dark:text-surface-300">
                         Rp {b.harga_jual_satuan_kecil.toLocaleString('id-ID')}

@@ -128,6 +128,12 @@ export async function addPembelianBatchGudang(
     const pergerakanList: TokoPergerakanStok[] = [];
     const barangUpdates: Record<string, { stok_gudang: number; harga_beli_satuan_besar: number }> = {};
 
+    const currentIsoTime = new Date().toISOString().split('T')[1];
+    let finalTimestamp = new Date().toISOString();
+    if (tanggal && tanggal !== finalTimestamp.split('T')[0]) {
+      finalTimestamp = `${tanggal}T${currentIsoTime}`;
+    }
+
     for (const item of items) {
       if (!item.barang_id || item.jumlah <= 0) continue;
       
@@ -151,7 +157,7 @@ export async function addPembelianBatchGudang(
         nomor_invoice: nomorInvoice || null,
         catatan,
         dibuat_oleh: user,
-        created_at: tanggal || new Date().toISOString()
+        created_at: finalTimestamp
       });
 
       // Accumulate local updates to avoid duplicate fetching
