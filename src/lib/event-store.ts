@@ -446,15 +446,20 @@ export async function scanAndUseKuponByBooth(
         const { createClient } = await import('@/lib/supabase/client');
         const client = createClient();
         if (client) {
-          let query = client.from('tenant_booths').select('*');
-          if (boothId && boothId.startsWith('t-')) {
-             query = query.eq('id', boothId);
-          } else if (boothId) {
-             query = query.eq('username', boothId);
+          let data = null;
+          if (boothId) {
+             const { data: d1 } = await client.from('tenant_booths').select('*').eq('id', boothId).limit(1);
+             if (d1 && d1.length > 0) {
+               data = d1[0];
+             } else {
+               const { data: d2 } = await client.from('tenant_booths').select('*').eq('username', boothId).limit(1);
+               if (d2 && d2.length > 0) data = d2[0];
+             }
           } else if (boothNama) {
-             query = query.eq('nama_booth', boothNama);
+             const { data: d3 } = await client.from('tenant_booths').select('*').eq('nama_booth', boothNama).limit(1);
+             if (d3 && d3.length > 0) data = d3[0];
           }
-          const { data } = await query.limit(1).single();
+          
           if (data) {
             requestBooth = data as TenantBooth;
             allBooths.push(requestBooth);
