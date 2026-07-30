@@ -72,10 +72,9 @@ export default function SingleEventDetailPage({
     kupon?: KuponAcara;
   } | null>(null);
 
-  // Manual Kupon State
-  const [showManualModal, setShowManualModal] = useState(false);
-  const [manualHouse, setManualHouse] = useState('');
-  const [manualCounts, setManualCounts] = useState<Record<string, number>>({});
+  // Pagination State
+  const [kuponPageSize, setKuponPageSize] = useState<number>(50);
+  const [kuponCurrentPage, setKuponCurrentPage] = useState<number>(1);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [kuponSearch, setKuponSearch] = useState('');
@@ -163,37 +162,6 @@ export default function SingleEventDetailPage({
     return getBoothReportForEvent(event.id);
   }, [event, kupons, booths]);
 
-  // Handle Manual Coupon Addition
-  const handleAddManualKuponSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualHouse.trim()) {
-      alert('Nomor rumah wajib diisi!');
-      return;
-    }
-    if (!event) return;
-
-    const countsToPass = Object.keys(manualCounts).map(categoryId => ({
-      categoryId,
-      count: manualCounts[categoryId]
-    })).filter(c => c.count > 0);
-
-    if (countsToPass.length === 0) {
-      alert('Pilih minimal 1 kupon untuk ditambahkan!');
-      return;
-    }
-
-    const res = await addManualKupon(event.id, manualHouse.trim(), countsToPass);
-    loadEventData();
-    setShowManualModal(false);
-    setManualHouse('');
-    setManualCounts({});
-    
-    if (res.cloudOk === false) {
-      showToast(`⚠️ ${res.newKupons.length} Kupon dibuat di lokal, tapi GAGAL ke Cloud: ${res.error}`);
-    } else {
-      showToast(`✅ ${res.newKupons.length} Kupon Manual berhasil dibuat untuk ${manualHouse}!`);
-    }
-  };
 
   // Handle Delete Kupon
   const handleDeleteSingleKupon = async (kuponId: string, kodeKupon: string) => {
@@ -304,7 +272,7 @@ export default function SingleEventDetailPage({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowManualModal(true)}
+            onClick={() => router.push('/admin/events/tambah-kupon?eventId=' + event.id)}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-500 hover:to-accent-500 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -399,7 +367,10 @@ export default function SingleEventDetailPage({
               <input
                 type="text"
                 value={kuponSearch}
-                onChange={(e) => setKuponSearch(e.target.value)}
+                onChange={(e) => {
+                  setKuponSearch(e.target.value);
+                  setKuponCurrentPage(1);
+                }}
                 placeholder="Cari No. Rumah / Kode / Jenis Kupon..."
                 className="w-full pl-10 pr-4 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-500/30"
               />
@@ -407,7 +378,7 @@ export default function SingleEventDetailPage({
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
-                onClick={() => setKuponStatusFilter('all')}
+                onClick={() => { setKuponStatusFilter('all'); setKuponCurrentPage(1); }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${
                   kuponStatusFilter === 'all'
                     ? 'bg-surface-900 text-white dark:bg-white dark:text-surface-900'
@@ -417,7 +388,7 @@ export default function SingleEventDetailPage({
                 Semua ({kupons.length})
               </button>
               <button
-                onClick={() => setKuponStatusFilter('unused')}
+                onClick={() => { setKuponStatusFilter('unused'); setKuponCurrentPage(1); }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${
                   kuponStatusFilter === 'unused'
                     ? 'bg-success-500 text-white'
@@ -427,7 +398,7 @@ export default function SingleEventDetailPage({
                 Belum Digunakan ({unusedCount})
               </button>
               <button
-                onClick={() => setKuponStatusFilter('used')}
+                onClick={() => { setKuponStatusFilter('used'); setKuponCurrentPage(1); }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${
                   kuponStatusFilter === 'used'
                     ? 'bg-danger-500 text-white'
@@ -452,14 +423,21 @@ export default function SingleEventDetailPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
-                {filteredKupons.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-surface-400">
-                      Tidak ada data kupon yang sesuai filter.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredKupons.map((k) => (
+                {(() => {
+                  const startIndex = (kuponCurrentPage - 1) * kuponPageSize;
+                  const paginatedKupons = filteredKupons.slice(startIndex, startIndex + kuponPageSize);
+                  
+                  if (paginatedKupons.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-surface-400">
+                          Tidak ada data kupon yang sesuai filter.
+                        </td>
+                      </tr>
+                    );
+                  }
+                  
+                  return paginatedKupons.map((k) => (
                     <tr key={k.id} className="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-surface-900 dark:text-white">
                         {k.kode_kupon}
@@ -507,10 +485,46 @@ export default function SingleEventDetailPage({
                         </button>
                       </td>
                     </tr>
-                  ))
-                )}
+                  ));
+                })()}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-surface-200 dark:border-surface-800">
+            <div className="flex items-center gap-2 text-xs text-surface-500">
+              <span>Tampilkan</span>
+              <select
+                value={kuponPageSize}
+                onChange={(e) => {
+                  setKuponPageSize(Number(e.target.value));
+                  setKuponCurrentPage(1);
+                }}
+                className="px-2 py-1 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg outline-none cursor-pointer"
+              >
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>data per halaman</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={kuponCurrentPage === 1}
+                onClick={() => setKuponCurrentPage(p => Math.max(1, p - 1))}
+                className="px-3 py-1.5 bg-surface-100 dark:bg-surface-800 rounded-lg text-xs font-bold disabled:opacity-50 cursor-pointer"
+              >
+                Prev
+              </button>
+              <span className="text-xs font-bold px-2">{kuponCurrentPage} / {Math.max(1, Math.ceil(filteredKupons.length / kuponPageSize))}</span>
+              <button
+                disabled={kuponCurrentPage >= Math.ceil(filteredKupons.length / kuponPageSize)}
+                onClick={() => setKuponCurrentPage(p => p + 1)}
+                className="px-3 py-1.5 bg-surface-100 dark:bg-surface-800 rounded-lg text-xs font-bold disabled:opacity-50 cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -709,68 +723,6 @@ export default function SingleEventDetailPage({
               {scanResult.message}
             </div>
           )}
-        </div>
-      )}
-
-      {/* ── MODAL TAMBAH KUPON MANUAL ────────────────────────── */}
-      {showManualModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-surface-900 rounded-3xl p-6 shadow-2xl border border-surface-200 dark:border-surface-800 text-surface-900 dark:text-white space-y-4">
-            <h3 className="text-base font-bold flex items-center gap-2">
-              <Plus className="w-5 h-5 text-primary-500" />
-              Tambah Kupon Manual Lapangan
-            </h3>
-            <p className="text-xs text-surface-500">
-              Gunakan fitur ini jika ada warga yang memerlukan koreksi kupon secara manual di lapangan.
-            </p>
-
-            <form onSubmit={handleAddManualKuponSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold mb-1">Nomor Rumah Warga</label>
-                <input
-                  type="text"
-                  value={manualHouse}
-                  onChange={(e) => setManualHouse(e.target.value)}
-                  placeholder="Contoh: MTNR/11 atau MTNU3/2"
-                  required
-                  className="w-full px-4 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-xs font-bold uppercase"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-2">Pilih Kategori Kupon & Jumlah</label>
-                {event.rules?.categories?.map((cat) => (
-                  <div key={cat.id} className="flex items-center justify-between gap-4 p-3 mb-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl">
-                    <span className="text-xs font-semibold">{cat.nama_kategori}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={20}
-                      value={manualCounts[cat.id] || 0}
-                      onChange={(e) => setManualCounts(prev => ({ ...prev, [cat.id]: parseInt(e.target.value) || 0 }))}
-                      className="w-20 px-3 py-1.5 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg text-xs font-bold text-center"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowManualModal(false)}
-                  className="px-4 py-2.5 bg-surface-100 dark:bg-surface-800 rounded-xl text-xs font-bold cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-xs font-bold cursor-pointer shadow-md"
-                >
-                  Terbitkan Kupon
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
     </div>

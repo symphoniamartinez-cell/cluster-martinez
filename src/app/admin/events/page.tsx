@@ -70,10 +70,6 @@ export default function AdminEventsPage() {
     kupon?: KuponAcara;
   } | null>(null);
 
-  // Manual Coupon Creation Modal (Field Correction)
-  const [showManualModal, setShowManualModal] = useState(false);
-  const [manualHouse, setManualHouse] = useState('');
-  const [manualCounts, setManualCounts] = useState<Record<string, number>>({});
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [kuponSearch, setKuponSearch] = useState('');
@@ -151,37 +147,6 @@ export default function AdminEventsPage() {
     return getBoothReportForEvent(selectedEventId);
   }, [selectedEventId, kupons, booths]);
 
-  // Handle Manual Coupon Creation (Field Correction)
-  const handleAddManualKupon = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualHouse.trim()) {
-      alert('Nomor / Alamat Rumah Wajib Diisi!');
-      return;
-    }
-
-    const countsToPass = Object.keys(manualCounts).map(categoryId => ({
-      categoryId,
-      count: manualCounts[categoryId]
-    })).filter(c => c.count > 0);
-
-    if (countsToPass.length === 0) {
-      alert('Pilih minimal 1 kupon untuk ditambahkan!');
-      return;
-    }
-
-    const targetEventId = selectedEventId || (events[0]?.id || 'evt-001');
-    const res = await addManualKupon(targetEventId, manualHouse, countsToPass);
-    loadData();
-    setShowManualModal(false);
-    setManualHouse('');
-    setManualCounts({});
-    
-    if (res.cloudOk === false) {
-      showToast(`⚠️ ${res.newKupons.length} Kupon dibuat di lokal, tapi GAGAL ke Cloud: ${res.error}`);
-    } else {
-      showToast(`✅ ${res.newKupons.length} Kupon Manual berhasil dibuat untuk ${manualHouse}!`);
-    }
-  };
 
   // Handle Delete Event
   const handleDeleteEvent = async (eventId: string, eventName: string) => {
@@ -312,7 +277,7 @@ export default function AdminEventsPage() {
 
           {/* Manual Coupon Button */}
           <button
-            onClick={() => setShowManualModal(true)}
+            onClick={() => router.push(selectedEventId ? `/admin/events/tambah-kupon?eventId=${selectedEventId}` : '/admin/events/tambah-kupon')}
             className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-xs rounded-xl transition-all cursor-pointer shadow-sm"
             title="Tambah Kupon Manual untuk koreksi kesalahan data lapangan"
           >
@@ -526,7 +491,7 @@ export default function AdminEventsPage() {
                         <button
                           onClick={() => {
                             setSelectedEventId(evt.id);
-                            setShowManualModal(true);
+                            router.push('/admin/events/tambah-kupon?eventId=' + evt.id);
                           }}
                           className="py-2 px-2 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-[11px] rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1"
                         >
@@ -974,101 +939,8 @@ export default function AdminEventsPage() {
                 Belum ada kupon di-scan.
               </p>
             )}
-            </div>
           </div>
         </div>
-      )}
-
-      {/* ── MODAL TAMBAH KUPON MANUAL (KOREKSI LAPANGAN) ───────── */}
-      {showManualModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowManualModal(false)}
-          />
-          <div className="relative w-full max-w-md max-h-[90vh] flex flex-col bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden">
-            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-accent-500 to-primary-500" />
-            <div className="p-6 overflow-y-auto flex-1">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-accent-500/10 text-accent-500">
-                  <PlusCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-surface-900 dark:text-white">
-                    Tambah Kupon Manual
-                  </h3>
-                  <p className="text-xs text-surface-500">
-                    Gunakan untuk menambahkan kupon jika ada kesalahan data iuran warga.
-                  </p>
-                </div>
-              </div>
-
-              <form onSubmit={handleAddManualKupon} className="space-y-4 text-xs">
-                <div className="mb-4">
-                  <label className="block text-xs font-semibold mb-1">Event Acara Tujuan</label>
-                  <select
-                    value={selectedEventId}
-                    onChange={(e) => {
-                      setSelectedEventId(e.target.value);
-                      setManualCounts({}); // Reset counts when event changes
-                    }}
-                    className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-xs font-bold uppercase"
-                  >
-                    {events.map((ev) => (
-                      <option key={ev.id} value={ev.id}>
-                        {ev.nama_event}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-xs font-semibold mb-1">Nomor / Alamat Rumah Warga *</label>
-                  <input
-                    type="text"
-                    value={manualHouse}
-                    onChange={(e) => setManualHouse(e.target.value)}
-                    placeholder="CONTOH: MTNU3/2 ATAU MTNR/11"
-                    required
-                    className="w-full px-4 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-xs font-bold uppercase font-mono tracking-wider"
-                  />
-                </div>
-
-                <div className="mb-6">
-                  <label className="block text-xs font-semibold mb-2">Pilih Kategori Kupon & Jumlah</label>
-                  {(events.find(e => e.id === selectedEventId) || events[0])?.rules?.categories?.map((cat) => (
-                    <div key={cat.id} className="flex items-center justify-between gap-4 p-3 mb-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl">
-                      <span className="text-xs font-semibold">{cat.nama_kategori}</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={20}
-                        value={manualCounts[cat.id] || 0}
-                        onChange={(e) => setManualCounts(prev => ({ ...prev, [cat.id]: parseInt(e.target.value) || 0 }))}
-                        className="w-20 px-3 py-1.5 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg text-xs font-bold text-center"
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-100 dark:border-surface-800">
-                  <button
-                    type="button"
-                    onClick={() => setShowManualModal(false)}
-                    className="px-4 py-2.5 bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 font-bold rounded-xl cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2.5 bg-gradient-to-r from-accent-500 to-primary-500 text-white font-bold rounded-xl shadow-md cursor-pointer"
-                  >
-                    Terbitkan Kupon Manual
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
         </div>
       )}
     </div>
