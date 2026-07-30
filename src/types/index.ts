@@ -14,6 +14,7 @@ export interface TenantBooth {
   nama_booth: string; // e.g. 'Booth Bakso Pak No'
   username: string;   // e.g. 'booth-bakso'
   password: string;   // e.g. 'Martinez.2021'
+  allowed_categories?: string[]; // array of KuponCategory.id
   total_scanned: number;
   created_at: string;
 }

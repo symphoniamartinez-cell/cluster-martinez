@@ -162,13 +162,14 @@ export default function CreateEventPage() {
 
   // Tenant Booth Accounts State (Default 1 Booth)
   const [booths, setBooths] = useState<
-    { id: string; nama_booth: string; username: string; password: string }[]
+    { id: string; nama_booth: string; username: string; password: string; allowed_categories: string[] }[]
   >([
     {
       id: '1',
       nama_booth: 'Booth Makanan #1',
       username: 'booth-1',
       password: 'event123',
+      allowed_categories: [], // default empty, meaning user must select at least one
     },
   ]);
 
@@ -259,6 +260,7 @@ export default function CreateEventPage() {
         nama_booth: `Booth Makanan #${nextIdx}`,
         username: `booth-${nextIdx}`,
         password: 'event123',
+        allowed_categories: [],
       },
     ]);
   };
@@ -293,11 +295,30 @@ export default function CreateEventPage() {
     );
   };
 
+  const handleBoothCategoryToggle = (boothId: string, catId: string) => {
+    setBooths(booths.map((b) => {
+      if (b.id !== boothId) return b;
+      const hasCat = b.allowed_categories.includes(catId);
+      return {
+        ...b,
+        allowed_categories: hasCat
+          ? b.allowed_categories.filter((c) => c !== catId)
+          : [...b.allowed_categories, catId],
+      };
+    }));
+  };
+
   // Submit Step 1 -> Open Step 2 Confirm Modal
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!namaEvent.trim()) {
       alert('Nama Event Acara Wajib Diisi!');
+      return;
+    }
+
+    // Validate that at least one category is selected for the event
+    if (categories.length === 0) {
+      alert('Event harus memiliki minimal 1 Kategori Kupon.');
       return;
     }
 
@@ -308,6 +329,11 @@ export default function CreateEventPage() {
     for (const b of booths) {
       if (!b.username.trim()) {
         alert(`Username untuk booth "${b.nama_booth}" tidak boleh kosong.`);
+        return;
+      }
+      
+      if (!b.allowed_categories || b.allowed_categories.length === 0) {
+        alert(`Booth "${b.nama_booth}" belum memiliki kategori kupon yang diizinkan. Silakan centang minimal satu kategori.`);
         return;
       }
       
@@ -713,6 +739,41 @@ export default function CreateEventPage() {
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
+                </div>
+
+                {/* Booth Categories Checklist */}
+                <div className="sm:col-span-12 mt-2 pt-3 border-t border-surface-200 dark:border-surface-700">
+                  <label className="block text-[10px] font-bold uppercase text-surface-500 mb-2">
+                    Izin Menerima Jenis Kupon (Checklist)
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat) => (
+                      <label
+                        key={cat.id}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer transition-colors border ${
+                          booth.allowed_categories.includes(cat.id)
+                            ? 'bg-accent-500/10 border-accent-500/30'
+                            : 'bg-surface-100 dark:bg-surface-800 border-transparent hover:bg-surface-200 dark:hover:bg-surface-700'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={booth.allowed_categories.includes(cat.id)}
+                          onChange={() => handleBoothCategoryToggle(booth.id, cat.id)}
+                          className="w-3.5 h-3.5 rounded text-accent-500 focus:ring-accent-500 border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-900"
+                        />
+                        <span
+                          className={`text-[11px] font-bold ${
+                            booth.allowed_categories.includes(cat.id)
+                              ? 'text-accent-600 dark:text-accent-400'
+                              : 'text-surface-700 dark:text-surface-200'
+                          }`}
+                        >
+                          {cat.nama_kategori}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}

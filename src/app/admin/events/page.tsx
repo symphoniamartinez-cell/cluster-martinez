@@ -74,6 +74,10 @@ export default function AdminEventsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [kuponSearch, setKuponSearch] = useState('');
   const [kuponStatusFilter, setKuponStatusFilter] = useState<'all' | 'unused' | 'used'>('all');
+  
+  // Pagination State
+  const [kuponCurrentPage, setKuponCurrentPage] = useState(1);
+  const [kuponPageSize, setKuponPageSize] = useState(50);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -138,6 +142,7 @@ export default function AdminEventsPage() {
   useEffect(() => {
     if (selectedEventId) {
       handleSyncData(selectedEventId, false);
+      setKuponCurrentPage(1); // Reset page on event change
     }
   }, [selectedEventId]);
 
@@ -203,6 +208,17 @@ export default function AdminEventsPage() {
       return matchEvent && matchSearch && matchStatus;
     });
   }, [kupons, selectedEventId, kuponSearch, kuponStatusFilter]);
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setKuponCurrentPage(1);
+  }, [kuponSearch, kuponStatusFilter, kuponPageSize]);
+
+  // Apply Pagination
+  const paginatedKupons = useMemo(() => {
+    const startIndex = (kuponCurrentPage - 1) * kuponPageSize;
+    return filteredKupons.slice(startIndex, startIndex + kuponPageSize);
+  }, [filteredKupons, kuponCurrentPage, kuponPageSize]);
 
   // Handle Clear All Events & Database Wipe
   const handleClearAllEvents = async () => {
@@ -807,7 +823,7 @@ export default function AdminEventsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
-                {filteredKupons.map((k) => (
+                {paginatedKupons.map((k) => (
                   <tr key={k.id} className="hover:bg-surface-50/50 dark:hover:bg-surface-800/50">
                     <td className="px-4 py-3 font-mono font-bold text-surface-900 dark:text-white">
                       {k.kode_kupon}
@@ -854,6 +870,45 @@ export default function AdminEventsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredKupons.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-surface-100 dark:border-surface-800">
+              <div className="flex items-center gap-2 text-xs text-surface-500">
+                <span>Tampilkan</span>
+                <select
+                  value={kuponPageSize}
+                  onChange={(e) => setKuponPageSize(Number(e.target.value))}
+                  className="p-1 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg text-xs"
+                >
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span>kupon per halaman</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setKuponCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={kuponCurrentPage === 1}
+                  className="px-3 py-1.5 bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 rounded-lg disabled:opacity-50 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Prev
+                </button>
+                <span className="text-xs font-bold px-2">
+                  {kuponCurrentPage} / {Math.max(1, Math.ceil(filteredKupons.length / kuponPageSize))}
+                </span>
+                <button
+                  onClick={() => setKuponCurrentPage((p) => p + 1)}
+                  disabled={kuponCurrentPage >= Math.ceil(filteredKupons.length / kuponPageSize)}
+                  className="px-3 py-1.5 bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 rounded-lg disabled:opacity-50 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )}

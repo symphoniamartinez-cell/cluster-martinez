@@ -106,3 +106,11 @@ ALTER TABLE public.toko_payment_harian
 ADD COLUMN IF NOT EXISTS dikonfirmasi_oleh TEXT,
 ADD COLUMN IF NOT EXISTS dikonfirmasi_pada TIMESTAMP WITH TIME ZONE;
 
+
+
+-- ==========================================
+-- Update Tabel Tenant Booth (Kupon Filter)
+-- ==========================================
+ALTER TABLE public.tenant_booths
+ADD COLUMN IF NOT EXISTS allowed_categories JSONB;
+

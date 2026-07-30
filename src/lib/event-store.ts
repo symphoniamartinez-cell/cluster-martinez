@@ -242,7 +242,7 @@ export async function createEventAndGenerateKupons(
     tanggal_event: string;
     lokasi_event: string;
     rules: CouponRules;
-    booths: { nama_booth: string; username: string; password: string }[];
+    booths: { nama_booth: string; username: string; password: string; allowed_categories?: string[] }[];
   },
   matrix: IuranMatrixRow[]
 ): Promise<{ newEvent: EventAcara; createdKuponsCount: number; cloudOk: boolean; error?: string }> {
@@ -310,6 +310,7 @@ export async function createEventAndGenerateKupons(
     nama_booth: b.nama_booth || `Booth Makanan #${idx + 1}`,
     username: b.username ? b.username.trim().toLowerCase() : `booth-${newEventId.slice(-4)}-${idx + 1}`,
     password: b.password || 'event123',
+    allowed_categories: b.allowed_categories || [],
     total_scanned: 0,
     created_at: new Date().toISOString(),
   }));
@@ -447,6 +448,17 @@ export async function scanAndUseKuponByBooth(
       message: `GAGAL: Kupon ini (${kupon.nama_event}) TIDAK BERLAKU untuk event tempat booth Anda terdaftar!`,
       kupon,
     };
+  }
+
+  // Validate allowed categories
+  if (requestBooth && requestBooth.allowed_categories && requestBooth.allowed_categories.length > 0) {
+    if (!requestBooth.allowed_categories.includes(kupon.kategori_id || '')) {
+      return {
+        success: false,
+        message: `GAGAL: Booth Anda tidak diizinkan menerima jenis kupon ini (${kupon.nama_kupon}).`,
+        kupon,
+      };
+    }
   }
 
   if (kupon.is_used) {
