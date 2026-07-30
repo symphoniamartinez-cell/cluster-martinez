@@ -151,6 +151,10 @@ export default function AdminDashboardOverviewPage() {
         lunasCurrentMonth: number;
         lunasSlotsTotal: number;
         belumSlotsTotal: number;
+        fullPaid1To12: number;
+        paidUpToCurrent: number;
+        inconsistent: number;
+        noPayment: number;
       }
     > = {};
 
@@ -165,6 +169,10 @@ export default function AdminDashboardOverviewPage() {
           lunasCurrentMonth: 0,
           lunasSlotsTotal: 0,
           belumSlotsTotal: 0,
+          fullPaid1To12: 0,
+          paidUpToCurrent: 0,
+          inconsistent: 0,
+          noPayment: 0,
         };
       }
 
@@ -176,9 +184,31 @@ export default function AdminDashboardOverviewPage() {
         rtMap[rt].lunasCurrentMonth++;
       }
 
+      let lunasCount = 0;
+      let fullPaidTo12 = true;
       for (let m = 1; m <= 12; m++) {
-        if (row.bulan[m] === 'lunas') rtMap[rt].lunasSlotsTotal++;
-        else rtMap[rt].belumSlotsTotal++;
+        if (row.bulan[m] === 'lunas') {
+          lunasCount++;
+          rtMap[rt].lunasSlotsTotal++;
+        } else {
+          fullPaidTo12 = false;
+          rtMap[rt].belumSlotsTotal++;
+        }
+      }
+
+      let fullPaidToCurrent = true;
+      for (let m = 1; m <= currentMonthNum; m++) {
+        if (row.bulan[m] !== 'lunas') fullPaidToCurrent = false;
+      }
+
+      if (fullPaidTo12) {
+        rtMap[rt].fullPaid1To12++;
+      } else if (fullPaidToCurrent) {
+        rtMap[rt].paidUpToCurrent++;
+      } else if (lunasCount > 0) {
+        rtMap[rt].inconsistent++;
+      } else {
+        rtMap[rt].noPayment++;
       }
     });
 
@@ -440,14 +470,25 @@ export default function AdminDashboardOverviewPage() {
                     </div>
                   </div>
 
-                  {/* Footer Action */}
-                  <button
-                    onClick={() => router.push(`/admin?rt=${item.rt}`)}
-                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-surface-50 dark:bg-surface-800 hover:bg-primary-500/10 hover:text-primary-600 dark:hover:text-primary-400 text-surface-600 dark:text-surface-300 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                  >
-                    Buka Matriks Data Iuran RT {item.rt}
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
+                  {/* Detailed RT Payment Behaviors */}
+                  <div className="grid grid-cols-2 gap-2 mt-auto text-[10px] font-medium border-t border-surface-100 dark:border-surface-800 pt-3">
+                    <div className="flex flex-col gap-1 p-2 bg-surface-50 dark:bg-surface-800/50 rounded-lg">
+                      <span className="text-surface-500">Lunas (1-12)</span>
+                      <span className="font-bold text-surface-900 dark:text-white text-xs">{item.fullPaid1To12} Rumah</span>
+                    </div>
+                    <div className="flex flex-col gap-1 p-2 bg-surface-50 dark:bg-surface-800/50 rounded-lg">
+                      <span className="text-surface-500">Lunas s/d Bln Ini</span>
+                      <span className="font-bold text-surface-900 dark:text-white text-xs">{item.paidUpToCurrent} Rumah</span>
+                    </div>
+                    <div className="flex flex-col gap-1 p-2 bg-surface-50 dark:bg-surface-800/50 rounded-lg">
+                      <span className="text-surface-500">Bolong-bolong</span>
+                      <span className="font-bold text-surface-900 dark:text-white text-xs">{item.inconsistent} Rumah</span>
+                    </div>
+                    <div className="flex flex-col gap-1 p-2 bg-surface-50 dark:bg-surface-800/50 rounded-lg">
+                      <span className="text-surface-500">Belum Bayar</span>
+                      <span className="font-bold text-surface-900 dark:text-white text-xs">{item.noPayment} Rumah</span>
+                    </div>
+                  </div>
                 </div>
               );
             })}
