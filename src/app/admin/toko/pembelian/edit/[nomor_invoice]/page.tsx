@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -16,9 +16,10 @@ import {
   type PembelianItem
 } from '@/lib/toko-store';
 
-export default function EditPembelianPage({ params }: { params: { nomor_invoice: string } }) {
+export default function EditPembelianPage({ params }: { params: Promise<{ nomor_invoice: string }> }) {
   const router = useRouter();
-  const decodedInvoice = decodeURIComponent(params.nomor_invoice);
+  const { nomor_invoice } = use(params);
+  const decodedInvoice = decodeURIComponent(nomor_invoice);
   
   const [isSyncing, setIsSyncing] = useState(false);
   const [barangList, setBarangList] = useState<TokoBarang[]>([]);
