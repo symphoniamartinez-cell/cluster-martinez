@@ -189,16 +189,28 @@ export default function WargaDashboardPage() {
     }
 
     fetchKuponsFromCloud(houseNo).then((cloudKupons) => {
-      if (cloudKupons && cloudKupons.length > 0) {
+      if (cloudKupons !== null) {
         addDebug(`☁️ Cloud kupons for ${houseNo}: ${cloudKupons.length}`);
-        // Merge: cloud takes priority, deduplicate by id
-        const mergedMap = new Map<string, KuponAcara>();
-        localKupons.forEach((k) => mergedMap.set(k.id, k));
-        cloudKupons.forEach((k) => mergedMap.set(k.id, k));
-        setKupons(Array.from(mergedMap.values()));
+        // Jika fetch berhasil (tidak null), gunakan data dari cloud sebagai sumber kebenaran (source of truth)
+        // Ini memastikan kupon yang sudah dihapus di cloud (admin) akan hilang juga di warga
+        setKupons(cloudKupons);
+        
+        // (Optional) Kita bisa sync ke localStorage agar saat offline datanya sudah akurat
+        try {
+          const stored = localStorage.getItem('martinez_kupons_v1');
+          if (stored) {
+            let allLocalKupons: KuponAcara[] = JSON.parse(stored);
+            // Hapus semua kupon milik warga ini dari local
+            allLocalKupons = allLocalKupons.filter(k => cleanHouseNo(k.nomor_rumah) !== cleanHouseNo(houseNo));
+            // Masukkan kupon dari cloud
+            allLocalKupons = [...allLocalKupons, ...cloudKupons];
+            localStorage.setItem('martinez_kupons_v1', JSON.stringify(allLocalKupons));
+          }
+        } catch (e) {}
+
       } else {
-        addDebug(`⚠️ Cloud kupons for ${houseNo}: NULL / 0`);
-        // Keep local kupons if any
+        addDebug(`⚠️ Cloud kupons for ${houseNo}: NULL (Fetch gagal)`);
+        // Jika gagal fetch, gunakan local kupons
         if (localKupons.length > 0) {
           setKupons(localKupons);
         }
