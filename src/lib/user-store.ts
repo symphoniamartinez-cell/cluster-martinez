@@ -131,6 +131,19 @@ export function authenticateWarga(
     };
   }
 
+  // Prevent Booth accounts from logging in via Portal Warga
+  const booths = getBoothsFromStorage();
+  const isBoothMatch = booths.some(
+    (b) => b.username.trim().toUpperCase() === cleanRumah
+  );
+
+  if (isBoothMatch) {
+    return {
+      success: false,
+      error: `Akun Tenant/Booth "${cleanRumah}" tidak dapat login di Portal Warga. Silakan login melalui Portal Booth.`,
+    };
+  }
+
   // Load registered profiles from localStorage (Data Warga)
   let validCodeMatch = false;
   let foundName = '';
@@ -170,9 +183,9 @@ export function authenticateWarga(
     }
   }
 
-  // Fallback for default demo houses
+  // Fallback for default demo houses - Only allow if it looks like a valid house number (e.g., MT...)
   if (!validCodeMatch) {
-    if (cleanKode === 'ACT001' || cleanKode.startsWith('MTZ-') || cleanKode.length >= 4) {
+    if ((cleanRumah.startsWith('MT') || cleanRumah.includes('/')) && (cleanKode === 'ACT001' || cleanKode.startsWith('MTZ-'))) {
       validCodeMatch = true;
     }
   }

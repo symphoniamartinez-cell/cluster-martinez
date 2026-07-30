@@ -1630,7 +1630,7 @@ export default function AdminTokoPage() {
               </button>
             </div>
             
-            <div className="p-0 overflow-y-auto flex-1">
+            <div className="p-0 overflow-y-auto overflow-x-auto flex-1">
               <table className="w-full text-left text-xs">
                 <thead className="bg-surface-50 dark:bg-surface-800/50 sticky top-0 shadow-sm">
                   <tr>
@@ -1735,7 +1735,7 @@ export default function AdminTokoPage() {
               </button>
             </div>
             
-            <div className="p-0 overflow-y-auto flex-1">
+            <div className="p-0 overflow-y-auto overflow-x-auto flex-1">
               <table className="w-full text-left text-xs">
                 <thead className="bg-surface-50 dark:bg-surface-800/50 sticky top-0 shadow-sm">
                   <tr>
@@ -1806,7 +1806,7 @@ export default function AdminTokoPage() {
                 </button>
               </div>
               
-              <div className="p-0 overflow-y-auto flex-1">
+              <div className="p-0 overflow-y-auto overflow-x-auto flex-1">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-surface-50 dark:bg-surface-800/50 sticky top-0 shadow-sm">
                     <tr>
