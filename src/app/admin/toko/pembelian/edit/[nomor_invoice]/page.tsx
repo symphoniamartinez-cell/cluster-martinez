@@ -12,6 +12,7 @@ import {
   getTokoBarangLocal,
   getTokoPergerakanLocal,
   editPembelianInvoice,
+  syncTokoDataFromCloud,
   type PembelianItem
 } from '@/lib/toko-store';
 
@@ -39,33 +40,40 @@ export default function EditPembelianPage({ params }: { params: { nomor_invoice:
   useEffect(() => {
     const role = localStorage.getItem('martinez_role') || 'Unknown';
     setUserRole(role);
-    
-    const bList = getTokoBarangLocal();
-    setBarangList(bList);
-    
-    // Load existing invoice data
-    const pList = getTokoPergerakanLocal();
-    const invoiceItems = pList.filter(p => p.nomor_invoice === decodedInvoice && p.jenis_pergerakan === 'PEMBELIAN_GUDANG');
-    
-    if (invoiceItems.length > 0) {
-      setBeliForm({
-        nomor_invoice: decodedInvoice,
-        tanggal: (invoiceItems[0].created_at || new Date().toISOString()).split('T')[0],
-        catatan: invoiceItems[0].catatan || '',
-        items: invoiceItems.map(p => {
-          const isKecil = p.jumlah_satuan_besar === 0;
-          const b = bList.find(x => x.id === p.barang_id);
-          const qtyPerBesar = b?.qty_per_satuan_besar || 1;
-          return {
-            barang_id: p.barang_id,
-            tipe_satuan: isKecil ? 'kecil' : 'besar',
-            jumlah: isKecil ? p.jumlah_satuan_kecil : p.jumlah_satuan_besar,
-            harga_beli_per_unit: isKecil ? ((p.harga_beli_satuan_besar || 0) / qtyPerBesar) : (p.harga_beli_satuan_besar || 0)
-          };
-        })
-      });
-    }
-    setIsLoaded(true);
+
+    const loadData = async () => {
+      // Fetch latest from cloud to ensure local storage is up to date
+      await syncTokoDataFromCloud();
+      
+      const bList = getTokoBarangLocal();
+      setBarangList(bList);
+      
+      // Load existing invoice data
+      const pList = getTokoPergerakanLocal();
+      const invoiceItems = pList.filter(p => p.nomor_invoice === decodedInvoice && p.jenis_pergerakan === 'PEMBELIAN_GUDANG');
+      
+      if (invoiceItems.length > 0) {
+        setBeliForm({
+          nomor_invoice: decodedInvoice,
+          tanggal: (invoiceItems[0].created_at || new Date().toISOString()).split('T')[0],
+          catatan: invoiceItems[0].catatan || '',
+          items: invoiceItems.map(p => {
+            const isKecil = p.jumlah_satuan_besar === 0;
+            const b = bList.find(x => x.id === p.barang_id);
+            const qtyPerBesar = b?.qty_per_satuan_besar || 1;
+            return {
+              barang_id: p.barang_id,
+              tipe_satuan: isKecil ? 'kecil' : 'besar',
+              jumlah: isKecil ? p.jumlah_satuan_kecil : p.jumlah_satuan_besar,
+              harga_beli_per_unit: isKecil ? ((p.harga_beli_satuan_besar || 0) / qtyPerBesar) : (p.harga_beli_satuan_besar || 0)
+            };
+          })
+        });
+      }
+      setIsLoaded(true);
+    };
+
+    loadData();
   }, [decodedInvoice]);
 
   const handleSimpanPembelian = async (e: React.FormEvent) => {
