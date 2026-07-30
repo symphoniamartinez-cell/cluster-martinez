@@ -83,7 +83,7 @@ export default function LoginPage() {
           JSON.stringify(sessionData)
         )}; path=/; max-age=86400`;
 
-        router.push('/dashboard');
+        router.replace('/dashboard');
       } else {
         setErrorWarga(res.error || 'Nomor rumah atau password warga salah.');
       }
@@ -118,9 +118,9 @@ export default function LoginPage() {
         )}; path=/; max-age=86400`;
 
         if (res.user.role === 'penjaga_ch') {
-          router.push('/toko');
+          router.replace('/toko');
         } else {
-          router.push('/admin/dashboard');
+          router.replace('/admin/dashboard');
         }
       } else {
         setErrorAdmin(res.error || 'Username atau password admin salah.');
@@ -155,7 +155,7 @@ export default function LoginPage() {
           JSON.stringify(sessionData)
         )}; path=/; max-age=86400`;
 
-        router.push('/booth');
+        router.replace('/booth');
       } else {
         setErrorBooth(res.error || 'Username booth atau password booth salah.');
       }

@@ -413,10 +413,10 @@ export default function KasirTokoPage() {
                         <input
                           type="number"
                           required min={1}
-                          value={item.jumlah_satuan_kecil}
+                          value={item.jumlah_satuan_kecil || ''}
                           onChange={e => {
                             const newItems = [...pindahForm.items];
-                            newItems[index].jumlah_satuan_kecil = parseInt(e.target.value) || 1;
+                            newItems[index].jumlah_satuan_kecil = e.target.value === '' ? 0 : (parseInt(e.target.value) || 0);
                             setPindahForm({ ...pindahForm, items: newItems });
                           }}
                           className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"

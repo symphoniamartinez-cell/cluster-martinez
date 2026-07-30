@@ -76,6 +76,9 @@ export default function AdminTokoPage() {
     items: [],
   });
 
+  const [showModalPindah, setShowModalPindah] = useState(false);
+  const [pindahForm, setPindahForm] = useState<{ items: { barang_id: string; jumlah_satuan_kecil: number }[] }>({ items: [] });
+
   const [searchInvoice, setSearchInvoice] = useState('');
   const [detailInvoice, setDetailInvoice] = useState<{
     nomor_invoice: string;
@@ -168,7 +171,7 @@ export default function AdminTokoPage() {
     }
   }, []);
 
-  // â”€â”€ HANDLERS â”€â”€
+  // ── HANDLERS ──
   const handleDeleteBarang = async (id: string, nama: string) => {
     if (confirm(`Yakin ingin menghapus barang "${nama}"? Semua riwayat stok akan terhapus juga!`)) {
       const res = await deleteTokoBarang(id);
@@ -199,6 +202,22 @@ export default function AdminTokoPage() {
       loadData();
     } else {
       showToast(`Gagal mengeluarkan stok: ${res.error}`);
+    }
+  };
+
+  const handleSimpanPindah = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pindahForm.items.length === 0) return;
+
+    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
+    const res = await pindahKeDisplayBatch(pindahForm.items, user);
+
+    if (res.success) {
+      showToast('Berhasil pindah barang ke Display!');
+      setShowModalPindah(false);
+      loadData();
+    } else {
+      showToast(`Gagal: ${res.error}`);
     }
   };
 
@@ -376,7 +395,7 @@ export default function AdminTokoPage() {
 
   return (
     <div className="space-y-6 max-w-[1300px] mx-auto animate-fade-in pb-12">
-      {/* â”€â”€ Toast Notification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Toast Notification ────────────────────────────────────────── */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 flex items-center gap-2.5 px-5 py-3.5 bg-surface-900 text-white rounded-2xl shadow-2xl border border-white/10 animate-fade-in text-sm font-medium">
           <Check className="w-4 h-4 text-success-400 flex-shrink-0" />
@@ -384,7 +403,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg shadow-indigo-500/20">
@@ -426,7 +445,7 @@ export default function AdminTokoPage() {
         </div>
       </div>
 
-      {/* â”€â”€ Tabs Navigation & Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Tabs Navigation & Filters ────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2 bg-surface-100/50 dark:bg-surface-800/50 p-1.5 rounded-2xl w-full lg:w-fit overflow-x-auto no-scrollbar">
           <button
@@ -534,7 +553,7 @@ export default function AdminTokoPage() {
         )}
       </div>
 
-      {/* ðŸŸ¢ TAB CONTENT: ANALISIS ðŸŸ¢ */}
+      {/* 🟢 TAB CONTENT: ANALISIS 🟢 */}
       {activeTab === 'analisis' && (
         <TokoAnalisisTab 
           penjualanList={penjualanList} 
@@ -544,7 +563,7 @@ export default function AdminTokoPage() {
         />
       )}
 
-      {/* â”€â”€ TAB CONTENT: MASTER BARANG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── TAB CONTENT: MASTER BARANG ────────────────────────────────── */}
       {activeTab === 'master' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -626,7 +645,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ TAB CONTENT: PEMBELIAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── TAB CONTENT: PEMBELIAN ────────────────────────────────────── */}
       {activeTab === 'pembelian' && (
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-6 sm:p-8 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl shadow-indigo-500/20">
@@ -640,6 +659,15 @@ export default function AdminTokoPage() {
               </p>
             </div>
             <div className="flex-shrink-0 flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => {
+                  setPindahForm({ items: [{ barang_id: barangList[0]?.id || '', jumlah_satuan_kecil: 1 }] });
+                  setShowModalPindah(true);
+                }}
+                className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl shadow-lg transition-all cursor-pointer whitespace-nowrap"
+              >
+                + Pindah ke Display
+              </button>
               <button
                 onClick={() => {
                   setKeluarForm({ 
@@ -778,7 +806,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ TAB CONTENT: MUTASI GUDANG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── TAB CONTENT: MUTASI GUDANG ────────────────────────────────── */}
       {activeTab === 'mutasi' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
@@ -909,7 +937,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ TAB CONTENT: RIWAYAT PENJUALAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── TAB CONTENT: RIWAYAT PENJUALAN ────────────────────────── */}
       {activeTab === 'riwayat' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
@@ -1039,7 +1067,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ TAB CONTENT: LABA RUGI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── TAB CONTENT: LABA RUGI ────────────────────────────────────── */}
       {activeTab === 'laba_rugi' && (
         <div className="space-y-6 animate-fade-in">
           <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm p-6">
@@ -1222,7 +1250,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ TAB CONTENT: PENGATURAN (DANGER ZONE) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* ── TAB CONTENT: PENGATURAN (DANGER ZONE) ────────────────── */}
       {(activeTab === 'pengaturan' && userRole === 'superadmin') && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-danger-200 dark:border-danger-800 shadow-sm p-6 sm:p-8 animate-fade-in">
           <div className="flex items-center gap-3 mb-6 text-danger-600 dark:text-danger-400">
@@ -1277,10 +1305,105 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ MODALS Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* ── MODALS ── */}
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ MODAL EDIT PEMBELIAN Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* ── MODAL PINDAH KE DISPLAY ── */}
+      {showModalPindah && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalPindah(false)} />
+          <div className="relative w-full max-w-2xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-cyan-500 to-blue-500" />
+            <div className="p-6 text-xs flex-1 overflow-y-auto">
+              <h3 className="font-bold text-lg mb-4 text-surface-900 dark:text-white">Pindah Stok Gudang ke Display</h3>
+              <form onSubmit={handleSimpanPindah} className="space-y-6">
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm">Daftar Barang</h4>
+                    <button
+                      type="button"
+                      onClick={() => setPindahForm(prev => ({
+                        ...prev,
+                        items: [...prev.items, { barang_id: barangList[0]?.id || '', jumlah_satuan_kecil: 1 }]
+                      }))}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-500/20 transition-colors"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      Tambah Baris
+                    </button>
+                  </div>
+                  
+                  {pindahForm.items.map((item, index) => (
+                    <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700">
+                      <div className="w-full sm:flex-1">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Barang</label>
+                        <select
+                          required
+                          value={item.barang_id}
+                          onChange={e => {
+                            const newItems = [...pindahForm.items];
+                            newItems[index] = { 
+                              ...newItems[index], 
+                              barang_id: e.target.value
+                            };
+                            setPindahForm({ ...pindahForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        >
+                          <option value="">-- Pilih --</option>
+                          {barangList.map(b => (
+                            <option key={b.id} value={b.id}>{b.nama_barang} (Gudang: {b.stok_gudang} {b.satuan_kecil})</option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div className="w-full sm:w-32">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">
+                          Qty ({barangList.find(b => b.id === item.barang_id)?.satuan_kecil || 'Pcs'})
+                        </label>
+                        <input
+                          type="number"
+                          required min={1}
+                          value={item.jumlah_satuan_kecil || ''}
+                          onChange={e => {
+                            const newItems = [...pindahForm.items];
+                            newItems[index].jumlah_satuan_kecil = e.target.value === '' ? 0 : (parseInt(e.target.value) || 0);
+                            setPindahForm({ ...pindahForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        />
+                      </div>
 
+                      <div className="sm:pt-5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = pindahForm.items.filter((_, i) => i !== index);
+                            setPindahForm({ ...pindahForm, items: newItems });
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                          disabled={pindahForm.items.length === 1}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-surface-100 dark:border-surface-800">
+                  <button type="button" onClick={() => setShowModalPindah(false)} className="px-5 py-2.5 bg-surface-100 dark:bg-surface-800 rounded-xl font-bold cursor-pointer">
+                    Batal
+                  </button>
+                  <button type="submit" className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold transition-all shadow-md cursor-pointer">
+                    Pindahkan Stok
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModalKeluarkan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
