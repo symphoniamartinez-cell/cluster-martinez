@@ -82,6 +82,53 @@ export default function WargaDashboardPage() {
     console.log(`[WARGA-DASH] ${msg}`);
   };
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = sessionStorage.getItem('warga_active_tab');
+      if (savedTab === 'kupon' || savedTab === 'iuran') {
+        setActiveTab(savedTab as 'iuran' | 'kupon');
+      }
+    }
+  }, []);
+
+  const handleTabChange = (tab: 'iuran' | 'kupon') => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('warga_active_tab', tab);
+    }
+  };
+
+  // ── POLLING FOR SELECTED KUPON ──────────────────────────────
+  useEffect(() => {
+    if (!selectedKupon) return;
+    if (selectedKupon.is_used) return; // Stop polling if already used
+
+    const interval = setInterval(() => {
+      fetchKuponsFromCloud(nomorRumah).then((cloudKupons) => {
+        if (cloudKupons !== null) {
+          setKupons(cloudKupons);
+          // Update selectedKupon if its status changed
+          const updatedKupon = cloudKupons.find(k => k.id === selectedKupon.id);
+          if (updatedKupon && updatedKupon.is_used) {
+            setSelectedKupon(updatedKupon);
+          }
+          // (Optional) sync to local storage here as well
+          try {
+            const stored = localStorage.getItem('martinez_kupons_v1');
+            if (stored) {
+              let allLocalKupons: KuponAcara[] = JSON.parse(stored);
+              allLocalKupons = allLocalKupons.filter(k => cleanHouseNo(k.nomor_rumah) !== cleanHouseNo(nomorRumah));
+              allLocalKupons = [...allLocalKupons, ...cloudKupons];
+              localStorage.setItem('martinez_kupons_v1', JSON.stringify(allLocalKupons));
+            }
+          } catch (e) {}
+        }
+      });
+    }, 3000); // Check every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedKupon, nomorRumah]);
+
   // ── MASTER DATA LOADING ─────────────────────────────────────
   useEffect(() => {
     const stored = sessionStorage.getItem('demo_user');
@@ -602,7 +649,7 @@ export default function WargaDashboardPage() {
         {/* ── TABS NAVIGATION ────────────────────────── */}
         <div className="flex p-1 bg-surface-200/50 dark:bg-surface-800/50 rounded-2xl">
           <button
-            onClick={() => setActiveTab('iuran')}
+            onClick={() => handleTabChange('iuran')}
             className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
               activeTab === 'iuran'
                 ? 'bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm'
@@ -612,7 +659,7 @@ export default function WargaDashboardPage() {
             Data Iuran
           </button>
           <button
-            onClick={() => setActiveTab('kupon')}
+            onClick={() => handleTabChange('kupon')}
             className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
               activeTab === 'kupon'
                 ? 'bg-white dark:bg-surface-700 text-accent-600 dark:text-accent-400 shadow-sm'
