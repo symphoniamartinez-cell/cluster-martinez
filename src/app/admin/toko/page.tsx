@@ -1,12 +1,13 @@
 'use client';
 
 // ============================================================
-// Admin Toko Martinez Page Ã¢â‚¬â€ /admin/toko
+// Admin Toko Martinez Page — /admin/toko
 // Manajemen Master Barang & Input Pembelian (Stok Gudang)
 // ============================================================
 
 import React, { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import {
   Store,
@@ -45,6 +46,7 @@ import {
   editPenjualanInvoice,
   resetSemuaDataToko,
   deleteMutasiStok,
+  updateMutasiStok,
   deletePembelianInvoice,
   editPembelianInvoice,
   getClientUserName,
@@ -107,6 +109,14 @@ export default function AdminTokoPage() {
       jumlah_satuan_kecil: number;
       harga_satuan_custom: number;
     }[];
+  } | null>(null);
+
+  const [editMutasi, setEditMutasi] = useState<{
+    id: string;
+    barang_id: string;
+    jumlah_satuan_kecil: number;
+    catatan: string;
+    jenis: string;
   } | null>(null);
 
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
@@ -260,6 +270,30 @@ export default function AdminTokoPage() {
       loadData();
     } else {
       showToast(`Gagal mengedit invoice: ${res.error}`);
+    }
+    setIsSyncing(false);
+  };
+
+  const handleSimpanEditMutasi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editMutasi) return;
+
+    setIsSyncing(true);
+    const user = getClientUserName('Admin');
+    const res = await updateMutasiStok(
+      editMutasi.id,
+      editMutasi.barang_id,
+      editMutasi.jumlah_satuan_kecil,
+      editMutasi.catatan,
+      user
+    );
+
+    if (res.success) {
+      showToast('Data mutasi berhasil diperbarui!');
+      setEditMutasi(null);
+      loadData();
+    } else {
+      showToast(`Gagal mengedit mutasi: ${res.error}`);
     }
     setIsSyncing(false);
   };
@@ -917,13 +951,28 @@ export default function AdminTokoPage() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {(item.jenis === 'STOK_KELUAR' || item.jenis === 'PINDAH_DISPLAY') && (
-                          <button
-                            onClick={() => handleDeleteMutasi(item.id, item.jenis)}
-                            className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-500/20 rounded-lg transition-colors cursor-pointer"
-                            title="Undo Mutasi"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => setEditMutasi({
+                                id: item.id,
+                                barang_id: item.barang_id,
+                                jumlah_satuan_kecil: item.qtyKecil,
+                                catatan: item.catatan !== '-' && item.catatan !== 'Pindah ke etalase/kulkas' ? item.catatan : '',
+                                jenis: item.jenis
+                              })}
+                              className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/20 rounded-lg transition-colors cursor-pointer"
+                              title="Edit Mutasi"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMutasi(item.id, item.jenis)}
+                              className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-500/20 rounded-lg transition-colors cursor-pointer"
+                              title="Undo Mutasi"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -949,6 +998,13 @@ export default function AdminTokoPage() {
               <p className="text-xs text-surface-500 mt-1">Laporan penjualan kasir dengan nama pelanggan dan nomor nota.</p>
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
+              <Link
+                href="/toko/kasir"
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold rounded-xl text-xs hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors w-full sm:w-auto justify-center"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Input Penjualan
+              </Link>
               <button
                 onClick={exportPenjualanToExcel}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold rounded-xl text-xs hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
@@ -1743,6 +1799,7 @@ export default function AdminTokoPage() {
                       <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-center">Qty</th>
                       <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Harga Jual / Pcs</th>
                       <th className="px-6 py-3 font-semibold text-surface-500 uppercase tracking-wider text-right">Subtotal</th>
+                      <th className="px-6 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
@@ -1751,10 +1808,39 @@ export default function AdminTokoPage() {
                       return (
                         <tr key={idx} className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30">
                           <td className="px-6 py-3 font-medium text-surface-900 dark:text-white">
-                            {brg?.nama_barang || 'Barang Terhapus'}
+                            <select
+                              required
+                              value={p.barang_id}
+                              onChange={e => {
+                                const newItems = [...editRiwayat.items];
+                                const selectedB = barangList.find(b => b.id === e.target.value);
+                                newItems[idx].barang_id = e.target.value;
+                                if (selectedB && newItems[idx].harga_satuan_custom === 0) {
+                                  newItems[idx].harga_satuan_custom = selectedB.harga_jual_satuan_kecil || 0;
+                                }
+                                setEditRiwayat({ ...editRiwayat, items: newItems });
+                              }}
+                              className="w-full px-2 py-1.5 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                            >
+                              <option value="">-- Pilih Barang --</option>
+                              {barangList.map(bItem => (
+                                <option key={bItem.id} value={bItem.id}>{bItem.nama_barang}</option>
+                              ))}
+                            </select>
                           </td>
-                          <td className="px-6 py-3 text-center font-medium text-blue-600 dark:text-blue-400">
-                            {p.jumlah_satuan_kecil} {brg?.satuan_kecil || 'Pcs'}
+                          <td className="px-6 py-3 text-center font-medium text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1">
+                            <input
+                              type="number"
+                              required min={1}
+                              value={p.jumlah_satuan_kecil}
+                              onChange={e => {
+                                const newItems = [...editRiwayat.items];
+                                newItems[idx].jumlah_satuan_kecil = parseInt(e.target.value) || 1;
+                                setEditRiwayat({ ...editRiwayat, items: newItems });
+                              }}
+                              className="w-16 px-2 py-1 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg text-center"
+                            />
+                            <span className="text-[10px]">{brg?.satuan_kecil || 'Pcs'}</span>
                           </td>
                           <td className="px-6 py-3 text-right">
                             <div className="relative w-32 ml-auto">
@@ -1775,11 +1861,41 @@ export default function AdminTokoPage() {
                           <td className="px-6 py-3 text-right font-mono font-bold text-surface-900 dark:text-white">
                             Rp {(p.harga_satuan_custom * p.jumlah_satuan_kecil).toLocaleString('id-ID')}
                           </td>
+                          <td className="px-6 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = editRiwayat.items.filter((_, i) => i !== idx);
+                                setEditRiwayat({ ...editRiwayat, items: newItems });
+                              }}
+                              className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-500/20 rounded-lg"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
+                <div className="p-4 flex justify-between items-center border-t border-surface-100 dark:border-surface-800">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditRiwayat({
+                        ...editRiwayat,
+                        items: [...editRiwayat.items, { barang_id: '', jumlah_satuan_kecil: 1, harga_satuan_custom: 0 }]
+                      });
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors text-xs"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    Tambah Baris
+                  </button>
+                  <div className="font-bold text-sm">
+                    Grand Total: <span className="text-blue-600 dark:text-blue-400">Rp {editRiwayat.items.reduce((acc, curr) => acc + (curr.jumlah_satuan_kecil * curr.harga_satuan_custom), 0).toLocaleString('id-ID')}</span>
+                  </div>
+                </div>
               </div>
               
               <div className="p-4 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/50 flex justify-end gap-3 flex-shrink-0">
@@ -1787,6 +1903,67 @@ export default function AdminTokoPage() {
                   Batal
                 </button>
                 <button type="submit" disabled={isSyncing} className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-bold transition-all shadow-md hover:brightness-110 cursor-pointer disabled:opacity-50">
+                  {isSyncing ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL: EDIT MUTASI */}
+      {editMutasi && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setEditMutasi(null)} />
+          <div className="relative w-full max-w-md bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden">
+            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-blue-500 to-indigo-500" />
+            <form onSubmit={handleSimpanEditMutasi}>
+              <div className="p-6 border-b border-surface-100 dark:border-surface-800 flex justify-between items-center">
+                <h3 className="text-lg font-bold text-surface-900 dark:text-white">Edit Mutasi</h3>
+                <button type="button" onClick={() => setEditMutasi(null)} className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-colors cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-surface-500 mb-1">Barang</label>
+                  <select
+                    required
+                    value={editMutasi.barang_id}
+                    onChange={e => setEditMutasi({ ...editMutasi, barang_id: e.target.value })}
+                    className="w-full px-3 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">-- Pilih Barang --</option>
+                    {barangList.map(b => (
+                      <option key={b.id} value={b.id}>{b.nama_barang}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-surface-500 mb-1">Qty</label>
+                  <input
+                    type="number"
+                    required min={1}
+                    value={editMutasi.jumlah_satuan_kecil}
+                    onChange={e => setEditMutasi({ ...editMutasi, jumlah_satuan_kecil: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-surface-500 mb-1">Catatan Tambahan (Opsional)</label>
+                  <input
+                    type="text"
+                    value={editMutasi.catatan}
+                    onChange={e => setEditMutasi({ ...editMutasi, catatan: e.target.value })}
+                    placeholder="Contoh: Kesalahan input sebelumnya"
+                    className="w-full px-3 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+              <div className="p-4 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/50 flex justify-end gap-3">
+                <button type="button" onClick={() => setEditMutasi(null)} className="px-5 py-2.5 bg-surface-200 hover:bg-surface-300 dark:bg-surface-700 dark:hover:bg-surface-600 rounded-xl font-bold transition-colors cursor-pointer text-sm">
+                  Batal
+                </button>
+                <button type="submit" disabled={isSyncing} className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-bold transition-all shadow-md hover:brightness-110 cursor-pointer disabled:opacity-50 text-sm">
                   {isSyncing ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </button>
               </div>

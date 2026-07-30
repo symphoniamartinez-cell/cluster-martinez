@@ -706,6 +706,91 @@ export async function deleteMutasiStok(idPergerakan: string) {
   }
 }
 
+export async function updateMutasiStok(
+  idPergerakan: string,
+  newBarangId: string,
+  newQtyKecil: number,
+  newCatatan: string,
+  user: string
+) {
+  try {
+    const client = createClient();
+    if (!client) throw new Error('No Supabase Client');
+
+    const oldPergerakan = getTokoPergerakanLocal().find(p => p.id === idPergerakan);
+    if (!oldPergerakan) throw new Error('Data mutasi tidak ditemukan');
+
+    if (oldPergerakan.jenis_pergerakan !== 'STOK_KELUAR' && oldPergerakan.jenis_pergerakan !== 'PINDAH_DISPLAY') {
+      throw new Error('Jenis mutasi ini tidak bisa diedit secara individu. Silakan edit via Invoice Pembelian.');
+    }
+
+    const barangList = getTokoBarangLocal();
+    const oldBarang = barangList.find(b => b.id === oldPergerakan.barang_id);
+    const newBarang = barangList.find(b => b.id === newBarangId);
+
+    if (!oldBarang) throw new Error('Barang lama tidak ditemukan');
+    if (!newBarang) throw new Error('Barang baru tidak ditemukan');
+
+    const barangUpdates: Record<string, { stok_gudang?: number, stok_display?: number }> = {};
+    
+    // Virtual stock processing
+    const vOldGudang = oldBarang.stok_gudang || 0;
+    const vOldDisplay = oldBarang.stok_display || 0;
+    const vNewGudang = newBarang.stok_gudang || 0;
+    const vNewDisplay = newBarang.stok_display || 0;
+
+    // 1. Revert Old Effect
+    let oldTargetGudang = vOldGudang;
+    let oldTargetDisplay = vOldDisplay;
+
+    if (oldPergerakan.jenis_pergerakan === 'STOK_KELUAR') {
+      oldTargetGudang += oldPergerakan.jumlah_satuan_kecil;
+    } else if (oldPergerakan.jenis_pergerakan === 'PINDAH_DISPLAY') {
+      oldTargetGudang += oldPergerakan.jumlah_satuan_kecil;
+      oldTargetDisplay -= oldPergerakan.jumlah_satuan_kecil;
+    }
+
+    barangUpdates[oldBarang.id] = { stok_gudang: oldTargetGudang, stok_display: oldTargetDisplay };
+
+    // 2. Apply New Effect
+    // if newBarang is same as oldBarang, apply to the already reverted virtual stock
+    let newTargetGudang = (oldBarang.id === newBarang.id) ? oldTargetGudang : vNewGudang;
+    let newTargetDisplay = (oldBarang.id === newBarang.id) ? oldTargetDisplay : vNewDisplay;
+
+    if (oldPergerakan.jenis_pergerakan === 'STOK_KELUAR') {
+      newTargetGudang -= newQtyKecil;
+      if (newTargetGudang < 0) throw new Error(`Stok gudang ${newBarang.nama_barang} tidak cukup untuk Stok Keluar. Stok Virtual: ${newTargetGudang + newQtyKecil}`);
+    } else if (oldPergerakan.jenis_pergerakan === 'PINDAH_DISPLAY') {
+      newTargetGudang -= newQtyKecil;
+      newTargetDisplay += newQtyKecil;
+      if (newTargetGudang < 0) throw new Error(`Stok gudang ${newBarang.nama_barang} tidak cukup untuk Pindah Display. Stok Virtual: ${newTargetGudang + newQtyKecil}`);
+    }
+
+    barangUpdates[newBarang.id] = { stok_gudang: newTargetGudang, stok_display: newTargetDisplay };
+
+    // Execute DB
+    const updatePayload: any = {
+      barang_id: newBarangId,
+      jumlah_satuan_kecil: newQtyKecil,
+      catatan: newCatatan,
+      dibuat_oleh: user
+    };
+
+    const { error: err1 } = await client.from('toko_pergerakan_stok').update(updatePayload).eq('id', idPergerakan);
+    if (err1) throw err1;
+
+    for (const [bId, updateData] of Object.entries(barangUpdates)) {
+      const { error: err2 } = await client.from('toko_barang').update(updateData).eq('id', bId);
+      if (err2) throw err2;
+    }
+
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function deletePembelianInvoice(nomorInvoice: string) {
   try {
     const client = createClient();
