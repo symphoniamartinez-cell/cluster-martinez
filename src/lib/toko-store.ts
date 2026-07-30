@@ -762,7 +762,7 @@ export async function editPembelianInvoice(
 
     // Process new items
     const newPergerakan: TokoPergerakanStok[] = [];
-    const barangUpdates: Record<string, { stok_gudang: number }> = {};
+    const barangUpdates: Record<string, { stok_gudang: number; harga_beli_satuan_besar?: number }> = {};
 
     for (const item of newItems) {
       if (!item.barang_id || item.jumlah <= 0) continue;
@@ -777,6 +777,21 @@ export async function editPembelianInvoice(
       const hargaBeliBesarEquivalent = isKecil ? item.harga_beli_per_unit * qtyPerBesar : item.harga_beli_per_unit;
 
       const currentStokGudang = barangUpdates[item.barang_id]?.stok_gudang ?? b.stok_gudang ?? 0;
+      const currentHargaBeli = barangUpdates[item.barang_id]?.harga_beli_satuan_besar ?? b.harga_beli_satuan_besar ?? 0;
+
+      const currentStokBesar = currentStokGudang / qtyPerBesar;
+      const addedStokBesar = qtySatuanKecil / qtyPerBesar;
+
+      let newAverageHarga = currentHargaBeli;
+      if (hargaBeliBesarEquivalent > 0) {
+        if (currentStokBesar <= 0) {
+          newAverageHarga = hargaBeliBesarEquivalent;
+        } else {
+          const totalOldValue = currentStokBesar * currentHargaBeli;
+          const totalNewValue = addedStokBesar * hargaBeliBesarEquivalent;
+          newAverageHarga = Math.round((totalOldValue + totalNewValue) / (currentStokBesar + addedStokBesar));
+        }
+      }
       
       newPergerakan.push({
         id: 'tps-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
@@ -791,7 +806,10 @@ export async function editPembelianInvoice(
         created_at: oldDate // keep original date
       });
 
-      barangUpdates[item.barang_id] = { stok_gudang: currentStokGudang + qtySatuanKecil };
+      barangUpdates[item.barang_id] = { 
+        stok_gudang: currentStokGudang + qtySatuanKecil,
+        harga_beli_satuan_besar: newAverageHarga
+      };
     }
 
     if (newPergerakan.length === 0) throw new Error('Tidak ada barang valid untuk diubah');
@@ -810,7 +828,11 @@ export async function editPembelianInvoice(
 
     for (const bId of Array.from(allInvolvedIds)) {
       const finalStok = barangUpdates[bId]?.stok_gudang ?? virtualBarangList.find(b=>b.id===bId)?.stok_gudang ?? 0;
-      const { error: err3 } = await client.from('toko_barang').update({ stok_gudang: finalStok }).eq('id', bId);
+      const updatePayload: any = { stok_gudang: finalStok };
+      if (barangUpdates[bId]?.harga_beli_satuan_besar !== undefined) {
+        updatePayload.harga_beli_satuan_besar = barangUpdates[bId].harga_beli_satuan_besar;
+      }
+      const { error: err3 } = await client.from('toko_barang').update(updatePayload).eq('id', bId);
       if (err3) throw err3;
     }
 
