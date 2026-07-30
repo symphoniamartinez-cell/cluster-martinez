@@ -229,21 +229,23 @@ export default function SettingsPage() {
           </button>
         )}
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('database')}
-          className={`
-            flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer
-            ${
-              activeTab === 'database'
-                ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20'
-                : 'text-accent-600 dark:text-accent-400 hover:bg-accent-500/10'
-            }
-          `}
-        >
-          <Database className="w-4 h-4" />
-          Database Setup
-        </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('database')}
+            className={`
+              flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer
+              ${
+                activeTab === 'database'
+                  ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20'
+                  : 'text-accent-600 dark:text-accent-400 hover:bg-accent-500/10'
+              }
+            `}
+          >
+            <Database className="w-4 h-4" />
+            Database Setup
+          </button>
+        )}
       </div>
 
       {/* ── TAB 1: PENGATURAN IURAN & REKENING BANK ──────────── */}
