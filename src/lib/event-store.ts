@@ -433,6 +433,21 @@ export async function scanAndUseKuponByBooth(
     kupon = allKupons[kuponIndex];
   }
 
+  let requestBooth: TenantBooth | undefined;
+  if (boothId || boothNama) {
+    requestBooth = allBooths.find(
+      (b) => (boothId && b.id === boothId) || (boothId && b.username === boothId) || (boothNama && b.nama_booth === boothNama)
+    );
+  }
+
+  // Validate booth event matches kupon event
+  if (requestBooth && kupon.event_id !== requestBooth.event_id) {
+    return {
+      success: false,
+      message: `GAGAL: Kupon ini (${kupon.nama_event}) TIDAK BERLAKU untuk event tempat booth Anda terdaftar!`,
+      kupon,
+    };
+  }
 
   if (kupon.is_used) {
     const usedWhere = kupon.used_by_booth_nama
@@ -462,10 +477,8 @@ export async function scanAndUseKuponByBooth(
   _saveKupons(allKupons);
 
   let updatedBooth: TenantBooth | null = null;
-  if (boothId || boothNama) {
-    const bIndex = allBooths.findIndex(
-      (b) => (boothId && b.id === boothId) || (boothId && b.username === boothId) || (boothNama && b.nama_booth === boothNama)
-    );
+  if (requestBooth) {
+    const bIndex = allBooths.findIndex((b) => b.id === requestBooth!.id);
     if (bIndex !== -1) {
       allBooths[bIndex].total_scanned = (allBooths[bIndex].total_scanned || 0) + 1;
       updatedBooth = allBooths[bIndex];

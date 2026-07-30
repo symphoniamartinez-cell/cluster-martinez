@@ -343,7 +343,7 @@ export default function AdminEventsPage() {
           `}
         >
           <Store className="w-4 h-4" />
-          Akun Tenant Booth ({booths.length})
+          Akun Tenant Booth ({booths.filter(b => b.event_id === selectedEventId).length})
         </button>
 
         <button
@@ -359,7 +359,7 @@ export default function AdminEventsPage() {
           `}
         >
           <Ticket className="w-4 h-4" />
-          Semua Kupon Warga ({kupons.length})
+          Semua Kupon Warga ({kupons.filter(k => k.event_id === selectedEventId).length})
         </button>
       </div>
 

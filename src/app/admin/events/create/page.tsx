@@ -25,7 +25,7 @@ import {
   Clock,
 } from 'lucide-react';
 import type { IuranMatrixRow } from '@/types';
-import { createEventAndGenerateKupons } from '@/lib/event-store';
+import { createEventAndGenerateKupons, getBoothsFromStorage } from '@/lib/event-store';
 
 const STORAGE_KEY_IURAN = 'martinez_iuran_matrix_v2';
 
@@ -300,6 +300,34 @@ export default function CreateEventPage() {
       alert('Nama Event Acara Wajib Diisi!');
       return;
     }
+
+    // Validate booth usernames (must be unique within this event and globally)
+    const existingBooths = getBoothsFromStorage();
+    const usernamesInForm = new Set<string>();
+    
+    for (const b of booths) {
+      if (!b.username.trim()) {
+        alert(`Username untuk booth "${b.nama_booth}" tidak boleh kosong.`);
+        return;
+      }
+      
+      const u = b.username.trim().toLowerCase();
+      
+      // Check duplicate within form
+      if (usernamesInForm.has(u)) {
+        alert(`Username "${u}" digunakan lebih dari 1 kali di form ini. Username harus unik.`);
+        return;
+      }
+      usernamesInForm.add(u);
+      
+      // Check duplicate against existing booths in other events
+      const conflict = existingBooths.find(ex => ex.username.toLowerCase() === u);
+      if (conflict) {
+        alert(`Username "${u}" sudah digunakan oleh booth "${conflict.nama_booth}" pada event lain. Harap gunakan username yang berbeda.`);
+        return;
+      }
+    }
+
     setCountdown(3);
     setShowConfirmModal(true);
   };
