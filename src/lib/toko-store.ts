@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client';
 const TOKO_BARANG_KEY = 'martinez_toko_barang_v1';
 const TOKO_PERGERAKAN_KEY = 'martinez_toko_pergerakan_v1';
 const TOKO_PENJUALAN_KEY = 'martinez_toko_penjualan_v1';
+const TOKO_PAYMENT_KEY = 'martinez_toko_payment_v1';
 
 // -------------------------------------------------------------
 // LOCAL STORAGE GETTERS
@@ -26,6 +27,12 @@ export function getTokoPenjualanLocal(): TokoPenjualan[] {
   return data ? JSON.parse(data) : [];
 }
 
+export function getTokoPaymentHarianLocal(): any[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(TOKO_PAYMENT_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
 // -------------------------------------------------------------
 // CLOUD SYNC & FETCH
 // -------------------------------------------------------------
@@ -34,10 +41,11 @@ export async function syncTokoDataFromCloud() {
     const client = createClient();
     if (!client) return { success: false, error: 'No Supabase Client' };
 
-    const [resBarang, resPergerakan, resPenjualan] = await Promise.all([
+    const [resBarang, resPergerakan, resPenjualan, resPayment] = await Promise.all([
       client.from('toko_barang').select('*').order('nama_barang', { ascending: true }),
       client.from('toko_pergerakan_stok').select('*').order('created_at', { ascending: false }).limit(500),
-      client.from('toko_penjualan').select('*').order('created_at', { ascending: false }).limit(500)
+      client.from('toko_penjualan').select('*').order('created_at', { ascending: false }).limit(500),
+      client.from('toko_payment_harian').select('*').order('tanggal', { ascending: false }).limit(100)
     ]);
 
     if (resBarang.error) throw resBarang.error;
@@ -45,6 +53,7 @@ export async function syncTokoDataFromCloud() {
     if (resBarang.data) localStorage.setItem(TOKO_BARANG_KEY, JSON.stringify(resBarang.data));
     if (resPergerakan.data) localStorage.setItem(TOKO_PERGERAKAN_KEY, JSON.stringify(resPergerakan.data));
     if (resPenjualan.data) localStorage.setItem(TOKO_PENJUALAN_KEY, JSON.stringify(resPenjualan.data));
+    if (resPayment.data) localStorage.setItem(TOKO_PAYMENT_KEY, JSON.stringify(resPayment.data));
 
     return { success: true };
   } catch (err: any) {
@@ -61,6 +70,20 @@ export async function saveTokoBarang(barang: TokoBarang) {
     const client = createClient();
     if (client) {
       const { error } = await client.from('toko_barang').upsert(barang, { onConflict: 'id' });
+      if (error) throw error;
+    }
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function saveTokoPaymentHarian(tanggal: string, payment_diterima: number) {
+  try {
+    const client = createClient();
+    if (client) {
+      const { error } = await client.from('toko_payment_harian').upsert({ tanggal, payment_diterima }, { onConflict: 'tanggal' });
       if (error) throw error;
     }
     await syncTokoDataFromCloud();

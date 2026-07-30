@@ -240,3 +240,9 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   booth: 'Tenant / Booth Makanan',
   penjaga_ch: 'Penjaga Clubhouse',
 };
+
+export interface TokoPaymentHarian {
+  tanggal: string;
+  payment_diterima: number;
+}
+

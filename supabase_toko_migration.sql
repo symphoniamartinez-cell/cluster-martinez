@@ -86,3 +86,15 @@ CREATE POLICY "Allow all actions for toko_penjualan" ON public.toko_penjualan FO
 -- Supabase seringkali belum menyadarinya dan menyebabkan error (schema cache).
 -- Jalankan perintah di bawah ini untuk me-refresh cache Supabase:
 NOTIFY pgrst, 'reload schema';
+
+-- ==========================================
+-- 4. Tabel Payment Harian
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.toko_payment_harian (
+  tanggal TEXT PRIMARY KEY,
+  payment_diterima BIGINT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+DROP POLICY IF EXISTS "Allow all actions for toko_payment_harian" ON public.toko_payment_harian;
+CREATE POLICY "Allow all actions for toko_payment_harian" ON public.toko_payment_harian FOR ALL USING (true);
+

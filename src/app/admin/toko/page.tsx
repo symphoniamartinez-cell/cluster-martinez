@@ -1,11 +1,11 @@
-﻿'use client';
+'use client';
 
 // ============================================================
-// Admin Toko Martinez Page â€” /admin/toko
+// Admin Toko Martinez Page Ã¢â‚¬â€ /admin/toko
 // Manajemen Master Barang & Input Pembelian (Stok Gudang)
 // ============================================================
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import {
@@ -25,6 +25,7 @@ import {
   Settings,
   AlertTriangle,
   Download,
+  ChevronDown,
 } from 'lucide-react';
 import TokoAnalisisTab from '@/components/TokoAnalisisTab';
 import type { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
@@ -32,10 +33,13 @@ import {
   getTokoBarangLocal,
   getTokoPergerakanLocal,
   getTokoPenjualanLocal,
+  getTokoPaymentHarianLocal,
+  saveTokoPaymentHarian,
   syncTokoDataFromCloud,
   deleteTokoBarang,
   addPembelianBatchGudang,
   keluarkanBatchGudang,
+  pindahKeDisplayBatch,
   deletePenjualanInvoice,
   editPenjualanInvoice,
   resetSemuaDataToko,
@@ -57,6 +61,9 @@ export default function AdminTokoPage() {
   const [barangList, setBarangList] = useState<TokoBarang[]>([]);
   const [pergerakanList, setPergerakanList] = useState<TokoPergerakanStok[]>([]);
   const [penjualanList, setPenjualanList] = useState<TokoPenjualan[]>([]);
+  const [paymentList, setPaymentList] = useState<any[]>([]);
+  const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
+  const [paymentInputs, setPaymentInputs] = useState<Record<string, string>>({});
 
   // â”€â”€ MODAL STATES â”€â”€
 
@@ -122,6 +129,30 @@ export default function AdminTokoPage() {
     setBarangList(getTokoBarangLocal());
     setPergerakanList(getTokoPergerakanLocal());
     setPenjualanList(getTokoPenjualanLocal());
+    const payments = getTokoPaymentHarianLocal();
+    setPaymentList(payments);
+    
+    const initialInputs: Record<string, string> = {};
+    payments.forEach((p: any) => {
+      initialInputs[p.tanggal] = p.payment_diterima.toString();
+    });
+    setPaymentInputs(initialInputs);
+  };
+
+  const handleKonfirmasiPayment = async (tanggal: string) => {
+    const amountStr = paymentInputs[tanggal] || '0';
+    const amount = parseInt(amountStr, 10);
+    if (isNaN(amount)) return showToast('Nominal tidak valid!');
+    
+    setIsSyncing(true);
+    const res = await saveTokoPaymentHarian(tanggal, amount);
+    if (res.success) {
+      showToast(`Payment untuk ${tanggal} berhasil disimpan!`);
+      loadData();
+    } else {
+      showToast(`Gagal menyimpan payment: ${res.error}`);
+    }
+    setIsSyncing(false);
   };
 
   const handleSyncData = async (showNotification = true) => {
@@ -338,45 +369,6 @@ export default function AdminTokoPage() {
     downloadExcel(data, `Laporan_Penjualan_${filterMonth}_${filterYear}`);
   };
 
-  const exportLabaRugiToExcel = () => {
-    const grouped = Object.values(
-      filteredPenjualanList.reduce((acc, p) => {
-        if (!acc[p.barang_id]) {
-          acc[p.barang_id] = { 
-            barang_id: p.barang_id, 
-            qty: 0, 
-            omzet: 0, 
-            hpp: 0 
-          };
-        }
-        acc[p.barang_id].qty += p.jumlah_satuan_kecil;
-        acc[p.barang_id].omzet += p.total_harga;
-        acc[p.barang_id].hpp += (p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil;
-        return acc;
-      }, {} as Record<string, any>)
-    );
-
-    const data = grouped.map(g => ({
-      'Barang': barangList.find(b => b.id === g.barang_id)?.nama_barang || 'Unknown',
-      'Terjual': g.qty,
-      'Omzet': g.omzet,
-      'HPP': g.hpp,
-      'Profit': g.omzet - g.hpp
-    }));
-    
-    const totalOmzet = grouped.reduce((sum, g) => sum + g.omzet, 0);
-    const totalHPP = grouped.reduce((sum, g) => sum + g.hpp, 0);
-    data.push({
-      'Barang': 'TOTAL KESELURUHAN',
-      'Terjual': grouped.reduce((sum, g) => sum + g.qty, 0),
-      'Omzet': totalOmzet,
-      'HPP': totalHPP,
-      'Profit': totalOmzet - totalHPP
-    });
-
-    downloadExcel(data, `Laporan_LabaRugi_${filterMonth}_${filterYear}`);
-  };
-
   const [isResetting, setIsResetting] = useState(false);
   const [resetCountdown, setResetCountdown] = useState(0);
 
@@ -419,7 +411,7 @@ export default function AdminTokoPage() {
 
   return (
     <div className="space-y-6 max-w-[1300px] mx-auto animate-fade-in pb-12">
-      {/* â”€â”€ Toast Notification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â”€â”€ Toast Notification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 flex items-center gap-2.5 px-5 py-3.5 bg-surface-900 text-white rounded-2xl shadow-2xl border border-white/10 animate-fade-in text-sm font-medium">
           <Check className="w-4 h-4 text-success-400 flex-shrink-0" />
@@ -427,7 +419,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg shadow-indigo-500/20">
@@ -469,7 +461,7 @@ export default function AdminTokoPage() {
         </div>
       </div>
 
-      {/* â”€â”€ Tabs Navigation & Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â”€â”€ Tabs Navigation & Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2 bg-surface-100/50 dark:bg-surface-800/50 p-1.5 rounded-2xl w-full lg:w-fit overflow-x-auto no-scrollbar">
           <button
@@ -587,7 +579,7 @@ export default function AdminTokoPage() {
         />
       )}
 
-      {/* â”€â”€ TAB CONTENT: MASTER BARANG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â”€â”€ TAB CONTENT: MASTER BARANG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'master' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -669,7 +661,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ TAB CONTENT: PEMBELIAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â”€â”€ TAB CONTENT: PEMBELIAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'pembelian' && (
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-6 sm:p-8 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl shadow-indigo-500/20">
@@ -839,7 +831,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ TAB CONTENT: MUTASI GUDANG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â”€â”€ TAB CONTENT: MUTASI GUDANG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'mutasi' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
@@ -970,7 +962,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ TAB CONTENT: RIWAYAT PENJUALAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â”€â”€ TAB CONTENT: RIWAYAT PENJUALAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'riwayat' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
@@ -1104,91 +1096,186 @@ export default function AdminTokoPage() {
       {activeTab === 'laba_rugi' && (
         <div className="space-y-6 animate-fade-in">
           <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm p-6">
-            <h3 className="font-bold text-base text-surface-900 dark:text-white mb-6">Laporan Laba Rugi Penjualan</h3>
+            <h3 className="font-bold text-base text-surface-900 dark:text-white mb-6">Laporan Laba Rugi & Payment Harian</h3>
             
             {(() => {
               const totalOmzet = filteredPenjualanList.reduce((sum, p) => sum + p.total_harga, 0);
               const totalHPP = filteredPenjualanList.reduce((sum, p) => sum + ((p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil), 0);
-              const totalLaba = totalOmzet - totalHPP;
-              const labaMargin = totalOmzet > 0 ? (totalLaba / totalOmzet) * 100 : 0;
+              const totalLabaBersih = totalOmzet - totalHPP;
+              
+              // Hitung Group by Tanggal
+              const groupedByDate: Record<string, {
+                tanggal: string;
+                omset: number;
+                hpp: number;
+                profit: number;
+                items: { barang_id: string; qty: number; omset: number; hpp: number }[];
+              }> = {};
+
+              filteredPenjualanList.forEach(p => {
+                const tgl = (p.created_at || new Date().toISOString()).split('T')[0];
+                if (!groupedByDate[tgl]) {
+                  groupedByDate[tgl] = { tanggal: tgl, omset: 0, hpp: 0, profit: 0, items: [] };
+                }
+                groupedByDate[tgl].omset += p.total_harga;
+                groupedByDate[tgl].hpp += ((p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil);
+                groupedByDate[tgl].profit = groupedByDate[tgl].omset - groupedByDate[tgl].hpp;
+
+                let itemNode = groupedByDate[tgl].items.find(x => x.barang_id === p.barang_id);
+                if (!itemNode) {
+                  itemNode = { barang_id: p.barang_id, qty: 0, omset: 0, hpp: 0 };
+                  groupedByDate[tgl].items.push(itemNode);
+                }
+                itemNode.qty += p.jumlah_satuan_kecil;
+                itemNode.omset += p.total_harga;
+                itemNode.hpp += ((p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil);
+              });
+
+              const sortedDates = Object.values(groupedByDate).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+              // Hitung Total Payment Diterima untuk filter bulan/tahun ini
+              let totalPayment = 0;
+              sortedDates.forEach(d => {
+                const p = paymentList.find(x => x.tanggal === d.tanggal);
+                if (p) totalPayment += p.payment_diterima;
+              });
+
+              const totalSelisih = totalPayment - totalOmzet;
 
               return (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                  <div className="bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl p-5 text-white shadow-lg shadow-indigo-500/20">
-                    <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Total Omzet</p>
-                    <p className="text-3xl font-black font-mono">Rp {totalOmzet.toLocaleString('id-ID')}</p>
-                    <p className="text-xs text-white/70 mt-2">Seluruh pendapatan penjualan</p>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl p-5 text-white shadow-lg shadow-indigo-500/20">
+                      <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Total Omset</p>
+                      <p className="text-3xl font-black font-mono">Rp {totalOmzet.toLocaleString('id-ID')}</p>
+                      <p className="text-xs text-white/70 mt-2">Seluruh pendapatan penjualan</p>
+                    </div>
+                    <div className={`rounded-2xl p-5 text-white shadow-lg ${totalSelisih < 0 ? 'bg-gradient-to-br from-rose-500 to-red-600 shadow-red-500/20' : 'bg-gradient-to-br from-amber-500 to-orange-500 shadow-orange-500/20'}`}>
+                      <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Total Selisih</p>
+                      <p className="text-3xl font-black font-mono">Rp {totalSelisih.toLocaleString('id-ID')}</p>
+                      <p className="text-xs text-white/90 mt-2 font-bold">Payment Diterima - Omset</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
+                      <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Laba Bersih (Profit)</p>
+                      <p className="text-3xl font-black font-mono">Rp {totalLabaBersih.toLocaleString('id-ID')}</p>
+                      <p className="text-xs text-white/90 mt-2 font-bold">Omset - HPP</p>
+                    </div>
                   </div>
-                  <div className="bg-surface-50 dark:bg-surface-800 rounded-2xl p-5 border border-surface-200 dark:border-surface-700">
-                    <p className="text-surface-500 text-xs font-semibold uppercase tracking-wider mb-2">Total HPP (Modal)</p>
-                    <p className="text-3xl font-black font-mono text-surface-900 dark:text-white">Rp {totalHPP.toLocaleString('id-ID')}</p>
-                    <p className="text-xs text-surface-400 mt-2">Modal harga beli barang keluar</p>
+
+                  <div className="overflow-x-auto pb-10">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="bg-surface-50 dark:bg-surface-800/50 border-b border-surface-200 dark:border-surface-700 text-surface-500 uppercase tracking-wider font-semibold">
+                          <th className="px-4 py-3">Tanggal</th>
+                          <th className="px-4 py-3 text-right">Jml Omset Harian</th>
+                          <th className="px-4 py-3">Payment Diterima</th>
+                          <th className="px-4 py-3 text-right">Selisih</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+                        {sortedDates.map(stats => {
+                          const isExpanded = !!expandedDates[stats.tanggal];
+                          const savedPayment = paymentList.find(x => x.tanggal === stats.tanggal)?.payment_diterima || 0;
+                          const currentSelisih = savedPayment - stats.omset;
+                          
+                          return (
+                            <React.Fragment key={stats.tanggal}>
+                              <tr className={`hover:bg-surface-50 dark:hover:bg-surface-800/50 ${isExpanded ? 'bg-surface-50/50 dark:bg-surface-800/20' : ''}`}>
+                                <td className="px-4 py-3">
+                                  <button
+                                    onClick={() => setExpandedDates(prev => ({ ...prev, [stats.tanggal]: !prev[stats.tanggal] }))}
+                                    className="flex items-center gap-2 font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                                  >
+                                    <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                    {new Date(stats.tanggal).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </button>
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono font-bold text-surface-900 dark:text-white">
+                                  Rp {stats.omset.toLocaleString('id-ID')}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="relative">
+                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 font-mono">Rp</span>
+                                      <input 
+                                        type="number"
+                                        value={paymentInputs[stats.tanggal] !== undefined ? paymentInputs[stats.tanggal] : ''}
+                                        onChange={e => setPaymentInputs(prev => ({ ...prev, [stats.tanggal]: e.target.value }))}
+                                        className="w-32 pl-9 pr-3 py-1.5 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg font-mono text-xs"
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                    <button 
+                                      onClick={() => handleKonfirmasiPayment(stats.tanggal)}
+                                      className="px-3 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors cursor-pointer"
+                                    >
+                                      Konfirmasi
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className={`px-4 py-3 text-right font-mono font-bold ${currentSelisih < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                  Rp {currentSelisih.toLocaleString('id-ID')}
+                                </td>
+                              </tr>
+                              
+                              {/* Rincian Barang per Hari */}
+                              {isExpanded && (
+                                <tr>
+                                  <td colSpan={4} className="p-0 border-b border-surface-100 dark:border-surface-800">
+                                    <div className="bg-surface-50 dark:bg-surface-800/30 p-4 border-l-4 border-indigo-500">
+                                      <h5 className="text-[11px] font-bold text-surface-500 uppercase tracking-wider mb-3">Rincian Penjualan ({stats.tanggal})</h5>
+                                      <table className="w-full text-xs text-left">
+                                        <thead>
+                                          <tr className="border-b border-surface-200 dark:border-surface-700 text-surface-500">
+                                            <th className="py-2 font-semibold">Barang</th>
+                                            <th className="py-2 text-right font-semibold">Terjual</th>
+                                            <th className="py-2 text-right font-semibold">Omzet</th>
+                                            <th className="py-2 text-right font-semibold">HPP</th>
+                                            <th className="py-2 text-right font-semibold">Profit</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-surface-200/50 dark:divide-surface-700/50">
+                                          {stats.items.sort((a,b) => (b.omset - b.hpp) - (a.omset - a.hpp)).map(item => {
+                                            const brg = barangList.find(b => b.id === item.barang_id);
+                                            return (
+                                              <tr key={item.barang_id}>
+                                                <td className="py-2 text-surface-700 dark:text-surface-300">{brg?.nama_barang || 'Barang Terhapus'}</td>
+                                                <td className="py-2 text-right font-medium">{item.qty} {brg?.satuan_kecil || 'Pcs'}</td>
+                                                <td className="py-2 text-right font-mono text-surface-600 dark:text-surface-400">Rp {item.omset.toLocaleString('id-ID')}</td>
+                                                <td className="py-2 text-right font-mono text-surface-500">Rp {item.hpp.toLocaleString('id-ID')}</td>
+                                                <td className="py-2 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                                                  Rp {(item.omset - item.hpp).toLocaleString('id-ID')}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                        {sortedDates.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="px-4 py-8 text-center text-surface-500">
+                              Tidak ada data penjualan pada bulan/tahun ini.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="bg-gradient-to-br from-success-500 to-teal-500 rounded-2xl p-5 text-white shadow-lg shadow-success-500/20">
-                    <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Laba Bersih (Profit)</p>
-                    <p className="text-3xl font-black font-mono">Rp {totalLaba.toLocaleString('id-ID')}</p>
-                    <p className="text-xs text-white/90 mt-2 font-bold">Margin: {labaMargin.toFixed(1)}%</p>
-                  </div>
-                </div>
+                </>
               );
             })()}
-
-            <h4 className="font-bold text-sm text-surface-900 dark:text-white mb-4">Rincian Laba Per Barang</h4>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="bg-surface-50 dark:bg-surface-800/50 border-b border-surface-200 dark:border-surface-700 text-surface-500 uppercase tracking-wider font-semibold">
-                    <th className="px-4 py-3">Nama Barang</th>
-                    <th className="px-4 py-3 text-right">Terjual</th>
-                    <th className="px-4 py-3 text-right">Omzet</th>
-                    <th className="px-4 py-3 text-right">HPP</th>
-                    <th className="px-4 py-3 text-right">Profit</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
-                  {Object.values(
-                    filteredPenjualanList.reduce((acc, p) => {
-                      if (!acc[p.barang_id]) {
-                        acc[p.barang_id] = { barang_id: p.barang_id, qty: 0, omzet: 0, hpp: 0 };
-                      }
-                      acc[p.barang_id].qty += p.jumlah_satuan_kecil;
-                      acc[p.barang_id].omzet += p.total_harga;
-                      acc[p.barang_id].hpp += (p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil;
-                      return acc;
-                    }, {} as Record<string, { barang_id: string; qty: number; omzet: number; hpp: number }>)
-                  )
-                  .sort((a, b) => (b.omzet - b.hpp) - (a.omzet - a.hpp))
-                  .map(stats => {
-                    const brg = barangList.find(b => b.id === stats.barang_id);
-                    const profit = stats.omzet - stats.hpp;
-                    return (
-                      <tr key={stats.barang_id} className="hover:bg-surface-50 dark:hover:bg-surface-800/50">
-                        <td className="px-4 py-3 font-medium text-surface-900 dark:text-white">
-                          {brg?.nama_barang || 'Barang Terhapus'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-medium">
-                          {stats.qty} {brg?.satuan_kecil || 'Pcs'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-surface-600 dark:text-surface-400">
-                          Rp {stats.omzet.toLocaleString('id-ID')}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-surface-600 dark:text-surface-400">
-                          Rp {stats.hpp.toLocaleString('id-ID')}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono font-bold text-success-600 dark:text-success-400">
-                          Rp {profit.toLocaleString('id-ID')}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       )}
 
-      {/* â”€â”€ TAB CONTENT: PENGATURAN (DANGER ZONE) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ TAB CONTENT: PENGATURAN (DANGER ZONE) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {(activeTab === 'pengaturan' && userRole === 'superadmin') && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-danger-200 dark:border-danger-800 shadow-sm p-6 sm:p-8 animate-fade-in">
           <div className="flex items-center gap-3 mb-6 text-danger-600 dark:text-danger-400">
@@ -1243,9 +1330,9 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ MODALS â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ MODALS Ã¢â€â‚¬Ã¢â€â‚¬ */}
 
-      {/* â”€â”€ MODAL EDIT PEMBELIAN â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ MODAL EDIT PEMBELIAN Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {showModalEditBeli && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalEditBeli(false)} />
@@ -1482,7 +1569,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* â”€â”€ MODAL: DETAIL INVOICE PEMBELIAN â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ MODAL: DETAIL INVOICE PEMBELIAN Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {detailInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDetailInvoice(null)} />
@@ -1494,7 +1581,7 @@ export default function AdminTokoPage() {
                   Detail Invoice: <span className="text-indigo-600 dark:text-indigo-400">{detailInvoice.nomor_invoice}</span>
                 </h3>
                 <p className="text-xs text-surface-500">
-                  {new Date(detailInvoice.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} â€¢ {detailInvoice.dibuat_oleh}
+                  {new Date(detailInvoice.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} Ã¢â‚¬Â¢ {detailInvoice.dibuat_oleh}
                 </p>
                 {detailInvoice.catatan && (
                   <p className="text-xs text-surface-500 italic mt-2 bg-surface-50 dark:bg-surface-800 p-2 rounded-lg">"{detailInvoice.catatan}"</p>
@@ -1568,7 +1655,7 @@ export default function AdminTokoPage() {
                   Detail Penjualan: <span className="text-teal-600 dark:text-teal-400">{detailRiwayat.nomor_invoice}</span>
                 </h3>
                 <p className="text-xs text-surface-500">
-                  {new Date(detailRiwayat.tanggal).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} â€¢ Kasir: {detailRiwayat.dijual_oleh}
+                  {new Date(detailRiwayat.tanggal).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} Ã¢â‚¬Â¢ Kasir: {detailRiwayat.dijual_oleh}
                 </p>
                 <div className="mt-3 px-3 py-2 bg-surface-50 dark:bg-surface-800 rounded-xl inline-block">
                   <span className="text-xs text-surface-500">Pelanggan:</span>
