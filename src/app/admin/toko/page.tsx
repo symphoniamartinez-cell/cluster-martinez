@@ -62,6 +62,21 @@ export default function AdminTokoPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('');
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = sessionStorage.getItem('admin_toko_active_tab');
+      if (savedTab) {
+        setActiveTab(savedTab as any);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as any);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('admin_toko_active_tab', tab);
+    }
+  };
   const [barangList, setBarangList] = useState<TokoBarang[]>([]);
   const [pergerakanList, setPergerakanList] = useState<TokoPergerakanStok[]>([]);
   const [penjualanList, setPenjualanList] = useState<TokoPenjualan[]>([]);
@@ -486,7 +501,7 @@ export default function AdminTokoPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2 bg-surface-100/50 dark:bg-surface-800/50 p-1.5 rounded-2xl w-full lg:w-fit overflow-x-auto no-scrollbar">
           <button
-            onClick={() => setActiveTab('analisis')}
+            onClick={() => handleTabChange('analisis')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
               activeTab === 'analisis'
                 ? 'bg-white dark:bg-surface-900 text-amber-600 dark:text-amber-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
@@ -497,7 +512,7 @@ export default function AdminTokoPage() {
             Analisis Barang
           </button>
           <button
-          onClick={() => setActiveTab('master')}
+          onClick={() => handleTabChange('master')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'master'
               ? 'bg-white dark:bg-surface-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
@@ -508,7 +523,7 @@ export default function AdminTokoPage() {
           Master Barang
         </button>
         <button
-          onClick={() => setActiveTab('pembelian')}
+          onClick={() => handleTabChange('pembelian')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'pembelian'
               ? 'bg-white dark:bg-surface-900 text-purple-600 dark:text-purple-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
@@ -519,7 +534,7 @@ export default function AdminTokoPage() {
           Restock Pembelian
         </button>
         <button
-          onClick={() => setActiveTab('mutasi')}
+          onClick={() => handleTabChange('mutasi')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'mutasi'
               ? 'bg-white dark:bg-surface-900 text-blue-600 dark:text-blue-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
@@ -530,7 +545,7 @@ export default function AdminTokoPage() {
           Riwayat Mutasi
         </button>
         <button
-          onClick={() => setActiveTab('riwayat')}
+          onClick={() => handleTabChange('riwayat')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'riwayat'
               ? 'bg-white dark:bg-surface-900 text-teal-600 dark:text-teal-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
@@ -541,7 +556,7 @@ export default function AdminTokoPage() {
           Riwayat Penjualan
         </button>
         <button
-          onClick={() => setActiveTab('laba_rugi')}
+          onClick={() => handleTabChange('laba_rugi')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'laba_rugi'
               ? 'bg-white dark:bg-surface-900 text-rose-600 dark:text-rose-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
@@ -553,7 +568,7 @@ export default function AdminTokoPage() {
         </button>
         {userRole === 'superadmin' && (
           <button
-            onClick={() => setActiveTab('pengaturan')}
+            onClick={() => handleTabChange('pengaturan')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
               activeTab === 'pengaturan'
                 ? 'bg-danger-50 text-danger-600 dark:bg-danger-500/10 dark:text-danger-400 shadow-sm border border-danger-200/50 dark:border-danger-700/50'
