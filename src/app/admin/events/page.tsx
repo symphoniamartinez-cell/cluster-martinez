@@ -56,6 +56,21 @@ export default function AdminEventsPage() {
   const [userRole, setUserRole] = useState<UserRole>('superadmin');
   const [userName, setUserName] = useState('Admin');
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = sessionStorage.getItem('admin_events_active_tab');
+      if (savedTab) {
+        setActiveTab(savedTab as any);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as any);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('admin_events_active_tab', tab);
+    }
+  };
   const [events, setEvents] = useState<EventAcara[]>([]);
   const [kupons, setKupons] = useState<KuponAcara[]>([]);
   const [booths, setBooths] = useState<TenantBooth[]>([]);
@@ -345,7 +360,7 @@ export default function AdminEventsPage() {
       <div className="flex flex-wrap bg-white dark:bg-surface-900 p-1.5 rounded-2xl border border-surface-200 dark:border-surface-800 w-fit gap-1">
         <button
           type="button"
-          onClick={() => setActiveTab('events')}
+          onClick={() => handleTabChange('events')}
           className={`
             flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer
             ${
@@ -361,7 +376,7 @@ export default function AdminEventsPage() {
 
         <button
           type="button"
-          onClick={() => setActiveTab('reports')}
+          onClick={() => handleTabChange('reports')}
           className={`
             flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer
             ${
@@ -377,7 +392,7 @@ export default function AdminEventsPage() {
 
         <button
           type="button"
-          onClick={() => setActiveTab('booths')}
+          onClick={() => handleTabChange('booths')}
           className={`
             flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer
             ${
@@ -393,7 +408,7 @@ export default function AdminEventsPage() {
 
         <button
           type="button"
-          onClick={() => setActiveTab('kupons')}
+          onClick={() => handleTabChange('kupons')}
           className={`
             flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer
             ${
@@ -503,7 +518,7 @@ export default function AdminEventsPage() {
                         <button
                           onClick={() => {
                             setSelectedEventId(evt.id);
-                            setActiveTab('reports');
+                            handleTabChange('reports');
                           }}
                           className="py-2 px-2 bg-gradient-to-r from-accent-500 to-primary-500 hover:from-accent-600 hover:to-primary-600 text-white font-bold text-[11px] rounded-xl shadow-sm transition-all cursor-pointer text-center flex items-center justify-center gap-1"
                         >
@@ -514,7 +529,7 @@ export default function AdminEventsPage() {
                         <button
                           onClick={() => {
                             setSelectedEventId(evt.id);
-                            setActiveTab('booths');
+                            handleTabChange('booths');
                           }}
                           className="py-2 px-2 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-[11px] rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1"
                         >
@@ -525,7 +540,7 @@ export default function AdminEventsPage() {
                         <button
                           onClick={() => {
                             setSelectedEventId(evt.id);
-                            setActiveTab('kupons');
+                            handleTabChange('kupons');
                           }}
                           className="py-2 px-2 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-bold text-[11px] rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1"
                         >
