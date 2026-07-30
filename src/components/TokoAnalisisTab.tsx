@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { TokoPenjualan, TokoBarang } from '@/types';
 import { Package, TrendingUp } from 'lucide-react';
 
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth, filterYear }: Props) {
-  const { allItems, activeDays, avgDailyOmset, totalTerjual } = useMemo(() => {
+  const { allItems, activeDays, avgDailyOmset, totalTerjual, dailyOmsetData } = useMemo(() => {
     // 1. Calculate Active Days logic
     const now = new Date();
     const isCurrentMonth = now.getMonth() + 1 === filterMonth && now.getFullYear() === filterYear;
@@ -42,11 +42,27 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
     let totalOmset = 0;
     let totalTerjual = 0;
 
+    const dailyMap: Record<number, number> = {};
+    for (let i = 1; i <= daysInMonth; i++) {
+      dailyMap[i] = 0;
+    }
+
     filteredPenjualan.forEach(p => {
       qtyMap[p.barang_id] = (qtyMap[p.barang_id] || 0) + p.jumlah_satuan_kecil;
       totalOmset += p.total_harga || 0;
       totalTerjual += p.jumlah_satuan_kecil;
+      
+      const d = new Date(p.created_at || new Date());
+      const day = d.getDate();
+      if (dailyMap[day] !== undefined) {
+        dailyMap[day] += (p.total_harga || 0);
+      }
     });
+
+    const dailyOmsetData = Object.keys(dailyMap).map(day => ({
+      tanggal: day,
+      omset: dailyMap[parseInt(day)]
+    }));
 
     const items = Object.entries(qtyMap).map(([barang_id, qty]) => {
       const b = barangList.find(x => x.id === barang_id);
@@ -59,7 +75,7 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
       };
     }).sort((a, b) => b.qty - a.qty);
 
-    return { allItems: items, activeDays, avgDailyOmset: totalOmset / activeDays, totalTerjual };
+    return { allItems: items, activeDays, avgDailyOmset: totalOmset / activeDays, totalTerjual, dailyOmsetData };
   }, [penjualanList, barangList, filterMonth, filterYear]);
 
   return (
@@ -85,6 +101,30 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
 
         {allItems.length > 0 ? (
           <>
+            <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-4">Grafik Omset Harian</h4>
+            <div className="w-full h-72 mb-8 bg-surface-50 dark:bg-surface-800/20 rounded-xl p-4 border border-surface-100 dark:border-surface-800 overflow-x-auto no-scrollbar">
+              <div style={{ minWidth: '600px', height: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dailyOmsetData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
+                    <XAxis dataKey="tanggal" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <YAxis 
+                      tick={{ fontSize: 11 }} 
+                      tickLine={false} 
+                      axisLine={false}
+                      tickFormatter={(value) => `Rp ${(value/1000)}k`} 
+                    />
+                    <Tooltip 
+                      formatter={(value: any) => [`Rp ${(value || 0).toLocaleString('id-ID')}`, 'Omset Harian']}
+                      labelFormatter={(label) => `Tanggal: ${label}`}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }} 
+                    />
+                    <Line type="monotone" dataKey="omset" name="Omset" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
             <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-4">Grafik Penjualan Seluruh Barang</h4>
             <div className="w-full h-72 mb-8 bg-surface-50 dark:bg-surface-800/20 rounded-xl p-4 border border-surface-100 dark:border-surface-800 overflow-x-auto no-scrollbar">
               <div style={{ minWidth: `${Math.max(allItems.length * 80, 100)}%`, height: '100%' }}>
