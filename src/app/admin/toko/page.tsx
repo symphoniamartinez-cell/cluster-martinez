@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 // ============================================================
-// Admin Toko Martinez Page — /admin/toko
+// Admin Toko Martinez Page â€” /admin/toko
 // Manajemen Master Barang & Input Pembelian (Stok Gudang)
 // ============================================================
 
@@ -58,19 +58,7 @@ export default function AdminTokoPage() {
   const [pergerakanList, setPergerakanList] = useState<TokoPergerakanStok[]>([]);
   const [penjualanList, setPenjualanList] = useState<TokoPenjualan[]>([]);
 
-  // ── MODAL STATES ──
-  const [showModalBeli, setShowModalBeli] = useState(false);
-  const [beliForm, setBeliForm] = useState<{
-    nomor_invoice: string;
-    tanggal: string;
-    catatan: string;
-    items: PembelianItem[];
-  }>({
-    nomor_invoice: '',
-    tanggal: new Date().toISOString().slice(0, 10),
-    catatan: '',
-    items: [],
-  });
+  // â”€â”€ MODAL STATES â”€â”€
 
   const [showModalEditBeli, setShowModalEditBeli] = useState(false);
   const [editBeliForm, setEditBeliForm] = useState<{
@@ -162,7 +150,7 @@ export default function AdminTokoPage() {
     }
   }, []);
 
-  // ── HANDLERS ──
+  // â”€â”€ HANDLERS â”€â”€
   const handleDeleteBarang = async (id: string, nama: string) => {
     if (confirm(`Yakin ingin menghapus barang "${nama}"? Semua riwayat stok akan terhapus juga!`)) {
       const res = await deleteTokoBarang(id);
@@ -175,27 +163,6 @@ export default function AdminTokoPage() {
     }
   };
 
-  const handleSimpanPembelian = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (beliForm.items.length === 0) return;
-
-    const user = JSON.parse(sessionStorage.getItem('demo_user') || '{}').label || 'Admin';
-    const res = await addPembelianBatchGudang(
-      beliForm.items,
-      beliForm.nomor_invoice,
-      beliForm.tanggal,
-      beliForm.catatan,
-      user
-    );
-
-    if (res.success) {
-      showToast('Pembelian berhasil ditambahkan ke Gudang!');
-      setShowModalBeli(false);
-      loadData();
-    } else {
-      showToast(`Gagal menambah pembelian: ${res.error}`);
-    }
-  };
 
   const handleSimpanKeluarkan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -452,7 +419,7 @@ export default function AdminTokoPage() {
 
   return (
     <div className="space-y-6 max-w-[1300px] mx-auto animate-fade-in pb-12">
-      {/* ── Toast Notification ───────────────────────────────── */}
+      {/* â”€â”€ Toast Notification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 flex items-center gap-2.5 px-5 py-3.5 bg-surface-900 text-white rounded-2xl shadow-2xl border border-white/10 animate-fade-in text-sm font-medium">
           <Check className="w-4 h-4 text-success-400 flex-shrink-0" />
@@ -460,7 +427,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* ── Header ───────────────────────────────────────────── */}
+      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg shadow-indigo-500/20">
@@ -502,7 +469,7 @@ export default function AdminTokoPage() {
         </div>
       </div>
 
-      {/* ── Tabs Navigation & Filters ──────────────────────────────────── */}
+      {/* â”€â”€ Tabs Navigation & Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2 bg-surface-100/50 dark:bg-surface-800/50 p-1.5 rounded-2xl w-full lg:w-fit overflow-x-auto no-scrollbar">
           <button
@@ -610,17 +577,17 @@ export default function AdminTokoPage() {
         )}
       </div>
 
-      {/* 🟢 TAB CONTENT: ANALISIS 🟢 */}
+      {/* ðŸŸ¢ TAB CONTENT: ANALISIS ðŸŸ¢ */}
       {activeTab === 'analisis' && (
         <TokoAnalisisTab 
-          penjualanList={filteredPenjualanList} 
+          penjualanList={penjualanList} 
           barangList={barangList} 
           filterMonth={filterMonth}
           filterYear={filterYear}
         />
       )}
 
-      {/* ── TAB CONTENT: MASTER BARANG ───────────────────────── */}
+      {/* â”€â”€ TAB CONTENT: MASTER BARANG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'master' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -702,7 +669,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* ── TAB CONTENT: PEMBELIAN ──────────────────────────── */}
+      {/* â”€â”€ TAB CONTENT: PEMBELIAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'pembelian' && (
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-6 sm:p-8 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl shadow-indigo-500/20">
@@ -731,24 +698,12 @@ export default function AdminTokoPage() {
               >
                 - Keluarkan Stok
               </button>
-              <button
-                onClick={() => {
-                  setBeliForm({ 
-                    nomor_invoice: '',
-                    tanggal: new Date().toISOString().slice(0, 10),
-                    catatan: '',
-                    items: [{
-                      barang_id: barangList[0]?.id || '',
-                      jumlah_satuan_besar: 1,
-                      harga_beli_satuan_besar: barangList[0]?.harga_beli_satuan_besar || 0
-                    }]
-                  });
-                  setShowModalBeli(true);
-                }}
-                className="px-5 py-2.5 bg-white text-indigo-600 hover:bg-indigo-50 font-bold rounded-xl shadow-lg transition-all cursor-pointer whitespace-nowrap"
-              >
-                + Input Pembelian
-              </button>
+                <button
+                  onClick={() => router.push('/admin/toko/pembelian/tambah')}
+                  className="px-5 py-2.5 bg-white text-indigo-600 hover:bg-indigo-50 font-bold rounded-xl shadow-lg transition-all cursor-pointer whitespace-nowrap"
+                >
+                  + Input Pembelian
+                </button>
             </div>
           </div>
 
@@ -846,11 +801,17 @@ export default function AdminTokoPage() {
                                   nomor_invoice: invoice.nomor_invoice,
                                   tanggal: invoice.tanggal.split('T')[0],
                                   catatan: invoice.catatan,
-                                  items: invoice.items.map(i => ({
-                                    barang_id: i.barang_id,
-                                    jumlah_satuan_besar: i.jumlah_satuan_besar || 0,
-                                    harga_beli_satuan_besar: 0 // In old data, maybe we don't have this, but not strictly needed for stock update
-                                  }))
+                                  items: invoice.items.map(p => {
+                                    const isKecil = p.jumlah_satuan_besar === 0;
+                                    const b = barangList.find(x => x.id === p.barang_id);
+                                    const qtyPerBesar = b?.qty_per_satuan_besar || 1;
+                                    return {
+                                      barang_id: p.barang_id,
+                                      tipe_satuan: isKecil ? 'kecil' : 'besar',
+                                      jumlah: isKecil ? p.jumlah_satuan_kecil : p.jumlah_satuan_besar,
+                                      harga_beli_per_unit: isKecil ? ((p.harga_beli_satuan_besar || 0) / qtyPerBesar) : (p.harga_beli_satuan_besar || 0)
+                                    };
+                                  })
                                 });
                                 setShowModalEditBeli(true);
                               }}
@@ -878,7 +839,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* ── TAB CONTENT: MUTASI GUDANG ──────────────────────── */}
+      {/* â”€â”€ TAB CONTENT: MUTASI GUDANG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'mutasi' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
@@ -1009,7 +970,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* ── TAB CONTENT: RIWAYAT PENJUALAN ──────────────────────── */}
+      {/* â”€â”€ TAB CONTENT: RIWAYAT PENJUALAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'riwayat' && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
@@ -1097,7 +1058,7 @@ export default function AdminTokoPage() {
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => setDetailRiwayat(invoice)}
-                              className="px-3 py-1.5 bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-500/20 font-bold rounded-lg transition-colors cursor-pointer"
+                              className="px-3 py-1.5 bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:teal-400 hover:bg-teal-100 dark:hover:bg-teal-500/20 font-bold rounded-lg transition-colors cursor-pointer"
                             >
                               Detail
                             </button>
@@ -1139,7 +1100,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* ── TAB CONTENT: LABA RUGI ──────────────────────── */}
+      {/* â”€â”€ TAB CONTENT: LABA RUGI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'laba_rugi' && (
         <div className="space-y-6 animate-fade-in">
           <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm p-6">
@@ -1227,7 +1188,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* ── TAB CONTENT: PENGATURAN (DANGER ZONE) ──────────────── */}
+      {/* â”€â”€ TAB CONTENT: PENGATURAN (DANGER ZONE) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {(activeTab === 'pengaturan' && userRole === 'superadmin') && (
         <div className="bg-white dark:bg-surface-900 rounded-3xl border border-danger-200 dark:border-danger-800 shadow-sm p-6 sm:p-8 animate-fade-in">
           <div className="flex items-center gap-3 mb-6 text-danger-600 dark:text-danger-400">
@@ -1282,160 +1243,9 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* ── MODALS ── */}
-      {showModalBeli && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalBeli(false)} />
-          <div className="relative w-full max-w-3xl bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="h-1.5 flex-shrink-0 bg-gradient-to-r from-indigo-500 to-purple-500" />
-            <div className="p-6 text-xs flex-1 overflow-y-auto">
-              <h3 className="text-base font-bold text-surface-900 dark:text-white mb-4">Input Pembelian (Restock Gudang)</h3>
-              
-              <form onSubmit={handleSimpanPembelian} className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-semibold mb-1">Nomor Invoice / Bukti</label>
-                    <input
-                      type="text"
-                      required
-                      value={beliForm.nomor_invoice}
-                      onChange={e => setBeliForm({ ...beliForm, nomor_invoice: e.target.value })}
-                      placeholder="INV-001..."
-                      className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">Tanggal Pembelian</label>
-                    <input
-                      type="date"
-                      required
-                      value={beliForm.tanggal}
-                      onChange={e => setBeliForm({ ...beliForm, tanggal: e.target.value })}
-                      className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block font-semibold mb-1">Catatan Tambahan (Opsional)</label>
-                  <input
-                    type="text"
-                    value={beliForm.catatan}
-                    onChange={e => setBeliForm({ ...beliForm, catatan: e.target.value })}
-                    placeholder="Beli dari Supplier A"
-                    className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl"
-                  />
-                </div>
+      {/* â”€â”€ MODALS â”€â”€ */}
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-sm">Daftar Barang</h4>
-                    <button
-                      type="button"
-                      onClick={() => setBeliForm(prev => ({
-                        ...prev,
-                        items: [...prev.items, { barang_id: barangList[0]?.id || '', jumlah_satuan_besar: 1, harga_beli_satuan_besar: barangList[0]?.harga_beli_satuan_besar || 0 }]
-                      }))}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
-                    >
-                      <PlusCircle className="w-4 h-4" />
-                      Tambah Baris
-                    </button>
-                  </div>
-                  
-                  {beliForm.items.map((item, index) => (
-                    <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700">
-                      <div className="w-full sm:flex-1">
-                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Barang</label>
-                        <select
-                          required
-                          value={item.barang_id}
-                          onChange={e => {
-                            const newItems = [...beliForm.items];
-                            const selectedBarang = barangList.find(b => b.id === e.target.value);
-                            newItems[index] = { 
-                              ...newItems[index], 
-                              barang_id: e.target.value,
-                              harga_beli_satuan_besar: selectedBarang?.harga_beli_satuan_besar || 0
-                            };
-                            setBeliForm({ ...beliForm, items: newItems });
-                          }}
-                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
-                        >
-                          <option value="">-- Pilih --</option>
-                          {barangList.map(b => (
-                            <option key={b.id} value={b.id}>{b.nama_barang}</option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="w-full sm:w-32">
-                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">
-                          Qty ({barangList.find(b => b.id === item.barang_id)?.satuan_besar || 'Besar'})
-                        </label>
-                        <input
-                          type="number"
-                          required min={1}
-                          value={item.jumlah_satuan_besar}
-                          onChange={e => {
-                            const newItems = [...beliForm.items];
-                            newItems[index].jumlah_satuan_besar = parseInt(e.target.value) || 1;
-                            setBeliForm({ ...beliForm, items: newItems });
-                          }}
-                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
-                        />
-                      </div>
-
-                      <div className="w-full sm:w-48">
-                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Harga Beli / Satuan Besar</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 font-bold">Rp</span>
-                          <input
-                            type="number"
-                            required min={0}
-                            value={item.harga_beli_satuan_besar}
-                            onChange={e => {
-                              const newItems = [...beliForm.items];
-                              newItems[index].harga_beli_satuan_besar = parseInt(e.target.value) || 0;
-                              setBeliForm({ ...beliForm, items: newItems });
-                            }}
-                            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="sm:pt-5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newItems = beliForm.items.filter((_, i) => i !== index);
-                            setBeliForm({ ...beliForm, items: newItems });
-                          }}
-                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                          disabled={beliForm.items.length === 1}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-surface-100 dark:border-surface-800 mt-6">
-                  <button type="button" onClick={() => setShowModalBeli(false)} className="px-5 py-2.5 bg-surface-100 dark:bg-surface-800 rounded-xl font-bold cursor-pointer">
-                    Batal
-                  </button>
-                  <button type="submit" className="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-bold cursor-pointer shadow-lg hover:brightness-110">
-                    Simpan Pembelian
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── MODAL EDIT PEMBELIAN ── */}
+      {/* â”€â”€ MODAL EDIT PEMBELIAN â”€â”€ */}
       {showModalEditBeli && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalEditBeli(false)} />
@@ -1466,7 +1276,7 @@ export default function AdminTokoPage() {
                       type="button"
                       onClick={() => setEditBeliForm(prev => ({
                         ...prev,
-                        items: [...prev.items, { barang_id: barangList[0]?.id || '', jumlah_satuan_besar: 1, harga_beli_satuan_besar: barangList[0]?.harga_beli_satuan_besar || 0 }]
+                        items: [...prev.items, { barang_id: barangList[0]?.id || '', tipe_satuan: 'besar', jumlah: 1, harga_beli_per_unit: barangList[0]?.harga_beli_satuan_besar || 0 }]
                       }))}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
                     >
@@ -1484,11 +1294,9 @@ export default function AdminTokoPage() {
                           value={item.barang_id}
                           onChange={e => {
                             const newItems = [...editBeliForm.items];
-                            const selectedBarang = barangList.find(b => b.id === e.target.value);
                             newItems[index] = { 
                               ...newItems[index], 
-                              barang_id: e.target.value,
-                              harga_beli_satuan_besar: selectedBarang?.harga_beli_satuan_besar || 0
+                              barang_id: e.target.value
                             };
                             setEditBeliForm({ ...editBeliForm, items: newItems });
                           }}
@@ -1503,23 +1311,35 @@ export default function AdminTokoPage() {
                       
                       <div className="w-full sm:w-32">
                         <label className="block text-[10px] font-semibold text-surface-500 mb-1">
-                          Qty ({barangList.find(b => b.id === item.barang_id)?.satuan_besar || 'Besar'})
+                          Qty
                         </label>
                         <input
                           type="number"
                           required min={1}
-                          value={item.jumlah_satuan_besar}
+                          value={item.jumlah}
                           onChange={e => {
                             const newItems = [...editBeliForm.items];
-                            newItems[index].jumlah_satuan_besar = parseInt(e.target.value) || 1;
+                            newItems[index].jumlah = parseInt(e.target.value) || 1;
                             setEditBeliForm({ ...editBeliForm, items: newItems });
                           }}
                           className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
                         />
                       </div>
-
-                      <div className="w-full sm:w-48 hidden">
-                        {/* Not exactly needed to show harga_beli for edit since we don't retroactively adjust average price yet, but let's keep the structure for compatibility with items type */}
+                      
+                      <div className="w-full sm:w-32">
+                        <label className="block text-[10px] font-semibold text-surface-500 mb-1">Satuan</label>
+                        <select
+                          value={item.tipe_satuan}
+                          onChange={e => {
+                             const newItems = [...editBeliForm.items];
+                             newItems[index].tipe_satuan = e.target.value as 'besar' | 'kecil';
+                             setEditBeliForm({ ...editBeliForm, items: newItems });
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg"
+                        >
+                           <option value="besar">Besar</option>
+                           <option value="kecil">Kecil</option>
+                        </select>
                       </div>
 
                       <div className="sm:pt-5">
@@ -1662,7 +1482,7 @@ export default function AdminTokoPage() {
         </div>
       )}
 
-      {/* ── MODAL: DETAIL INVOICE PEMBELIAN ── */}
+      {/* â”€â”€ MODAL: DETAIL INVOICE PEMBELIAN â”€â”€ */}
       {detailInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDetailInvoice(null)} />
@@ -1674,7 +1494,7 @@ export default function AdminTokoPage() {
                   Detail Invoice: <span className="text-indigo-600 dark:text-indigo-400">{detailInvoice.nomor_invoice}</span>
                 </h3>
                 <p className="text-xs text-surface-500">
-                  {new Date(detailInvoice.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • {detailInvoice.dibuat_oleh}
+                  {new Date(detailInvoice.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} â€¢ {detailInvoice.dibuat_oleh}
                 </p>
                 {detailInvoice.catatan && (
                   <p className="text-xs text-surface-500 italic mt-2 bg-surface-50 dark:bg-surface-800 p-2 rounded-lg">"{detailInvoice.catatan}"</p>
@@ -1702,9 +1522,21 @@ export default function AdminTokoPage() {
                     const brg = barangList.find(b => b.id === p.barang_id);
                     return (
                       <tr key={p.id} className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30">
-                        <td className="px-6 py-3 font-medium text-surface-900 dark:text-white">
-                          {brg?.nama_barang || 'Barang Terhapus'}
-                        </td>
+                                <td className="px-4 py-3">
+                                  <div className="font-semibold">{brg?.nama_barang || 'Unknown'}</div>
+                                  <div className="text-surface-500">
+                                    {p.jumlah_satuan_besar > 0 ? (
+                                      <>
+                                        {p.jumlah_satuan_besar} {brg?.satuan_besar || 'Dus'}
+                                        {p.jumlah_satuan_kecil > 0 && ` (${p.jumlah_satuan_kecil} ${brg?.satuan_kecil || 'Pcs'})`}
+                                      </>
+                                    ) : (
+                                      <>
+                                        {p.jumlah_satuan_kecil} {brg?.satuan_kecil || 'Pcs'}
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
                         <td className="px-6 py-3 text-right font-medium text-indigo-600 dark:text-indigo-400">
                           +{p.jumlah_satuan_besar} {brg?.satuan_besar || 'Dus'}
                         </td>
@@ -1736,7 +1568,7 @@ export default function AdminTokoPage() {
                   Detail Penjualan: <span className="text-teal-600 dark:text-teal-400">{detailRiwayat.nomor_invoice}</span>
                 </h3>
                 <p className="text-xs text-surface-500">
-                  {new Date(detailRiwayat.tanggal).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} • Kasir: {detailRiwayat.dijual_oleh}
+                  {new Date(detailRiwayat.tanggal).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} â€¢ Kasir: {detailRiwayat.dijual_oleh}
                 </p>
                 <div className="mt-3 px-3 py-2 bg-surface-50 dark:bg-surface-800 rounded-xl inline-block">
                   <span className="text-xs text-surface-500">Pelanggan:</span>

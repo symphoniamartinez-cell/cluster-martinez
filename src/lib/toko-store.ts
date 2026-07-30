@@ -86,8 +86,9 @@ export async function deleteTokoBarang(id: string) {
 
 export interface PembelianItem {
   barang_id: string;
-  jumlah_satuan_besar: number;
-  harga_beli_satuan_besar: number;
+  tipe_satuan: 'besar' | 'kecil';
+  jumlah: number;
+  harga_beli_per_unit: number;
 }
 
 export async function addPembelianBatchGudang(
@@ -105,20 +106,25 @@ export async function addPembelianBatchGudang(
     const barangUpdates: Record<string, { stok_gudang: number; harga_beli_satuan_besar: number }> = {};
 
     for (const item of items) {
-      if (!item.barang_id || item.jumlah_satuan_besar <= 0) continue;
+      if (!item.barang_id || item.jumlah <= 0) continue;
       
       const barang = localBarang.find(b => b.id === item.barang_id);
       if (!barang) throw new Error(`Barang ID ${item.barang_id} tidak ditemukan`);
 
-      const jumlahSatuanKecil = item.jumlah_satuan_besar * (barang.qty_per_satuan_besar || 1);
+      const isKecil = item.tipe_satuan === 'kecil';
+      const qtyPerBesar = barang.qty_per_satuan_besar || 1;
+
+      const jumlahSatuanKecil = isKecil ? item.jumlah : item.jumlah * qtyPerBesar;
+      const jumlahSatuanBesar = isKecil ? 0 : item.jumlah;
+      const hargaBeliBesarEquivalent = isKecil ? item.harga_beli_per_unit * qtyPerBesar : item.harga_beli_per_unit;
 
       pergerakanList.push({
         id: 'tps-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
         barang_id: item.barang_id,
         jenis_pergerakan: 'PEMBELIAN_GUDANG',
-        jumlah_satuan_besar: item.jumlah_satuan_besar,
+        jumlah_satuan_besar: jumlahSatuanBesar,
         jumlah_satuan_kecil: jumlahSatuanKecil,
-        harga_beli_satuan_besar: item.harga_beli_satuan_besar,
+        harga_beli_satuan_besar: hargaBeliBesarEquivalent,
         nomor_invoice: nomorInvoice || null,
         catatan,
         dibuat_oleh: user,
@@ -130,18 +136,18 @@ export async function addPembelianBatchGudang(
       const currentHargaBeli = barangUpdates[item.barang_id]?.harga_beli_satuan_besar ?? (barang.harga_beli_satuan_besar || 0);
       
       const currentStokBesar = currentStokKecil / (barang.qty_per_satuan_besar || 1);
-      const addedStokBesar = item.jumlah_satuan_besar;
+      const addedStokBesar = jumlahSatuanKecil / (barang.qty_per_satuan_besar || 1);
       
       let newAverageHarga = currentHargaBeli;
       
-      if (item.harga_beli_satuan_besar > 0) {
+      if (hargaBeliBesarEquivalent > 0) {
         if (currentStokBesar <= 0) {
           // If no existing stock, average cost is just the new cost
-          newAverageHarga = item.harga_beli_satuan_besar;
+          newAverageHarga = hargaBeliBesarEquivalent;
         } else {
           // Moving average cost
           const totalOldValue = currentStokBesar * currentHargaBeli;
-          const totalNewValue = addedStokBesar * item.harga_beli_satuan_besar;
+          const totalNewValue = addedStokBesar * hargaBeliBesarEquivalent;
           newAverageHarga = Math.round((totalOldValue + totalNewValue) / (currentStokBesar + addedStokBesar));
         }
       }
@@ -730,19 +736,26 @@ export async function editPembelianInvoice(
     const barangUpdates: Record<string, { stok_gudang: number }> = {};
 
     for (const item of newItems) {
-      if (!item.barang_id || item.jumlah_satuan_besar <= 0) continue;
+      if (!item.barang_id || item.jumlah <= 0) continue;
       const b = virtualBarangList.find(x => x.id === item.barang_id);
       if (!b) throw new Error(`Barang ID ${item.barang_id} tidak ditemukan`);
 
-      const qtySatuanKecil = item.jumlah_satuan_besar * (b.qty_per_satuan_besar || 1);
+      const isKecil = item.tipe_satuan === 'kecil';
+      const qtyPerBesar = b.qty_per_satuan_besar || 1;
+      
+      const qtySatuanKecil = isKecil ? item.jumlah : item.jumlah * qtyPerBesar;
+      const qtySatuanBesar = isKecil ? 0 : item.jumlah;
+      const hargaBeliBesarEquivalent = isKecil ? item.harga_beli_per_unit * qtyPerBesar : item.harga_beli_per_unit;
+
       const currentStokGudang = barangUpdates[item.barang_id]?.stok_gudang ?? b.stok_gudang ?? 0;
       
       newPergerakan.push({
         id: 'tps-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
         barang_id: item.barang_id,
         jenis_pergerakan: 'PEMBELIAN_GUDANG',
-        jumlah_satuan_besar: item.jumlah_satuan_besar,
+        jumlah_satuan_besar: qtySatuanBesar,
         jumlah_satuan_kecil: qtySatuanKecil,
+        harga_beli_satuan_besar: hargaBeliBesarEquivalent,
         catatan,
         nomor_invoice: nomorInvoice,
         dibuat_oleh: user,
