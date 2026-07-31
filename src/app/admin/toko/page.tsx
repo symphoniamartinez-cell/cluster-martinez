@@ -1219,7 +1219,7 @@ export default function AdminTokoPage() {
                 }
               });
 
-              const totalLabaBersih = totalOmzet - totalHPP - totalOpnameLoss;
+
               
               // Hitung Group by Tanggal
               const groupedByDate: Record<string, {
@@ -1259,6 +1259,7 @@ export default function AdminTokoPage() {
               });
 
               const totalSelisih = totalPayment - totalOmzet;
+              const totalLabaBersih = totalOmzet - totalHPP - totalOpnameLoss + totalSelisih;
 
               return (
                 <>
@@ -1281,7 +1282,7 @@ export default function AdminTokoPage() {
                     <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg shadow-emerald-500/20">
                       <p className="text-white/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2">Laba Bersih (Profit)</p>
                       <p className="text-xl sm:text-2xl font-black font-mono">Rp {totalLabaBersih.toLocaleString('id-ID')}</p>
-                      <p className="text-[10px] sm:text-xs text-white/90 mt-2 font-bold">Omset - (HPP + Beban)</p>
+                      <p className="text-[10px] sm:text-xs text-white/90 mt-2 font-bold">Omset - (HPP + Beban) + Selisih Kas</p>
                     </div>
                   </div>
 
