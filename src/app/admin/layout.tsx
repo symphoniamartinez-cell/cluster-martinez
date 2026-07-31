@@ -149,6 +149,9 @@ export default function AdminLayout({
             if ((userRole === 'bendahara' || userRole === 'pengurus') && item.href === '/admin/users') {
               return false;
             }
+            if (userRole === 'pengurus' && item.href === '/admin/toko') {
+              return false;
+            }
             return true;
           }).map((item) => {
             const isActive =
