@@ -1071,7 +1071,7 @@ export default function AdminTokoPage() {
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <Link
-                href="/toko/kasir"
+                href="/admin/toko/kasir"
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold rounded-xl text-xs hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors w-full sm:w-auto justify-center"
               >
                 <PlusCircle className="w-4 h-4" />
