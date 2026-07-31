@@ -4,7 +4,7 @@ import {
   Users, Plus, Wallet, CreditCard, ChevronDown, 
   Search, History, ArrowUpRight, ArrowDownLeft, X
 } from 'lucide-react';
-import { saveTokoPelanggan, submitTransaksiPelanggan, getClientUserName } from '@/lib/toko-store';
+import { saveTokoPelanggan, submitTransaksiPelanggan, updateTokoPelanggan, deleteTokoPelanggan, getClientUserName } from '@/lib/toko-store';
 
 interface Props {
   pelangganList: TokoPelanggan[];
@@ -15,11 +15,14 @@ interface Props {
 export default function TokoPelangganTab({ pelangganList, transaksiList, onDataChange }: Props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModalAdd, setShowModalAdd] = useState(false);
+  const [showModalEdit, setShowModalEdit] = useState(false);
+  const [showModalDelete, setShowModalDelete] = useState(false);
   const [showModalTopUp, setShowModalTopUp] = useState(false);
   const [showModalBayar, setShowModalBayar] = useState(false);
   const [selectedPelangganId, setSelectedPelangganId] = useState('');
   
   const [formAdd, setFormAdd] = useState({ nama: '', no_hp: '', alamat: '' });
+  const [formEdit, setFormEdit] = useState({ nama: '', no_hp: '', alamat: '', saldo_titipan: 0, total_hutang: 0 });
   const [formTopUp, setFormTopUp] = useState({ nominal: '', keterangan: '' });
   const [formBayar, setFormBayar] = useState({ nominal: '', keterangan: '' });
   
@@ -50,6 +53,31 @@ export default function TokoPelangganTab({ pelangganList, transaksiList, onDataC
       onDataChange();
     } else {
       alert("Gagal menyimpan: " + res.error);
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    const res = await updateTokoPelanggan(selectedPelangganId, formEdit);
+    if (res.success) {
+      setShowModalEdit(false);
+      onDataChange();
+    } else {
+      alert("Gagal update: " + res.error);
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleDelete = async () => {
+    setIsSubmitting(true);
+    const res = await deleteTokoPelanggan(selectedPelangganId);
+    if (res.success) {
+      setShowModalDelete(false);
+      onDataChange();
+    } else {
+      alert("Gagal hapus: " + res.error);
     }
     setIsSubmitting(false);
   };
@@ -179,24 +207,52 @@ export default function TokoPelangganTab({ pelangganList, transaksiList, onDataC
                     Rp {p.total_hutang.toLocaleString('id-ID')}
                   </td>
                   <td className="px-5 py-4 text-center">
-                    <button 
-                      onClick={() => {
-                        setSelectedPelangganId(p.id);
-                        setShowModalTopUp(true);
-                      }}
-                      className="px-3 py-1 bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 rounded-lg text-[10px] font-semibold transition-colors mx-1"
-                    >
-                      Topup
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setSelectedPelangganId(p.id);
-                        setShowModalBayar(true);
-                      }}
-                      className="px-3 py-1 bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 rounded-lg text-[10px] font-semibold transition-colors mx-1"
-                    >
-                      Bayar
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button 
+                        onClick={() => {
+                          setSelectedPelangganId(p.id);
+                          setShowModalTopUp(true);
+                        }}
+                        className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:brightness-110 rounded-lg text-[10px] font-semibold transition-colors"
+                      >
+                        Topup
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSelectedPelangganId(p.id);
+                          setShowModalBayar(true);
+                        }}
+                        className="px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:brightness-110 rounded-lg text-[10px] font-semibold transition-colors"
+                      >
+                        Bayar
+                      </button>
+                      <div className="w-px h-4 bg-surface-200 dark:bg-surface-700 mx-1"></div>
+                      <button 
+                        onClick={() => {
+                          setSelectedPelangganId(p.id);
+                          setFormEdit({
+                            nama: p.nama,
+                            no_hp: p.no_hp || '',
+                            alamat: p.alamat || '',
+                            saldo_titipan: p.saldo_titipan,
+                            total_hutang: p.total_hutang
+                          });
+                          setShowModalEdit(true);
+                        }}
+                        className="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:brightness-110 rounded-lg text-[10px] font-semibold transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSelectedPelangganId(p.id);
+                          setShowModalDelete(true);
+                        }}
+                        className="px-2.5 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 hover:brightness-110 rounded-lg text-[10px] font-semibold transition-colors"
+                      >
+                        Hapus
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -242,6 +298,67 @@ export default function TokoPelangganTab({ pelangganList, transaksiList, onDataC
                 <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 text-white bg-purple-600 rounded-xl font-bold text-sm">{isSubmitting ? 'Menyimpan...' : 'Simpan'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showModalEdit && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-surface-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-surface-100 dark:border-surface-800 flex justify-between items-center">
+              <h3 className="font-bold text-surface-900 dark:text-white flex items-center gap-2">
+                <Users className="w-4 h-4 text-blue-500" /> Edit Pelanggan
+              </h3>
+              <button onClick={() => setShowModalEdit(false)} className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-colors">
+                <X className="w-4 h-4 text-surface-400" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-surface-700 dark:text-surface-300 mb-1">Nama Lengkap</label>
+                <input required type="text" value={formEdit.nama} onChange={e => setFormEdit({...formEdit, nama: e.target.value})} className="w-full px-4 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm" placeholder="Nama..." />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-surface-700 dark:text-surface-300 mb-1">No. HP (Opsional)</label>
+                <input type="text" value={formEdit.no_hp} onChange={e => setFormEdit({...formEdit, no_hp: e.target.value})} className="w-full px-4 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm" placeholder="08..." />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-surface-700 dark:text-surface-300 mb-1">Alamat (Opsional)</label>
+                <textarea value={formEdit.alamat} onChange={e => setFormEdit({...formEdit, alamat: e.target.value})} className="w-full px-4 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm" rows={2} placeholder="Alamat singkat..." />
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-surface-700 dark:text-surface-300 mb-1">Saldo Manual (Rp)</label>
+                  <input type="number" required min="0" value={formEdit.saldo_titipan} onChange={e => setFormEdit({...formEdit, saldo_titipan: parseInt(e.target.value) || 0})} className="w-full px-4 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm font-mono text-emerald-600 font-bold" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-surface-700 dark:text-surface-300 mb-1">Hutang Manual (Rp)</label>
+                  <input type="number" required min="0" value={formEdit.total_hutang} onChange={e => setFormEdit({...formEdit, total_hutang: parseInt(e.target.value) || 0})} className="w-full px-4 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm font-mono text-rose-600 font-bold" />
+                </div>
+              </div>
+              <div className="pt-2 flex gap-3">
+                <button type="button" onClick={() => setShowModalEdit(false)} className="flex-1 py-2.5 text-surface-600 bg-surface-100 rounded-xl font-bold text-sm">Batal</button>
+                <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 text-white bg-blue-600 rounded-xl font-bold text-sm">{isSubmitting ? 'Menyimpan...' : 'Update'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showModalDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-surface-900 rounded-3xl w-full max-w-sm shadow-2xl p-6 text-center">
+            <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="w-8 h-8" />
+            </div>
+            <h3 className="font-bold text-lg text-surface-900 dark:text-white mb-2">Hapus Pelanggan?</h3>
+            <p className="text-sm text-surface-500 mb-6">
+              Data pelanggan dan seluruh riwayat transaksinya akan terhapus dan tidak bisa dikembalikan.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowModalDelete(false)} className="flex-1 py-2.5 text-surface-600 bg-surface-100 rounded-xl font-bold text-sm">Batal</button>
+              <button onClick={handleDelete} disabled={isSubmitting} className="flex-1 py-2.5 text-white bg-rose-600 hover:bg-rose-700 rounded-xl font-bold text-sm transition-colors">{isSubmitting ? 'Menghapus...' : 'Ya, Hapus'}</button>
+            </div>
           </div>
         </div>
       )}

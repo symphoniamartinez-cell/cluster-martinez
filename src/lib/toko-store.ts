@@ -111,6 +111,37 @@ export async function saveTokoPelanggan(pelanggan: TokoPelanggan) {
   }
 }
 
+export async function updateTokoPelanggan(id: string, updates: Partial<TokoPelanggan>) {
+  try {
+    const client = createClient();
+    if (client) {
+      const { error } = await client.from('toko_pelanggan').update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      }).eq('id', id);
+      if (error) throw error;
+    }
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function deleteTokoPelanggan(id: string) {
+  try {
+    const client = createClient();
+    if (client) {
+      const { error } = await client.from('toko_pelanggan').delete().eq('id', id);
+      if (error) throw error;
+    }
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function submitTransaksiPelanggan(
   pelanggan_id: string,
   jenis: 'TOPUP_SALDO' | 'BAYAR_HUTANG',
