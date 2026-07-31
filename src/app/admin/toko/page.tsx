@@ -1227,7 +1227,7 @@ export default function AdminTokoPage() {
                 omset: number;
                 hpp: number;
                 profit: number;
-                items: { barang_id: string; qty: number; omset: number; hpp: number }[];
+                items: { barang_id: string; qty: number; omset: number; hpp: number; isOpnameLoss?: boolean }[];
               }> = {};
 
               filteredPenjualanList.forEach(p => {
@@ -1247,6 +1247,32 @@ export default function AdminTokoPage() {
                 itemNode.qty += p.jumlah_satuan_kecil;
                 itemNode.omset += p.total_harga;
                 itemNode.hpp += ((p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil);
+              });
+
+              // Add Opname loss to groupedByDate
+              filteredPergerakanList.forEach(p => {
+                if ((p.jenis_pergerakan === 'OPNAME_GUDANG' || p.jenis_pergerakan === 'OPNAME_DISPLAY') && p.jumlah_satuan_kecil < 0) {
+                  const brg = barangList.find(b => b.id === p.barang_id);
+                  if (brg) {
+                    const tgl = (p.created_at || new Date().toISOString()).split('T')[0];
+                    if (!groupedByDate[tgl]) {
+                      groupedByDate[tgl] = { tanggal: tgl, omset: 0, hpp: 0, profit: 0, items: [] };
+                    }
+                    const hargaModal = Math.round(brg.harga_beli_satuan_besar / (brg.qty_per_satuan_besar || 1));
+                    const lossAmount = Math.abs(p.jumlah_satuan_kecil) * hargaModal;
+                    
+                    groupedByDate[tgl].hpp += lossAmount;
+                    groupedByDate[tgl].profit -= lossAmount;
+
+                    let itemNode = groupedByDate[tgl].items.find(x => x.barang_id === p.barang_id && x.isOpnameLoss);
+                    if (!itemNode) {
+                      itemNode = { barang_id: p.barang_id, qty: 0, omset: 0, hpp: 0, isOpnameLoss: true };
+                      groupedByDate[tgl].items.push(itemNode);
+                    }
+                    itemNode.qty += Math.abs(p.jumlah_satuan_kecil);
+                    itemNode.hpp += lossAmount;
+                  }
+                }
               });
 
               const sortedDates = Object.values(groupedByDate).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
@@ -1363,27 +1389,29 @@ export default function AdminTokoPage() {
                                 <tr>
                                   <td colSpan={4} className="p-0 border-b border-surface-100 dark:border-surface-800">
                                     <div className="bg-surface-50 dark:bg-surface-800/30 p-4 border-l-4 border-indigo-500">
-                                      <h5 className="text-[11px] font-bold text-surface-500 uppercase tracking-wider mb-3">Rincian Penjualan ({stats.tanggal})</h5>
+                                      <h5 className="text-[11px] font-bold text-surface-500 uppercase tracking-wider mb-3">Rincian Penjualan & Beban ({stats.tanggal})</h5>
                                       <table className="w-full text-xs text-left">
                                         <thead>
                                           <tr className="border-b border-surface-200 dark:border-surface-700 text-surface-500">
                                             <th className="py-2 font-semibold">Barang</th>
-                                            <th className="py-2 text-right font-semibold">Terjual</th>
+                                            <th className="py-2 text-right font-semibold">Qty</th>
                                             <th className="py-2 text-right font-semibold">Omzet</th>
-                                            <th className="py-2 text-right font-semibold">HPP</th>
+                                            <th className="py-2 text-right font-semibold">HPP/Beban</th>
                                             <th className="py-2 text-right font-semibold">Profit</th>
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-surface-200/50 dark:divide-surface-700/50">
-                                          {stats.items.sort((a,b) => (b.omset - b.hpp) - (a.omset - a.hpp)).map(item => {
+                                          {stats.items.sort((a,b) => (b.omset - b.hpp) - (a.omset - a.hpp)).map((item, idx) => {
                                             const brg = barangList.find(b => b.id === item.barang_id);
+                                            const namaBarang = item.isOpnameLoss ? `(Beban Selisih Opname) ${brg?.nama_barang || 'Barang Terhapus'}` : (brg?.nama_barang || 'Barang Terhapus');
+                                            const profitClass = (item.omset - item.hpp) < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400';
                                             return (
-                                              <tr key={item.barang_id}>
-                                                <td className="py-2 text-surface-700 dark:text-surface-300">{brg?.nama_barang || 'Barang Terhapus'}</td>
+                                              <tr key={`${item.barang_id}-${idx}`}>
+                                                <td className={`py-2 ${item.isOpnameLoss ? 'text-red-500 font-medium' : 'text-surface-700 dark:text-surface-300'}`}>{namaBarang}</td>
                                                 <td className="py-2 text-right font-medium">{item.qty} {brg?.satuan_kecil || 'Pcs'}</td>
                                                 <td className="py-2 text-right font-mono text-surface-600 dark:text-surface-400">Rp {item.omset.toLocaleString('id-ID')}</td>
                                                 <td className="py-2 text-right font-mono text-surface-500">Rp {item.hpp.toLocaleString('id-ID')}</td>
-                                                <td className="py-2 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                                                <td className={`py-2 text-right font-mono font-bold ${profitClass}`}>
                                                   Rp {(item.omset - item.hpp).toLocaleString('id-ID')}
                                                 </td>
                                               </tr>
