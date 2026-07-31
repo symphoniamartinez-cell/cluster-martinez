@@ -10,9 +10,10 @@ import {
   PlusCircle,
   Trash2,
 } from 'lucide-react';
-import type { TokoBarang } from '@/types';
+import type { TokoBarang, TokoPelanggan } from '@/types';
 import {
   getTokoBarangLocal,
+  getTokoPelangganLocal,
   inputPenjualanBatch,
   getClientUserName,
   type PenjualanItem
@@ -24,12 +25,17 @@ export default function AdminKasirPOSPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
   const [cart, setCart] = useState<PenjualanItem[]>([]);
-  const [namaPelanggan, setNamaPelanggan] = useState('');
+  const [pelangganList, setPelangganList] = useState<TokoPelanggan[]>([]);
+  const [selectedPelangganId, setSelectedPelangganId] = useState('');
+  const [namaPelangganManual, setNamaPelangganManual] = useState('');
+  const [metodePembayaran, setMetodePembayaran] = useState<'CASH' | 'SALDO'>('CASH');
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const list = getTokoBarangLocal();
     setBarangList(list);
+    setPelangganList(getTokoPelangganLocal());
   }, []);
 
   const showToast = (msg: string) => {
@@ -82,13 +88,18 @@ export default function AdminKasirPOSPage() {
 
     setIsSubmitting(true);
     const user = getClientUserName('Admin');
-    const res = await inputPenjualanBatch(validItems, user, namaPelanggan);
+    const selectedPelanggan = pelangganList.find(p => p.id === selectedPelangganId);
+    const finalNamaPelanggan = selectedPelanggan ? selectedPelanggan.nama : namaPelangganManual;
+    
+    const res = await inputPenjualanBatch(validItems, user, finalNamaPelanggan, selectedPelangganId, metodePembayaran);
     
     if (res.success) {
       showToast('Transaksi berhasil dibayar & dicatat!');
       // Reset form
       setCart([]);
-      setNamaPelanggan('');
+      setSelectedPelangganId('');
+      setNamaPelangganManual('');
+      setMetodePembayaran('CASH');
       // Refresh stok local
       setBarangList(getTokoBarangLocal());
       
@@ -138,15 +149,51 @@ export default function AdminKasirPOSPage() {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Kiri: Daftar Keranjang */}
         <div className="flex-1 space-y-4">
-          <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm p-6">
-            <h3 className="font-bold text-sm text-surface-900 dark:text-white mb-3">Informasi Pelanggan (Opsional)</h3>
-            <input
-              type="text"
-              placeholder="Nama pelanggan (contoh: Bpk. Budi, Blok A2)"
-              value={namaPelanggan}
-              onChange={e => setNamaPelanggan(e.target.value)}
-              className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-success-500/50"
-            />
+          <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm p-6 space-y-4">
+            <h3 className="font-bold text-sm text-surface-900 dark:text-white mb-2">Informasi Pelanggan (Opsional)</h3>
+            
+            <div>
+              <label className="block text-xs font-bold text-surface-700 dark:text-surface-300 mb-1.5">Pilih Pelanggan Terdaftar</label>
+              <select
+                value={selectedPelangganId}
+                onChange={e => setSelectedPelangganId(e.target.value)}
+                className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-success-500/50"
+              >
+                <option value="">-- Bukan Pelanggan Terdaftar --</option>
+                {pelangganList.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.nama} (Saldo: Rp {p.saldo_titipan.toLocaleString('id-ID')})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {!selectedPelangganId && (
+              <div>
+                <label className="block text-xs font-bold text-surface-700 dark:text-surface-300 mb-1.5">Atau Ketik Nama Manual</label>
+                <input
+                  type="text"
+                  placeholder="Nama pelanggan (contoh: Bpk. Budi, Blok A2)"
+                  value={namaPelangganManual}
+                  onChange={e => setNamaPelangganManual(e.target.value)}
+                  className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-success-500/50"
+                />
+              </div>
+            )}
+            
+            {selectedPelangganId && (
+              <div>
+                <label className="block text-xs font-bold text-surface-700 dark:text-surface-300 mb-1.5">Metode Pembayaran</label>
+                <select
+                  value={metodePembayaran}
+                  onChange={e => setMetodePembayaran(e.target.value as any)}
+                  className="w-full px-4 py-2 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl text-sm font-bold text-success-600 focus:outline-none focus:ring-2 focus:ring-success-500/50"
+                >
+                  <option value="CASH">CASH (Tunai/Transfer)</option>
+                  <option value="SALDO">POTONG SALDO TITIPAN</option>
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6">

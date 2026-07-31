@@ -1,10 +1,12 @@
-import { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
+import { TokoBarang, TokoPergerakanStok, TokoPenjualan, TokoPelanggan, TokoTransaksiPelanggan } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 
 const TOKO_BARANG_KEY = 'martinez_toko_barang_v1';
 const TOKO_PERGERAKAN_KEY = 'martinez_toko_pergerakan_v1';
 const TOKO_PENJUALAN_KEY = 'martinez_toko_penjualan_v1';
 const TOKO_PAYMENT_KEY = 'martinez_toko_payment_v1';
+const TOKO_PELANGGAN_KEY = 'martinez_toko_pelanggan_v1';
+const TOKO_TRANSAKSI_PELANGGAN_KEY = 'martinez_toko_transaksi_pelanggan_v1';
 
 // -------------------------------------------------------------
 // LOCAL STORAGE GETTERS
@@ -33,6 +35,18 @@ export function getTokoPaymentHarianLocal(): any[] {
   return data ? JSON.parse(data) : [];
 }
 
+export function getTokoPelangganLocal(): TokoPelanggan[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(TOKO_PELANGGAN_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
+export function getTokoTransaksiPelangganLocal(): TokoTransaksiPelanggan[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(TOKO_TRANSAKSI_PELANGGAN_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
 // -------------------------------------------------------------
 // CLOUD SYNC & FETCH
 // -------------------------------------------------------------
@@ -41,11 +55,13 @@ export async function syncTokoDataFromCloud() {
     const client = createClient();
     if (!client) return { success: false, error: 'No Supabase Client' };
 
-    const [resBarang, resPergerakan, resPenjualan, resPayment] = await Promise.all([
+    const [resBarang, resPergerakan, resPenjualan, resPayment, resPelanggan, resTransaksiPel] = await Promise.all([
       client.from('toko_barang').select('*').order('nama_barang', { ascending: true }),
       client.from('toko_pergerakan_stok').select('*').order('created_at', { ascending: false }).limit(500),
       client.from('toko_penjualan').select('*').order('created_at', { ascending: false }).limit(500),
-      client.from('toko_payment_harian').select('*').order('tanggal', { ascending: false }).limit(100)
+      client.from('toko_payment_harian').select('*').order('tanggal', { ascending: false }).limit(100),
+      client.from('toko_pelanggan').select('*').order('nama', { ascending: true }),
+      client.from('toko_transaksi_pelanggan').select('*').order('created_at', { ascending: false }).limit(500)
     ]);
 
     if (resBarang.error) throw resBarang.error;
@@ -54,6 +70,8 @@ export async function syncTokoDataFromCloud() {
     if (resPergerakan.data) localStorage.setItem(TOKO_PERGERAKAN_KEY, JSON.stringify(resPergerakan.data));
     if (resPenjualan.data) localStorage.setItem(TOKO_PENJUALAN_KEY, JSON.stringify(resPenjualan.data));
     if (resPayment.data) localStorage.setItem(TOKO_PAYMENT_KEY, JSON.stringify(resPayment.data));
+    if (resPelanggan.data) localStorage.setItem(TOKO_PELANGGAN_KEY, JSON.stringify(resPelanggan.data));
+    if (resTransaksiPel.data) localStorage.setItem(TOKO_TRANSAKSI_PELANGGAN_KEY, JSON.stringify(resTransaksiPel.data));
 
     return { success: true };
   } catch (err: any) {
@@ -72,6 +90,82 @@ export async function saveTokoBarang(barang: TokoBarang) {
       const { error } = await client.from('toko_barang').upsert(barang, { onConflict: 'id' });
       if (error) throw error;
     }
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function saveTokoPelanggan(pelanggan: TokoPelanggan) {
+  try {
+    const client = createClient();
+    if (client) {
+      const { error } = await client.from('toko_pelanggan').upsert(pelanggan, { onConflict: 'id' });
+      if (error) throw error;
+    }
+    await syncTokoDataFromCloud();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function submitTransaksiPelanggan(
+  pelanggan_id: string,
+  jenis: 'TOPUP_SALDO' | 'BAYAR_HUTANG',
+  nominal: number,
+  keterangan: string,
+  user: string
+) {
+  try {
+    const client = createClient();
+    if (!client) throw new Error("No supabase client");
+
+    // Fetch existing pelanggan
+    const { data: pelangganData, error: fetchErr } = await client
+      .from('toko_pelanggan')
+      .select('*')
+      .eq('id', pelanggan_id)
+      .single();
+    if (fetchErr) throw fetchErr;
+
+    const pelanggan = pelangganData as TokoPelanggan;
+
+    if (jenis === 'TOPUP_SALDO') {
+      pelanggan.saldo_titipan += nominal;
+    } else if (jenis === 'BAYAR_HUTANG') {
+      if (nominal > pelanggan.total_hutang) {
+        const excess = nominal - pelanggan.total_hutang;
+        pelanggan.total_hutang = 0;
+        pelanggan.saldo_titipan += excess;
+      } else {
+        pelanggan.total_hutang -= nominal;
+      }
+    }
+
+    pelanggan.updated_at = new Date().toISOString();
+
+    const transaksi: TokoTransaksiPelanggan = {
+      id: 'trp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+      pelanggan_id,
+      jenis,
+      nominal,
+      keterangan,
+      dibuat_oleh: user,
+      created_at: new Date().toISOString()
+    };
+
+    const { error: errPel } = await client.from('toko_pelanggan').update({
+      saldo_titipan: pelanggan.saldo_titipan,
+      total_hutang: pelanggan.total_hutang,
+      updated_at: pelanggan.updated_at
+    }).eq('id', pelanggan_id);
+    if (errPel) throw errPel;
+
+    const { error: errTrx } = await client.from('toko_transaksi_pelanggan').insert(transaksi);
+    if (errTrx) throw errTrx;
+
     await syncTokoDataFromCloud();
     return { success: true };
   } catch (err: any) {
@@ -490,12 +584,19 @@ export interface PenjualanItem {
   harga_satuan_custom?: number;
 }
 
-export async function inputPenjualanBatch(items: PenjualanItem[], user: string, namaPelanggan?: string) {
+export async function inputPenjualanBatch(
+  items: PenjualanItem[], 
+  user: string, 
+  namaPelanggan?: string,
+  pelanggan_id?: string,
+  metode_pembayaran: 'CASH' | 'SALDO' = 'CASH'
+) {
   try {
     const barangListLocal = getTokoBarangLocal();
     const penjualanList: TokoPenjualan[] = [];
     const barangUpdates: Record<string, { stok_display: number }> = {};
     const nomorInvoice = 'INV-JUAL-' + Date.now();
+    let totalTransaksi = 0;
 
     // Validate all items first
     for (const item of items) {
@@ -511,13 +612,12 @@ export async function inputPenjualanBatch(items: PenjualanItem[], user: string, 
 
       const hargaSatuan = item.harga_satuan_custom !== undefined ? item.harga_satuan_custom : (barang.harga_jual_satuan_kecil || 0);
       
-      // Calculate harga_modal_satuan based on master data
-      // For simplicity in this demo, harga modal = harga_beli_satuan_besar / qty_per_satuan_besar
       const qtyPerBesar = barang.qty_per_satuan_besar || 1;
       const hargaBeliBesar = barang.harga_beli_satuan_besar || 0;
       const hargaModalSatuan = Math.floor(hargaBeliBesar / qtyPerBesar);
 
       const totalHarga = item.jumlah_satuan_kecil * hargaSatuan;
+      totalTransaksi += totalHarga;
 
       penjualanList.push({
         id: 'tpj-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
@@ -528,6 +628,8 @@ export async function inputPenjualanBatch(items: PenjualanItem[], user: string, 
         harga_modal_satuan: hargaModalSatuan,
         total_harga: totalHarga,
         nama_pelanggan: namaPelanggan,
+        pelanggan_id: pelanggan_id,
+        metode_pembayaran: metode_pembayaran,
         dijual_oleh: user,
         created_at: new Date().toISOString()
       });
@@ -541,6 +643,56 @@ export async function inputPenjualanBatch(items: PenjualanItem[], user: string, 
 
     const client = createClient();
     if (client) {
+      // Potong Saldo Logic
+      if (metode_pembayaran === 'SALDO' && pelanggan_id) {
+        const { data: pelangganData, error: errPelFetch } = await client.from('toko_pelanggan').select('*').eq('id', pelanggan_id).single();
+        if (errPelFetch) throw errPelFetch;
+        const pelanggan = pelangganData as TokoPelanggan;
+
+        let nominalPotongSaldo = 0;
+        let nominalTambahHutang = 0;
+
+        if (pelanggan.saldo_titipan >= totalTransaksi) {
+          pelanggan.saldo_titipan -= totalTransaksi;
+          nominalPotongSaldo = totalTransaksi;
+        } else {
+          nominalPotongSaldo = pelanggan.saldo_titipan;
+          nominalTambahHutang = totalTransaksi - pelanggan.saldo_titipan;
+          pelanggan.saldo_titipan = 0;
+          pelanggan.total_hutang += nominalTambahHutang;
+        }
+
+        const { error: errPelUpdate } = await client.from('toko_pelanggan').update({
+          saldo_titipan: pelanggan.saldo_titipan,
+          total_hutang: pelanggan.total_hutang,
+          updated_at: new Date().toISOString()
+        }).eq('id', pelanggan_id);
+        if (errPelUpdate) throw errPelUpdate;
+
+        if (nominalPotongSaldo > 0) {
+          await client.from('toko_transaksi_pelanggan').insert({
+            id: 'trp-' + Date.now() + '-s',
+            pelanggan_id,
+            jenis: 'POTONG_SALDO',
+            nominal: nominalPotongSaldo,
+            keterangan: `Pembayaran ${nomorInvoice}`,
+            dibuat_oleh: user,
+            created_at: new Date().toISOString()
+          });
+        }
+        if (nominalTambahHutang > 0) {
+          await client.from('toko_transaksi_pelanggan').insert({
+            id: 'trp-' + Date.now() + '-h',
+            pelanggan_id,
+            jenis: 'TAMBAH_HUTANG',
+            nominal: nominalTambahHutang,
+            keterangan: `Kekurangan bayar ${nomorInvoice}`,
+            dibuat_oleh: user,
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+
       const { error: err1 } = await client.from('toko_penjualan').insert(penjualanList);
       if (err1) throw err1;
 

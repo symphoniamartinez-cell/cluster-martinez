@@ -31,14 +31,20 @@ import {
   Download,
   ChevronDown,
   ClipboardCheck,
+  Users,
 } from 'lucide-react';
 import TokoAnalisisTab from '@/components/TokoAnalisisTab';
-import type { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
+import TokoPelangganTab from '@/components/TokoPelangganTab';
+import type { TokoBarang, TokoPergerakanStok, TokoPenjualan, TokoPelanggan, TokoTransaksiPelanggan } from '@/types';
 import {
   getTokoBarangLocal,
   getTokoPergerakanLocal,
   getTokoPenjualanLocal,
   getTokoPaymentHarianLocal,
+  getTokoPelangganLocal,
+  getTokoTransaksiPelangganLocal,
+  saveTokoPelanggan,
+  submitTransaksiPelanggan,
   saveTokoPaymentHarian,
   syncTokoDataFromCloud,
   deleteTokoBarang,
@@ -61,7 +67,7 @@ import {
 export default function AdminTokoPage() {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'analisis' | 'master' | 'pembelian' | 'mutasi' | 'riwayat' | 'laba_rugi' | 'opname' | 'pengaturan'>('analisis');
+  const [activeTab, setActiveTab] = useState<'analisis' | 'master' | 'pembelian' | 'mutasi' | 'riwayat' | 'laba_rugi' | 'opname' | 'pengaturan' | 'pelanggan'>('analisis');
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('');
@@ -85,6 +91,8 @@ export default function AdminTokoPage() {
   const [pergerakanList, setPergerakanList] = useState<TokoPergerakanStok[]>([]);
   const [penjualanList, setPenjualanList] = useState<TokoPenjualan[]>([]);
   const [paymentList, setPaymentList] = useState<any[]>([]);
+  const [pelangganList, setPelangganList] = useState<TokoPelanggan[]>([]);
+  const [transaksiPelangganList, setTransaksiPelangganList] = useState<TokoTransaksiPelanggan[]>([]);
   const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
   const [paymentInputs, setPaymentInputs] = useState<Record<string, string>>({});
 
@@ -196,6 +204,8 @@ export default function AdminTokoPage() {
     setBarangList(getTokoBarangLocal());
     setPergerakanList(getTokoPergerakanLocal());
     setPenjualanList(getTokoPenjualanLocal());
+    setPelangganList(getTokoPelangganLocal());
+    setTransaksiPelangganList(getTokoTransaksiPelangganLocal());
     const payments = getTokoPaymentHarianLocal();
     setPaymentList(payments);
     
@@ -495,6 +505,11 @@ export default function AdminTokoPage() {
     return (d.getMonth() + 1) === filterMonth && d.getFullYear() === filterYear;
   });
 
+  const filteredTransaksiPelangganList = transaksiPelangganList.filter(t => {
+    const d = new Date(t.created_at || new Date());
+    return (d.getMonth() + 1) === filterMonth && d.getFullYear() === filterYear;
+  });
+
   return (
     <div className="space-y-6 max-w-[1300px] mx-auto animate-fade-in pb-12">
       {/* ── Toast Notification ────────────────────────────────────────── */}
@@ -629,6 +644,17 @@ export default function AdminTokoPage() {
         >
           <PieChart className="w-4 h-4" />
           Laba Rugi
+        </button>
+        <button
+          onClick={() => handleTabChange('pelanggan')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
+            activeTab === 'pelanggan'
+              ? 'bg-white dark:bg-surface-900 text-purple-600 dark:text-purple-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
+              : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Pelanggan
         </button>
         {userRole === 'superadmin' && (
           <button
@@ -1196,6 +1222,7 @@ export default function AdminTokoPage() {
               const groupedByDate: Record<string, {
                 tanggal: string;
                 omset: number;
+                expectedCashIn: number;
                 hpp: number;
                 profit: number;
                 items: { barang_id: string; qty: number; omset: number; hpp: number; isOpnameLoss?: boolean }[];
@@ -1204,9 +1231,12 @@ export default function AdminTokoPage() {
               filteredPenjualanList.forEach(p => {
                 const tgl = (p.created_at || new Date().toISOString()).split('T')[0];
                 if (!groupedByDate[tgl]) {
-                  groupedByDate[tgl] = { tanggal: tgl, omset: 0, hpp: 0, profit: 0, items: [] };
+                  groupedByDate[tgl] = { tanggal: tgl, omset: 0, expectedCashIn: 0, hpp: 0, profit: 0, items: [] };
                 }
                 groupedByDate[tgl].omset += p.total_harga;
+                if (p.metode_pembayaran !== 'SALDO') {
+                  groupedByDate[tgl].expectedCashIn += p.total_harga;
+                }
                 groupedByDate[tgl].hpp += ((p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil);
                 groupedByDate[tgl].profit = groupedByDate[tgl].omset - groupedByDate[tgl].hpp;
 
@@ -1227,7 +1257,7 @@ export default function AdminTokoPage() {
                   if (brg) {
                     const tgl = (p.created_at || new Date().toISOString()).split('T')[0];
                     if (!groupedByDate[tgl]) {
-                      groupedByDate[tgl] = { tanggal: tgl, omset: 0, hpp: 0, profit: 0, items: [] };
+                      groupedByDate[tgl] = { tanggal: tgl, omset: 0, expectedCashIn: 0, hpp: 0, profit: 0, items: [] };
                     }
                     const hargaModal = Math.round(brg.harga_beli_satuan_besar / (brg.qty_per_satuan_besar || 1));
                     const lossAmount = Math.abs(p.jumlah_satuan_kecil) * hargaModal;
@@ -1246,16 +1276,29 @@ export default function AdminTokoPage() {
                 }
               });
 
+              // Add Transaksi Pelanggan to Expected Cash In
+              filteredTransaksiPelangganList.forEach(t => {
+                const tgl = (t.created_at || new Date().toISOString()).split('T')[0];
+                if (!groupedByDate[tgl]) {
+                  groupedByDate[tgl] = { tanggal: tgl, omset: 0, expectedCashIn: 0, hpp: 0, profit: 0, items: [] };
+                }
+                if (t.jenis === 'TOPUP_SALDO' || t.jenis === 'BAYAR_HUTANG') {
+                  groupedByDate[tgl].expectedCashIn += t.nominal;
+                }
+              });
+
               const sortedDates = Object.values(groupedByDate).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 
               // Hitung Total Payment Diterima untuk filter bulan/tahun ini
               let totalPayment = 0;
+              let totalExpectedCashIn = 0;
               sortedDates.forEach(d => {
                 const p = paymentList.find(x => x.tanggal === d.tanggal);
                 if (p) totalPayment += p.payment_diterima;
+                totalExpectedCashIn += d.expectedCashIn;
               });
 
-              const totalSelisih = totalPayment - totalOmzet;
+              const totalSelisih = totalPayment - totalExpectedCashIn;
               const totalLabaBersih = totalOmzet - totalHPP - totalOpnameLoss + totalSelisih;
 
               return (
@@ -1269,7 +1312,7 @@ export default function AdminTokoPage() {
                     <div className={`rounded-2xl p-4 sm:p-5 text-white shadow-lg ${totalSelisih < 0 ? 'bg-gradient-to-br from-rose-500 to-red-600 shadow-red-500/20' : 'bg-gradient-to-br from-amber-500 to-orange-500 shadow-orange-500/20'}`}>
                       <p className="text-white/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2">Total Selisih Kas</p>
                       <p className="text-xl sm:text-2xl font-black font-mono">Rp {totalSelisih.toLocaleString('id-ID')}</p>
-                      <p className="text-[10px] sm:text-xs text-white/90 mt-2 font-bold">Payment Diterima - Omset</p>
+                      <p className="text-[10px] sm:text-xs text-white/90 mt-2 font-bold">Payment - Expected Cash</p>
                     </div>
                     <div className="bg-gradient-to-br from-slate-600 to-slate-800 rounded-2xl p-4 sm:p-5 text-white shadow-lg shadow-slate-500/20">
                       <p className="text-white/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2">Beban Kehilangan</p>
@@ -1297,7 +1340,7 @@ export default function AdminTokoPage() {
                         {sortedDates.map(stats => {
                           const isExpanded = !!expandedDates[stats.tanggal];
                           const savedPayment = paymentList.find(x => x.tanggal === stats.tanggal)?.payment_diterima || 0;
-                          const currentSelisih = savedPayment - stats.omset;
+                          const currentSelisih = savedPayment - stats.expectedCashIn;
                           
                           return (
                             <React.Fragment key={stats.tanggal}>
@@ -1412,6 +1455,15 @@ export default function AdminTokoPage() {
             })()}
           </div>
         </div>
+      )}
+
+      {/* ── TAB CONTENT: PELANGGAN ──────────────────────────────────────── */}
+      {activeTab === 'pelanggan' && (
+        <TokoPelangganTab 
+          pelangganList={pelangganList}
+          transaksiList={transaksiPelangganList}
+          onDataChange={loadData}
+        />
       )}
 
       {/* ── TAB CONTENT: PENGATURAN (DANGER ZONE) ────────────────── */}

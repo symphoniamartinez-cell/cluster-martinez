@@ -175,7 +175,30 @@ export interface TokoPenjualan {
   harga_modal_satuan: number;
   total_harga: number;
   nama_pelanggan?: string;
+  pelanggan_id?: string;
+  metode_pembayaran?: 'CASH' | 'SALDO'; // Default CASH
   dijual_oleh?: string;
+  created_at?: string;
+}
+
+export interface TokoPelanggan {
+  id: string;
+  nama: string;
+  no_hp: string;
+  alamat?: string;
+  saldo_titipan: number;
+  total_hutang: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TokoTransaksiPelanggan {
+  id: string;
+  pelanggan_id: string;
+  jenis: 'TOPUP_SALDO' | 'BAYAR_HUTANG' | 'POTONG_SALDO' | 'TAMBAH_HUTANG';
+  nominal: number;
+  keterangan?: string;
+  dibuat_oleh?: string;
   created_at?: string;
 }
 
