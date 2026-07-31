@@ -659,33 +659,30 @@ export default function KasirTokoPage() {
               </div>
             </div>
 
-            <div className="w-full overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
-              <table className="w-full min-w-[500px] text-xs text-left">
-                <thead>
-                  <tr className="bg-surface-50 dark:bg-surface-800/50 border-b border-surface-200 dark:border-surface-700 text-surface-500 uppercase tracking-wider font-semibold">
-                    <th className="px-4 py-3">Barang & Kategori</th>
-                    <th className="px-4 py-3 text-center">Stok Sistem</th>
-                    <th className="px-4 py-3 text-center">Stok Fisik Real</th>
-                    <th className="px-4 py-3 text-center">Selisih</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
-                  {barangList.map(barang => {
-                    const opItemIndex = opnameItems.findIndex(oi => oi.barang_id === barang.id);
-                    if (opItemIndex === -1) return null;
-                    const opItem = opnameItems[opItemIndex];
-                    const selisih = opItem.stok_fisik - opItem.stok_sistem;
-                    
-                    return (
-                      <tr key={barang.id} className="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="font-bold text-surface-900 dark:text-white">{barang.nama_barang}</div>
-                          <div className="text-[10px] text-surface-500">{barang.kategori} &bull; per {barang.satuan_kecil}</div>
-                        </td>
-                        <td className="px-4 py-3 text-center font-semibold text-surface-700 dark:text-surface-300">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+              {barangList.map(barang => {
+                const opItemIndex = opnameItems.findIndex(oi => oi.barang_id === barang.id);
+                if (opItemIndex === -1) return null;
+                const opItem = opnameItems[opItemIndex];
+                const selisih = opItem.stok_fisik - opItem.stok_sistem;
+                
+                return (
+                  <div key={barang.id} className="bg-surface-50 dark:bg-surface-800/50 p-3 sm:p-4 rounded-xl border border-surface-200 dark:border-surface-700 flex flex-col gap-3 transition-colors hover:border-orange-500/30">
+                    <div>
+                      <div className="font-bold text-surface-900 dark:text-white line-clamp-1" title={barang.nama_barang}>{barang.nama_barang}</div>
+                      <div className="text-[10px] text-surface-500 mt-0.5">{barang.kategori} &bull; per {barang.satuan_kecil}</div>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-surface-200 dark:border-surface-700 pt-3">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-surface-500 font-semibold uppercase tracking-wider mb-1">Sistem</span>
+                        <span className="font-semibold text-surface-700 dark:text-surface-300 text-sm">
                           {opItem.stok_sistem}
-                        </td>
-                        <td className="px-4 py-3 text-center">
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-end">
+                          <span className="text-[10px] text-surface-500 font-semibold uppercase tracking-wider mb-1">Fisik</span>
                           <input
                             type="number"
                             min="0"
@@ -696,23 +693,24 @@ export default function KasirTokoPage() {
                               newItems[opItemIndex].stok_fisik = val;
                               setOpnameItems(newItems);
                             }}
-                            className="w-20 text-center px-2 py-1.5 bg-surface-50 dark:bg-surface-800 border border-surface-300 dark:border-surface-600 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            className="w-16 sm:w-20 text-center px-2 py-1.5 bg-white dark:bg-surface-900 border border-surface-300 dark:border-surface-600 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-orange-500"
                           />
-                        </td>
-                        <td className="px-4 py-3 text-center font-bold">
-                          {selisih === 0 ? (
-                            <span className="text-surface-400">0</span>
-                          ) : selisih > 0 ? (
-                            <span className="text-success-600">+{selisih}</span>
-                          ) : (
-                            <span className="text-danger-600">{selisih}</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                        <div className="flex flex-col items-center justify-end h-full">
+                          <span className="text-[10px] text-transparent select-none mb-1">-</span>
+                          <div className={`flex items-center justify-center w-8 h-[34px] rounded-lg font-bold text-xs ${
+                            selisih === 0 ? 'bg-surface-200 dark:bg-surface-700 text-surface-500' :
+                            selisih > 0 ? 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-400' :
+                            'bg-danger-100 text-danger-700 dark:bg-danger-500/20 dark:text-danger-400'
+                          }`}>
+                            {selisih > 0 ? `+${selisih}` : selisih}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex justify-end pt-4 border-t border-surface-200 dark:border-surface-800">

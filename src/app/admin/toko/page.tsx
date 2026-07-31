@@ -531,6 +531,14 @@ export default function AdminTokoPage() {
           </button>
 
           <button
+            onClick={() => handleTabChange('opname')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-semibold text-xs rounded-xl shadow-sm hover:brightness-110 transition-all cursor-pointer"
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            Opname Stok
+          </button>
+
+          <button
             onClick={() => {
               router.push('/admin/toko/barang');
             }}
@@ -1196,7 +1204,19 @@ export default function AdminTokoPage() {
             {(() => {
               const totalOmzet = filteredPenjualanList.reduce((sum, p) => sum + p.total_harga, 0);
               const totalHPP = filteredPenjualanList.reduce((sum, p) => sum + ((p.harga_modal_satuan || 0) * p.jumlah_satuan_kecil), 0);
-              const totalLabaBersih = totalOmzet - totalHPP;
+              
+              let totalOpnameLoss = 0;
+              filteredPergerakanList.forEach(p => {
+                if ((p.jenis_pergerakan === 'OPNAME_GUDANG' || p.jenis_pergerakan === 'OPNAME_DISPLAY') && p.jumlah_satuan_kecil < 0) {
+                  const brg = barangList.find(b => b.id === p.barang_id);
+                  if (brg) {
+                    const hargaModal = Math.round(brg.harga_beli_satuan_besar / (brg.qty_per_satuan_besar || 1));
+                    totalOpnameLoss += (Math.abs(p.jumlah_satuan_kecil) * hargaModal);
+                  }
+                }
+              });
+
+              const totalLabaBersih = totalOmzet - totalHPP - totalOpnameLoss;
               
               // Hitung Group by Tanggal
               const groupedByDate: Record<string, {
@@ -1239,21 +1259,26 @@ export default function AdminTokoPage() {
 
               return (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl p-5 text-white shadow-lg shadow-indigo-500/20">
-                      <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Total Omset</p>
-                      <p className="text-3xl font-black font-mono">Rp {totalOmzet.toLocaleString('id-ID')}</p>
-                      <p className="text-xs text-white/70 mt-2">Seluruh pendapatan penjualan</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                    <div className="bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg shadow-indigo-500/20">
+                      <p className="text-white/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2">Total Omset</p>
+                      <p className="text-xl sm:text-2xl font-black font-mono">Rp {totalOmzet.toLocaleString('id-ID')}</p>
+                      <p className="text-[10px] sm:text-xs text-white/70 mt-2">Seluruh pendapatan penjualan</p>
                     </div>
-                    <div className={`rounded-2xl p-5 text-white shadow-lg ${totalSelisih < 0 ? 'bg-gradient-to-br from-rose-500 to-red-600 shadow-red-500/20' : 'bg-gradient-to-br from-amber-500 to-orange-500 shadow-orange-500/20'}`}>
-                      <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Total Selisih</p>
-                      <p className="text-3xl font-black font-mono">Rp {totalSelisih.toLocaleString('id-ID')}</p>
-                      <p className="text-xs text-white/90 mt-2 font-bold">Payment Diterima - Omset</p>
+                    <div className={`rounded-2xl p-4 sm:p-5 text-white shadow-lg ${totalSelisih < 0 ? 'bg-gradient-to-br from-rose-500 to-red-600 shadow-red-500/20' : 'bg-gradient-to-br from-amber-500 to-orange-500 shadow-orange-500/20'}`}>
+                      <p className="text-white/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2">Total Selisih Kas</p>
+                      <p className="text-xl sm:text-2xl font-black font-mono">Rp {totalSelisih.toLocaleString('id-ID')}</p>
+                      <p className="text-[10px] sm:text-xs text-white/90 mt-2 font-bold">Payment Diterima - Omset</p>
                     </div>
-                    <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
-                      <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Laba Bersih (Profit)</p>
-                      <p className="text-3xl font-black font-mono">Rp {totalLabaBersih.toLocaleString('id-ID')}</p>
-                      <p className="text-xs text-white/90 mt-2 font-bold">Omset - HPP</p>
+                    <div className="bg-gradient-to-br from-slate-600 to-slate-800 rounded-2xl p-4 sm:p-5 text-white shadow-lg shadow-slate-500/20">
+                      <p className="text-white/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2">Beban Kehilangan</p>
+                      <p className="text-xl sm:text-2xl font-black font-mono">Rp {totalOpnameLoss.toLocaleString('id-ID')}</p>
+                      <p className="text-[10px] sm:text-xs text-white/70 mt-2">Selisih negatif dari stok opname</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg shadow-emerald-500/20">
+                      <p className="text-white/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2">Laba Bersih (Profit)</p>
+                      <p className="text-xl sm:text-2xl font-black font-mono">Rp {totalLabaBersih.toLocaleString('id-ID')}</p>
+                      <p className="text-[10px] sm:text-xs text-white/90 mt-2 font-bold">Omset - (HPP + Beban)</p>
                     </div>
                   </div>
 
@@ -2029,6 +2054,105 @@ export default function AdminTokoPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ── TAB CONTENT: OPNAME STOK ── */}
+      {activeTab === 'opname' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="font-bold text-base text-surface-900 dark:text-white">Opname Stok Harian</h3>
+                <p className="text-xs text-surface-500 mt-0.5">Sesuaikan stok fisik di Gudang atau Display (Etalase) dengan sistem.</p>
+              </div>
+              <div className="flex bg-surface-100 dark:bg-surface-800 p-1 rounded-xl">
+                <button
+                  onClick={() => setOpnameTipe('gudang')}
+                  className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${
+                    opnameTipe === 'gudang' 
+                      ? 'bg-white dark:bg-surface-900 text-orange-600 shadow-sm' 
+                      : 'text-surface-500 hover:text-surface-700'
+                  }`}
+                >
+                  Area Gudang
+                </button>
+                <button
+                  onClick={() => setOpnameTipe('display')}
+                  className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${
+                    opnameTipe === 'display' 
+                      ? 'bg-white dark:bg-surface-900 text-orange-600 shadow-sm' 
+                      : 'text-surface-500 hover:text-surface-700'
+                  }`}
+                >
+                  Area Display
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+              {barangList.map(barang => {
+                const opItemIndex = opnameItems.findIndex(oi => oi.barang_id === barang.id);
+                if (opItemIndex === -1) return null;
+                const opItem = opnameItems[opItemIndex];
+                const selisih = opItem.stok_fisik - opItem.stok_sistem;
+                
+                return (
+                  <div key={barang.id} className="bg-surface-50 dark:bg-surface-800/50 p-3 sm:p-4 rounded-xl border border-surface-200 dark:border-surface-700 flex flex-col gap-3 transition-colors hover:border-orange-500/30">
+                    <div>
+                      <div className="font-bold text-surface-900 dark:text-white line-clamp-1" title={barang.nama_barang}>{barang.nama_barang}</div>
+                      <div className="text-[10px] text-surface-500 mt-0.5">{barang.kategori} &bull; per {barang.satuan_kecil}</div>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-surface-200 dark:border-surface-700 pt-3">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-surface-500 font-semibold uppercase tracking-wider mb-1">Sistem</span>
+                        <span className="font-semibold text-surface-700 dark:text-surface-300 text-sm">
+                          {opItem.stok_sistem}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-end">
+                          <span className="text-[10px] text-surface-500 font-semibold uppercase tracking-wider mb-1">Fisik</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={opItem.stok_fisik === 0 && opItem.stok_sistem === 0 ? '' : opItem.stok_fisik}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              const newItems = [...opnameItems];
+                              newItems[opItemIndex].stok_fisik = val;
+                              setOpnameItems(newItems);
+                            }}
+                            className="w-16 sm:w-20 text-center px-2 py-1.5 bg-white dark:bg-surface-900 border border-surface-300 dark:border-surface-600 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          />
+                        </div>
+                        <div className="flex flex-col items-center justify-end h-full">
+                          <span className="text-[10px] text-transparent select-none mb-1">-</span>
+                          <div className={`flex items-center justify-center w-8 h-[34px] rounded-lg font-bold text-xs ${
+                            selisih === 0 ? 'bg-surface-200 dark:bg-surface-700 text-surface-500' :
+                            selisih > 0 ? 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-400' :
+                            'bg-danger-100 text-danger-700 dark:bg-danger-500/20 dark:text-danger-400'
+                          }`}>
+                            {selisih > 0 ? `+${selisih}` : selisih}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-surface-200 dark:border-surface-800">
+              <button
+                onClick={handleSimpanOpname}
+                disabled={isOpnameSubmitting}
+                className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50"
+              >
+                {isOpnameSubmitting ? 'Menyimpan...' : `Simpan Opname ${opnameTipe === 'gudang' ? 'Gudang' : 'Display'}`}
+              </button>
+            </div>
           </div>
         </div>
       )}
