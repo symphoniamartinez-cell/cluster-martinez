@@ -9,9 +9,9 @@ import type { UserRole } from '@/types';
 
 // Routes accessible by each role
 const ROLE_ROUTES: Record<UserRole, string[]> = {
-  superadmin: ['/admin', '/dashboard', '/booth'],
-  pengurus: ['/admin', '/booth'],
-  bendahara: ['/admin', '/booth'],
+  superadmin: ['/admin', '/dashboard', '/booth', '/toko'],
+  pengurus: ['/admin', '/booth', '/toko'],
+  bendahara: ['/admin', '/booth', '/toko'],
   warga: ['/dashboard'],
   booth: ['/booth'],
   penjaga_ch: ['/toko'],
