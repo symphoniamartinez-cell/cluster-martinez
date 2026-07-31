@@ -591,6 +591,17 @@ export default function AdminTokoPage() {
             Analisis Barang
           </button>
           <button
+            onClick={() => handleTabChange('pelanggan')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
+              activeTab === 'pelanggan'
+                ? 'bg-white dark:bg-surface-900 text-purple-600 dark:text-purple-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
+                : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Pelanggan
+          </button>
+          <button
           onClick={() => handleTabChange('master')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'master'
@@ -645,17 +656,7 @@ export default function AdminTokoPage() {
           <PieChart className="w-4 h-4" />
           Laba Rugi
         </button>
-        <button
-          onClick={() => handleTabChange('pelanggan')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs whitespace-nowrap flex-shrink-0 transition-all cursor-pointer ${
-            activeTab === 'pelanggan'
-              ? 'bg-white dark:bg-surface-900 text-purple-600 dark:text-purple-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
-              : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          Pelanggan
-        </button>
+
         {userRole === 'superadmin' && (
           <button
             onClick={() => handleTabChange('pengaturan')}
