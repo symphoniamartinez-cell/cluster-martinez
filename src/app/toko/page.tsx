@@ -63,6 +63,7 @@ export default function KasirTokoPage() {
   const [opnameTipe, setOpnameTipe] = useState<'gudang' | 'display'>('display');
   const [opnameItems, setOpnameItems] = useState<{barang_id: string, stok_fisik: number, stok_sistem: number}[]>([]);
   const [isOpnameSubmitting, setIsOpnameSubmitting] = useState(false);
+  const [showOpnameConfirm, setShowOpnameConfirm] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -132,20 +133,22 @@ export default function KasirTokoPage() {
   };
 
   useEffect(() => {
-    if (activeTab === 'opname') {
+    if (activeTab === 'opname' && barangList.length > 0) {
       handleInitOpname(opnameTipe);
     }
-  }, [activeTab, opnameTipe, barangList]);
+  }, [activeTab, barangList, opnameTipe]);
 
-  const handleSimpanOpname = async () => {
+  const handleReviewOpname = () => {
     const selisihAda = opnameItems.some(item => item.stok_fisik !== item.stok_sistem);
     if (!selisihAda) {
       showToast('Tidak ada selisih stok untuk disimpan.');
       return;
     }
+    setShowOpnameConfirm(true);
+  };
 
-    if (!confirm(`Simpan hasil opname ${opnameTipe === 'gudang' ? 'Gudang' : 'Display'}?`)) return;
-
+  const handleSimpanOpname = async () => {
+    setShowOpnameConfirm(false);
     setIsOpnameSubmitting(true);
     const user = getClientUserName('Kasir');
     const res = await saveOpnameStokBatch(opnameTipe, opnameItems, '', user);
@@ -715,7 +718,7 @@ export default function KasirTokoPage() {
 
             <div className="flex justify-end pt-4 border-t border-surface-200 dark:border-surface-800">
               <button
-                onClick={handleSimpanOpname}
+                onClick={handleReviewOpname}
                 disabled={isOpnameSubmitting}
                 className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50"
               >
@@ -731,6 +734,65 @@ export default function KasirTokoPage() {
         onClose={() => setShowPasswordModal(false)}
         username={usernameKey}
       />
+
+      {/* MODAL KONFIRMASI OPNAME */}
+      {showOpnameConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowOpnameConfirm(false)} />
+          <div className="relative w-full max-w-lg bg-white dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-800 animate-fade-in flex flex-col max-h-[85vh]">
+            <div className="h-1.5 flex-shrink-0 bg-orange-500" />
+            <div className="p-5 border-b border-surface-100 dark:border-surface-800 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-surface-900 dark:text-white">Konfirmasi Stok Opname</h3>
+                <p className="text-xs text-surface-500 mt-0.5">Tinjau kembali selisih stok sebelum menyimpan.</p>
+              </div>
+              <button type="button" onClick={() => setShowOpnameConfirm(false)} className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-colors cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto custom-scrollbar flex-1">
+              <div className="space-y-3">
+                {opnameItems.filter(item => item.stok_fisik !== item.stok_sistem).map(item => {
+                  const b = barangList.find(x => x.id === item.barang_id);
+                  if (!b) return null;
+                  const selisih = item.stok_fisik - item.stok_sistem;
+                  return (
+                    <div key={b.id} className="bg-surface-50 dark:bg-surface-800/50 rounded-xl p-3 border border-surface-200 dark:border-surface-700 flex justify-between items-center">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-surface-900 dark:text-white text-sm">{b.nama_barang}</span>
+                        <span className="text-[10px] text-surface-500">Sistem: {item.stok_sistem} &bull; Fisik: {item.stok_fisik}</span>
+                      </div>
+                      <div className={`px-3 py-1.5 rounded-lg font-bold text-xs whitespace-nowrap ${
+                        selisih > 0 ? 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-400' :
+                        'bg-danger-100 text-danger-700 dark:bg-danger-500/20 dark:text-danger-400'
+                      }`}>
+                        {selisih > 0 ? '+' : ''}{selisih} {b.satuan_kecil}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/50 flex justify-end gap-3 flex-shrink-0">
+              <button 
+                type="button" 
+                onClick={() => setShowOpnameConfirm(false)} 
+                className="px-5 py-2.5 bg-surface-200 hover:bg-surface-300 dark:bg-surface-700 dark:hover:bg-surface-600 rounded-xl font-bold transition-colors cursor-pointer text-sm"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleSimpanOpname} 
+                className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-orange-500/25 cursor-pointer text-sm"
+              >
+                Simpan Permanen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
