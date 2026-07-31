@@ -147,7 +147,7 @@ export async function submitTransaksiPelanggan(
     pelanggan.updated_at = new Date().toISOString();
 
     const transaksi: TokoTransaksiPelanggan = {
-      id: 'trp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+      id: crypto.randomUUID(),
       pelanggan_id,
       jenis,
       nominal,
@@ -671,7 +671,7 @@ export async function inputPenjualanBatch(
 
         if (nominalPotongSaldo > 0) {
           await client.from('toko_transaksi_pelanggan').insert({
-            id: 'trp-' + Date.now() + '-s',
+            id: crypto.randomUUID(),
             pelanggan_id,
             jenis: 'POTONG_SALDO',
             nominal: nominalPotongSaldo,
@@ -682,7 +682,7 @@ export async function inputPenjualanBatch(
         }
         if (nominalTambahHutang > 0) {
           await client.from('toko_transaksi_pelanggan').insert({
-            id: 'trp-' + Date.now() + '-h',
+            id: crypto.randomUUID(),
             pelanggan_id,
             jenis: 'TAMBAH_HUTANG',
             nominal: nominalTambahHutang,

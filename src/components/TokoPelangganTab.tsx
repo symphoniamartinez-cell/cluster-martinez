@@ -34,7 +34,7 @@ export default function TokoPelangganTab({ pelangganList, transaksiList, onDataC
     e.preventDefault();
     setIsSubmitting(true);
     const newPelanggan: TokoPelanggan = {
-      id: 'pel-' + Date.now(),
+      id: crypto.randomUUID(),
       nama: formAdd.nama,
       no_hp: formAdd.no_hp,
       alamat: formAdd.alamat,
