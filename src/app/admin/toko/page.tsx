@@ -17,6 +17,8 @@ import {
   RefreshCw,
   Box,
   ShoppingCart,
+  ArrowRightLeft,
+  MinusCircle,
   Trash2,
   TrendingUp,
   X,
@@ -533,24 +535,30 @@ export default function AdminTokoPage() {
             {isSyncing ? 'Syncing...' : 'Sync Cloud'}
           </button>
 
-          <button
-            onClick={() => handleTabChange('opname')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-semibold text-xs rounded-xl shadow-sm hover:brightness-110 transition-all cursor-pointer"
-          >
-            <ClipboardCheck className="w-4 h-4" />
-            Opname Stok
-          </button>
 
-          <button
-            onClick={() => {
-              router.push('/admin/toko/barang');
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/25 hover:brightness-110 transition-all cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" />
-            Barang Baru
-          </button>
         </div>
+      </div>
+
+      {/* ── Action Buttons Row ────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2.5 mb-2 bg-surface-100/50 dark:bg-surface-800/30 p-2 rounded-2xl border border-surface-200 dark:border-surface-700/50">
+          <button onClick={() => { router.push('/admin/toko/barang'); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow-md hover:bg-indigo-700 transition-all cursor-pointer">
+            <PlusCircle className="w-4 h-4" /> Barang Baru
+          </button>
+          <button onClick={() => handleTabChange('opname')} className="flex items-center gap-2 px-4 py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold text-xs rounded-xl shadow-sm hover:brightness-110 transition-all cursor-pointer">
+            <ClipboardCheck className="w-4 h-4" /> Opname Stok
+          </button>
+          <button onClick={() => { setPindahForm({ items: [{ barang_id: barangList[0]?.id || '', jumlah_satuan_kecil: 1 }] }); setShowModalPindah(true); }} className="flex items-center gap-2 px-4 py-2 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 font-bold text-xs rounded-xl shadow-sm hover:brightness-110 transition-all cursor-pointer">
+            <ArrowRightLeft className="w-4 h-4" /> Pindah ke Display
+          </button>
+          <button onClick={() => { setKeluarForm({ catatan: '', items: [{ barang_id: barangList[0]?.id || '', jumlah_satuan_besar: 1 }] }); setShowModalKeluarkan(true); }} className="flex items-center gap-2 px-4 py-2 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 font-bold text-xs rounded-xl shadow-sm hover:brightness-110 transition-all cursor-pointer">
+            <MinusCircle className="w-4 h-4" /> Keluarkan Stok
+          </button>
+          <button onClick={() => router.push('/admin/toko/pembelian/tambah')} className="flex items-center gap-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold text-xs rounded-xl shadow-sm hover:brightness-110 transition-all cursor-pointer">
+            <ShoppingCart className="w-4 h-4" /> Input Pembelian
+          </button>
+          <Link href="/admin/toko/kasir" className="flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold text-xs rounded-xl shadow-sm hover:brightness-110 transition-all cursor-pointer">
+            <PlusCircle className="w-4 h-4" /> Input Penjualan
+          </Link>
       </div>
 
       {/* ── Tabs Navigation & Filters ────────────────────────────────────── */}
@@ -767,38 +775,7 @@ export default function AdminTokoPage() {
                 Catat barang yang masuk (Beli) atau keluar (Event/Sumbangan). Input dalam satuan Dus akan terkonversi otomatis ke Botol/Pcs.
               </p>
             </div>
-            <div className="flex-shrink-0 flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => {
-                  setPindahForm({ items: [{ barang_id: barangList[0]?.id || '', jumlah_satuan_kecil: 1 }] });
-                  setShowModalPindah(true);
-                }}
-                className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl shadow-lg transition-all cursor-pointer whitespace-nowrap"
-              >
-                + Pindah ke Display
-              </button>
-              <button
-                onClick={() => {
-                  setKeluarForm({ 
-                    catatan: '',
-                    items: [{
-                      barang_id: barangList[0]?.id || '',
-                      jumlah_satuan_besar: 1
-                    }]
-                  });
-                  setShowModalKeluarkan(true);
-                }}
-                className="px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl shadow-sm transition-all cursor-pointer whitespace-nowrap border border-white/20"
-              >
-                - Keluarkan Stok
-              </button>
-                <button
-                  onClick={() => router.push('/admin/toko/pembelian/tambah')}
-                  className="px-5 py-2.5 bg-white text-indigo-600 hover:bg-indigo-50 font-bold rounded-xl shadow-lg transition-all cursor-pointer whitespace-nowrap"
-                >
-                  + Input Pembelian
-                </button>
-            </div>
+
           </div>
 
           <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-6">
@@ -1070,13 +1047,7 @@ export default function AdminTokoPage() {
               <p className="text-xs text-surface-500 mt-1">Laporan penjualan kasir dengan nama pelanggan dan nomor nota.</p>
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              <Link
-                href="/admin/toko/kasir"
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold rounded-xl text-xs hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors w-full sm:w-auto justify-center"
-              >
-                <PlusCircle className="w-4 h-4" />
-                Input Penjualan
-              </Link>
+
               <button
                 onClick={exportPenjualanToExcel}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold rounded-xl text-xs hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
