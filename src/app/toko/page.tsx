@@ -19,6 +19,7 @@ import {
   LogOut,
   AlertTriangle,
   KeyRound,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { TokoBarang, TokoPenjualan, TokoPergerakanStok } from '@/types';
@@ -30,12 +31,13 @@ import {
   syncTokoDataFromCloud,
   pindahKeDisplayBatch,
   inputPenjualan,
+  saveOpnameStokBatch,
   getClientUserName
 } from '@/lib/toko-store';
 
 export default function KasirTokoPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'kasir' | 'display' | 'riwayat'>('kasir');
+  const [activeTab, setActiveTab] = useState<'kasir' | 'display' | 'riwayat' | 'opname'>('kasir');
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -56,6 +58,11 @@ export default function KasirTokoPage() {
     dijual_oleh: string;
     items: TokoPenjualan[];
   } | null>(null);
+
+  // -- OPNAME STATE --
+  const [opnameTipe, setOpnameTipe] = useState<'gudang' | 'display'>('display');
+  const [opnameItems, setOpnameItems] = useState<{barang_id: string, stok_fisik: number, stok_sistem: number}[]>([]);
+  const [isOpnameSubmitting, setIsOpnameSubmitting] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -84,7 +91,7 @@ export default function KasirTokoPage() {
     loadData();
     handleSyncData(false);
     
-    const savedTab = sessionStorage.getItem('toko_active_tab') as 'kasir' | 'display' | 'riwayat';
+    const savedTab = sessionStorage.getItem('toko_active_tab') as 'kasir' | 'display' | 'riwayat' | 'opname';
     if (savedTab) {
       setActiveTab(savedTab);
       sessionStorage.removeItem('toko_active_tab');
@@ -112,6 +119,44 @@ export default function KasirTokoPage() {
     } else {
       showToast(`Gagal: ${res.error}`);
     }
+  };
+
+  const handleInitOpname = (tipe: 'gudang' | 'display') => {
+    setOpnameTipe(tipe);
+    const initialItems = barangList.map(b => ({
+      barang_id: b.id,
+      stok_sistem: tipe === 'gudang' ? (b.stok_gudang || 0) : (b.stok_display || 0),
+      stok_fisik: tipe === 'gudang' ? (b.stok_gudang || 0) : (b.stok_display || 0)
+    }));
+    setOpnameItems(initialItems);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'opname') {
+      handleInitOpname(opnameTipe);
+    }
+  }, [activeTab, opnameTipe, barangList]);
+
+  const handleSimpanOpname = async () => {
+    const selisihAda = opnameItems.some(item => item.stok_fisik !== item.stok_sistem);
+    if (!selisihAda) {
+      showToast('Tidak ada selisih stok untuk disimpan.');
+      return;
+    }
+
+    if (!confirm(`Simpan hasil opname ${opnameTipe === 'gudang' ? 'Gudang' : 'Display'}?`)) return;
+
+    setIsOpnameSubmitting(true);
+    const user = getClientUserName('Kasir');
+    const res = await saveOpnameStokBatch(opnameTipe, opnameItems, '', user);
+    
+    if (res.success) {
+      showToast(`Opname berhasil disimpan! Ada ${res.count} barang disesuaikan.`);
+      loadData();
+    } else {
+      showToast(`Gagal opname: ${res.error}`);
+    }
+    setIsOpnameSubmitting(false);
   };
 
   const handleLogout = () => {
@@ -183,7 +228,7 @@ export default function KasirTokoPage() {
       </div>
 
       {/* Tabs */}
-      <div className="grid grid-cols-3 gap-1 bg-surface-100/50 dark:bg-surface-800/50 p-1 rounded-xl w-full">
+      <div className="grid grid-cols-4 gap-1 bg-surface-100/50 dark:bg-surface-800/50 p-1 rounded-xl w-full">
         <button
           onClick={() => setActiveTab('kasir')}
           className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 sm:px-3 rounded-lg font-bold text-[9px] sm:text-xs transition-all text-center leading-tight ${
@@ -216,6 +261,17 @@ export default function KasirTokoPage() {
         >
           <History className="w-4 h-4 sm:w-3.5 sm:h-3.5 mx-auto sm:mx-0" />
           <span>Riwayat Jual</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('opname')}
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 sm:px-3 rounded-lg font-bold text-[9px] sm:text-xs transition-all text-center leading-tight ${
+            activeTab === 'opname'
+              ? 'bg-white dark:bg-surface-900 text-orange-600 dark:text-orange-400 shadow-sm border border-surface-200/50 dark:border-surface-700/50'
+              : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+          }`}
+        >
+          <ClipboardCheck className="w-4 h-4 sm:w-3.5 sm:h-3.5 mx-auto sm:mx-0" />
+          <span>Opname Stok</span>
         </button>
       </div>
 
@@ -565,6 +621,108 @@ export default function KasirTokoPage() {
             </div>
             <div className="p-4 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/50 flex justify-end">
                <button onClick={() => setDetailInvoice(null)} className="px-5 py-2.5 bg-surface-200 hover:bg-surface-300 dark:bg-surface-700 dark:hover:bg-surface-600 rounded-xl font-bold transition-colors cursor-pointer">Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: OPNAME STOK */}
+      {activeTab === 'opname' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white dark:bg-surface-900 rounded-3xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden p-4 sm:p-6 w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="font-bold text-base text-surface-900 dark:text-white">Opname Stok Harian</h3>
+                <p className="text-xs text-surface-500 mt-0.5">Sesuaikan stok fisik yang ada di lapangan dengan sistem.</p>
+              </div>
+              <div className="flex bg-surface-100 dark:bg-surface-800 p-1 rounded-xl">
+                <button
+                  onClick={() => setOpnameTipe('display')}
+                  className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${
+                    opnameTipe === 'display' 
+                      ? 'bg-white dark:bg-surface-900 text-orange-600 shadow-sm' 
+                      : 'text-surface-500 hover:text-surface-700'
+                  }`}
+                >
+                  Area Display (Kulkas)
+                </button>
+                <button
+                  onClick={() => setOpnameTipe('gudang')}
+                  className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${
+                    opnameTipe === 'gudang' 
+                      ? 'bg-white dark:bg-surface-900 text-orange-600 shadow-sm' 
+                      : 'text-surface-500 hover:text-surface-700'
+                  }`}
+                >
+                  Area Gudang
+                </button>
+              </div>
+            </div>
+
+            <div className="w-full overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
+              <table className="w-full min-w-[500px] text-xs text-left">
+                <thead>
+                  <tr className="bg-surface-50 dark:bg-surface-800/50 border-b border-surface-200 dark:border-surface-700 text-surface-500 uppercase tracking-wider font-semibold">
+                    <th className="px-4 py-3">Barang & Kategori</th>
+                    <th className="px-4 py-3 text-center">Stok Sistem</th>
+                    <th className="px-4 py-3 text-center">Stok Fisik Real</th>
+                    <th className="px-4 py-3 text-center">Selisih</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+                  {barangList.map(barang => {
+                    const opItemIndex = opnameItems.findIndex(oi => oi.barang_id === barang.id);
+                    if (opItemIndex === -1) return null;
+                    const opItem = opnameItems[opItemIndex];
+                    const selisih = opItem.stok_fisik - opItem.stok_sistem;
+                    
+                    return (
+                      <tr key={barang.id} className="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-surface-900 dark:text-white">{barang.nama_barang}</div>
+                          <div className="text-[10px] text-surface-500">{barang.kategori} &bull; per {barang.satuan_kecil}</div>
+                        </td>
+                        <td className="px-4 py-3 text-center font-semibold text-surface-700 dark:text-surface-300">
+                          {opItem.stok_sistem}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="number"
+                            min="0"
+                            value={opItem.stok_fisik === 0 && opItem.stok_sistem === 0 ? '' : opItem.stok_fisik}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              const newItems = [...opnameItems];
+                              newItems[opItemIndex].stok_fisik = val;
+                              setOpnameItems(newItems);
+                            }}
+                            className="w-20 text-center px-2 py-1.5 bg-surface-50 dark:bg-surface-800 border border-surface-300 dark:border-surface-600 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-center font-bold">
+                          {selisih === 0 ? (
+                            <span className="text-surface-400">0</span>
+                          ) : selisih > 0 ? (
+                            <span className="text-success-600">+{selisih}</span>
+                          ) : (
+                            <span className="text-danger-600">{selisih}</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-surface-200 dark:border-surface-800">
+              <button
+                onClick={handleSimpanOpname}
+                disabled={isOpnameSubmitting}
+                className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50"
+              >
+                {isOpnameSubmitting ? 'Menyimpan...' : `Simpan Opname ${opnameTipe === 'gudang' ? 'Gudang' : 'Display'}`}
+              </button>
             </div>
           </div>
         </div>

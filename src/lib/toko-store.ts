@@ -380,6 +380,64 @@ export async function pindahKeDisplayBatch(items: { barang_id: string; jumlah_sa
   }
 }
 
+export async function saveOpnameStokBatch(
+  tipe: 'gudang' | 'display',
+  items: { barang_id: string; stok_fisik: number; stok_sistem: number }[],
+  catatan: string,
+  user: string
+) {
+  try {
+    const client = createClient();
+    const localBarang = getTokoBarangLocal();
+
+    const pergerakanList: TokoPergerakanStok[] = [];
+    const barangUpdates: Record<string, any> = {};
+
+    for (const item of items) {
+      if (!item.barang_id) continue;
+      
+      const barang = localBarang.find(b => b.id === item.barang_id);
+      if (!barang) continue;
+
+      const selisih = item.stok_fisik - item.stok_sistem;
+      
+      if (selisih !== 0) {
+        pergerakanList.push({
+          id: 'tps-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+          barang_id: item.barang_id,
+          jenis_pergerakan: tipe === 'gudang' ? 'OPNAME_GUDANG' : 'OPNAME_DISPLAY',
+          jumlah_satuan_besar: 0,
+          jumlah_satuan_kecil: selisih,
+          catatan: catatan || `Opname ${tipe} (Sistem: ${item.stok_sistem}, Fisik: ${item.stok_fisik})`,
+          dibuat_oleh: user,
+          created_at: new Date().toISOString()
+        });
+
+        if (tipe === 'gudang') {
+          barangUpdates[item.barang_id] = { stok_gudang: item.stok_fisik };
+        } else {
+          barangUpdates[item.barang_id] = { stok_display: item.stok_fisik };
+        }
+      }
+    }
+
+    if (pergerakanList.length > 0 && client) {
+      const { error: err1 } = await client.from('toko_pergerakan_stok').insert(pergerakanList);
+      if (err1) throw err1;
+
+      for (const [bId, updateData] of Object.entries(barangUpdates)) {
+        const { error: err2 } = await client.from('toko_barang').update(updateData).eq('id', bId);
+        if (err2) throw err2;
+      }
+    }
+
+    await syncTokoDataFromCloud();
+    return { success: true, count: pergerakanList.length };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function inputPenjualan(barangId: string, jumlahSatuanKecil: number, user: string) {
   try {
     const barang = getTokoBarangLocal().find(b => b.id === barangId);

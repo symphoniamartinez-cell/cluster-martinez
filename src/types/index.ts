@@ -156,7 +156,7 @@ export interface TokoBarang {
 export interface TokoPergerakanStok {
   id: string;
   barang_id: string;
-  jenis_pergerakan: 'PEMBELIAN_GUDANG' | 'PINDAH_DISPLAY' | 'STOK_KELUAR';
+  jenis_pergerakan: 'PEMBELIAN_GUDANG' | 'PINDAH_DISPLAY' | 'STOK_KELUAR' | 'OPNAME_GUDANG' | 'OPNAME_DISPLAY';
   jumlah_satuan_besar: number;
   jumlah_satuan_kecil: number;
   harga_beli_satuan_besar?: number;

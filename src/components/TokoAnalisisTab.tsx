@@ -1,16 +1,17 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import type { TokoPenjualan, TokoBarang } from '@/types';
+import type { TokoPenjualan, TokoBarang, TokoPergerakanStok } from '@/types';
 import { Package, TrendingUp } from 'lucide-react';
 
 interface Props {
   penjualanList: TokoPenjualan[];
+  pergerakanList: TokoPergerakanStok[];
   barangList: TokoBarang[];
   filterMonth: number;
   filterYear: number;
 }
 
-export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth, filterYear }: Props) {
+export default function TokoAnalisisTab({ penjualanList, pergerakanList, barangList, filterMonth, filterYear }: Props) {
   const { allItems, activeDays, avgDailyOmset, totalTerjual, dailyOmsetData } = useMemo(() => {
     // 1. Calculate Active Days logic
     const now = new Date();
@@ -38,7 +39,15 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
       return (d.getMonth() + 1) === filterMonth && d.getFullYear() === filterYear;
     });
 
+    const filteredPergerakan = pergerakanList.filter(p => {
+      const d = new Date(p.created_at || new Date());
+      return (d.getMonth() + 1) === filterMonth && d.getFullYear() === filterYear;
+    });
+
     const qtyMap: Record<string, number> = {};
+    const selisihGudangMap: Record<string, number> = {};
+    const selisihDisplayMap: Record<string, number> = {};
+
     let totalOmset = 0;
     let totalTerjual = 0;
 
@@ -59,6 +68,14 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
       }
     });
 
+    filteredPergerakan.forEach(p => {
+      if (p.jenis_pergerakan === 'OPNAME_GUDANG') {
+        selisihGudangMap[p.barang_id] = (selisihGudangMap[p.barang_id] || 0) + p.jumlah_satuan_kecil;
+      } else if (p.jenis_pergerakan === 'OPNAME_DISPLAY') {
+        selisihDisplayMap[p.barang_id] = (selisihDisplayMap[p.barang_id] || 0) + p.jumlah_satuan_kecil;
+      }
+    });
+
     const dailyOmsetData = Object.keys(dailyMap).map(day => ({
       tanggal: day,
       omset: dailyMap[parseInt(day)]
@@ -71,12 +88,14 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
         nama: b ? b.nama_barang : 'Unknown',
         satuan_kecil: b ? b.satuan_kecil : 'Pcs',
         qty,
-        runrate: qty / activeDays
+        runrate: qty / activeDays,
+        selisihGudang: selisihGudangMap[barang_id] || 0,
+        selisihDisplay: selisihDisplayMap[barang_id] || 0
       };
     }).sort((a, b) => b.qty - a.qty);
 
     return { allItems: items, activeDays, avgDailyOmset: totalOmset / activeDays, totalTerjual, dailyOmsetData };
-  }, [penjualanList, barangList, filterMonth, filterYear]);
+  }, [penjualanList, pergerakanList, barangList, filterMonth, filterYear]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -133,6 +152,8 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
                     <th className="px-4 py-3">Nama Barang</th>
                     <th className="px-4 py-3 text-right">Total Terjual</th>
                     <th className="px-4 py-3 text-right">Runrate (per Hari)</th>
+                    <th className="px-4 py-3 text-center border-l border-surface-200 dark:border-surface-700">Selisih Opname Gudang</th>
+                    <th className="px-4 py-3 text-center">Selisih Opname Display</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
@@ -147,6 +168,24 @@ export default function TokoAnalisisTab({ penjualanList, barangList, filterMonth
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-amber-600 dark:text-amber-400 font-bold">
                         {item.runrate.toFixed(2)} / hari
+                      </td>
+                      <td className="px-4 py-3 text-center border-l border-surface-200 dark:border-surface-700">
+                        {item.selisihGudang === 0 ? (
+                          <span className="text-surface-400 font-medium">-</span>
+                        ) : item.selisihGudang > 0 ? (
+                          <span className="text-success-600 font-bold">+{item.selisihGudang}</span>
+                        ) : (
+                          <span className="text-danger-600 font-bold">{item.selisihGudang}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {item.selisihDisplay === 0 ? (
+                          <span className="text-surface-400 font-medium">-</span>
+                        ) : item.selisihDisplay > 0 ? (
+                          <span className="text-success-600 font-bold">+{item.selisihDisplay}</span>
+                        ) : (
+                          <span className="text-danger-600 font-bold">{item.selisihDisplay}</span>
+                        )}
                       </td>
                     </tr>
                   ))}

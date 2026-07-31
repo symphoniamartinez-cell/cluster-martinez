@@ -28,6 +28,7 @@ import {
   AlertCircle,
   Download,
   ChevronDown,
+  ClipboardCheck,
 } from 'lucide-react';
 import TokoAnalisisTab from '@/components/TokoAnalisisTab';
 import type { TokoBarang, TokoPergerakanStok, TokoPenjualan } from '@/types';
@@ -49,6 +50,7 @@ import {
   updateMutasiStok,
   deletePembelianInvoice,
   editPembelianInvoice,
+  saveOpnameStokBatch,
   getClientUserName,
   type PembelianItem,
   type KeluarkanItem,
@@ -57,7 +59,7 @@ import {
 export default function AdminTokoPage() {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'analisis' | 'master' | 'pembelian' | 'mutasi' | 'riwayat' | 'laba_rugi' | 'pengaturan'>('analisis');
+  const [activeTab, setActiveTab] = useState<'analisis' | 'master' | 'pembelian' | 'mutasi' | 'riwayat' | 'laba_rugi' | 'opname' | 'pengaturan'>('analisis');
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('');
@@ -136,6 +138,49 @@ export default function AdminTokoPage() {
 
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+
+  // -- OPNAME STATE --
+  const [opnameTipe, setOpnameTipe] = useState<'gudang' | 'display'>('gudang');
+  const [opnameItems, setOpnameItems] = useState<{barang_id: string, stok_fisik: number, stok_sistem: number}[]>([]);
+  const [isOpnameSubmitting, setIsOpnameSubmitting] = useState(false);
+
+  const handleInitOpname = (tipe: 'gudang' | 'display') => {
+    setOpnameTipe(tipe);
+    const initialItems = barangList.map(b => ({
+      barang_id: b.id,
+      stok_sistem: tipe === 'gudang' ? (b.stok_gudang || 0) : (b.stok_display || 0),
+      stok_fisik: tipe === 'gudang' ? (b.stok_gudang || 0) : (b.stok_display || 0)
+    }));
+    setOpnameItems(initialItems);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'opname') {
+      handleInitOpname(opnameTipe);
+    }
+  }, [activeTab, opnameTipe, barangList]);
+
+  const handleSimpanOpname = async () => {
+    const selisihAda = opnameItems.some(item => item.stok_fisik !== item.stok_sistem);
+    if (!selisihAda) {
+      showToast('Tidak ada selisih stok untuk disimpan.');
+      return;
+    }
+
+    if (!confirm(`Simpan hasil opname ${opnameTipe === 'gudang' ? 'Gudang' : 'Display'}?`)) return;
+
+    setIsOpnameSubmitting(true);
+    const user = getClientUserName('Admin');
+    const res = await saveOpnameStokBatch(opnameTipe, opnameItems, '', user);
+    
+    if (res.success) {
+      showToast(`Opname berhasil disimpan! Ada ${res.count} barang disesuaikan.`);
+      loadData();
+    } else {
+      showToast(`Gagal opname: ${res.error}`);
+    }
+    setIsOpnameSubmitting(false);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -609,6 +654,7 @@ export default function AdminTokoPage() {
       {activeTab === 'analisis' && (
         <TokoAnalisisTab 
           penjualanList={penjualanList} 
+          pergerakanList={pergerakanList}
           barangList={barangList} 
           filterMonth={filterMonth}
           filterYear={filterYear}
