@@ -509,7 +509,7 @@ export async function inputPenjualanBatch(items: PenjualanItem[], user: string, 
         throw new Error(`Stok display ${barang.nama_barang} tidak cukup. Sisa: ${currentStokDisplay}`);
       }
 
-      const hargaSatuan = barang.harga_jual_satuan_kecil || 0;
+      const hargaSatuan = item.harga_satuan_custom !== undefined ? item.harga_satuan_custom : (barang.harga_jual_satuan_kecil || 0);
       
       // Calculate harga_modal_satuan based on master data
       // For simplicity in this demo, harga modal = harga_beli_satuan_besar / qty_per_satuan_besar
